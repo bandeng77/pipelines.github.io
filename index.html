@@ -15,7 +15,7 @@
             background-color: #f8fafc; /* Lighter background */
         }
         .pipeline-stage {
-            min-height: 400px; /* Increased min-height for better drag-drop */
+            min-height: 450px; /* Increased min-height for better drag-drop */
             transition: all 0.3s ease;
             border-radius: 0.75rem;
             overflow: hidden;
@@ -34,6 +34,8 @@
             padding: 1rem;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+            /* Ensure enough space for dropping */
+            min-height: 100px; /* Added to ensure drop area even if empty */
         }
         .deal-card {
             transition: transform 0.2s, box-shadow 0.2s;
@@ -579,15 +581,13 @@
                 <p class="text-sm text-gray-600 mb-1 flex items-center"><i class="fas fa-building mr-2 text-gray-400"></i>${deal.company || 'N/A'}</p>
                 <p class="text-xs text-gray-500 flex items-center"><i class="fas fa-user mr-2 text-gray-400"></i>${deal.contact || 'N/A'}</p>
                 
-                <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
+                <div class="flex justify-between items-center mt-3">
                     <span class="text-xs font-medium ${priorityColor} px-2 py-1 rounded-full flex items-center">
                         ${priorityIcon} <span class="ml-1">${deal.priority.charAt(0).toUpperCase() + deal.priority.slice(1)}</span>
                     </span>
-                    <div class="flex space-x-2">
-                        <button onclick="openDealModal(${deal.id})" class="text-xs text-blue-500 hover:text-blue-700 font-medium flex items-center"><i class="fas fa-edit mr-1"></i>Edit</button>
-                        <button onclick="confirmDeleteDeal(${deal.id})" class="text-xs text-red-500 hover:text-red-700 font-medium flex items-center"><i class="fas fa-trash-alt mr-1"></i>Delete</button>
-                    </div>
+                    <span class="text-xs text-gray-400">${deal.created.toLocaleDateString()}</span>
                 </div>
+
                 ${deal.stage !== 'closed-won' && deal.stage !== 'closed-lost' ? `
                 <div class="mt-3">
                     <div class="w-full bg-gray-200 rounded-full h-2.5">
@@ -596,6 +596,11 @@
                     <p class="text-xs text-gray-500 mt-1 text-right">${Math.round(progress)}% Progress</p>
                 </div>
                 ` : ''}
+
+                <div class="flex justify-end space-x-2 mt-3 pt-3 border-t border-gray-100">
+                    <button onclick="openDealModal(${deal.id})" class="text-xs text-blue-500 hover:text-blue-700 font-medium flex items-center"><i class="fas fa-edit mr-1"></i>Edit</button>
+                    <button onclick="confirmDeleteDeal(${deal.id})" class="text-xs text-red-500 hover:text-red-700 font-medium flex items-center"><i class="fas fa-trash-alt mr-1"></i>Delete</button>
+                </div>
             `;
 
             document.getElementById(`${deal.stage}-stage`).appendChild(dealCard);
@@ -660,6 +665,7 @@
                 const stageElement = document.getElementById(`${stageId}-stage`);
                 if (stageElement && stageElement.sortable) {
                     stageElement.sortable.destroy();
+                    stageElement.sortable = null; // Clear reference
                 }
             });
 
@@ -673,7 +679,10 @@
                         ghostClass: 'bg-blue-100 border-blue-400 opacity-75', // Class for the ghost element
                         chosenClass: 'shadow-lg border-blue-500', // Class for the chosen item
                         dragClass: 'opacity-50', // Class for the dragging item
+                        // Handle: '.deal-card' or a specific drag handle if needed
+                        // filter: '.empty-stage-message', // Prevent dragging the empty message
                         onEnd: function (evt) {
+                            console.log('Sortable onEnd triggered!'); // Debugging
                             const dealId = parseInt(evt.item.dataset.id);
                             const oldStage = evt.from.id.replace('-stage', '');
                             const newStage = evt.to.id.replace('-stage', '');
