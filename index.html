@@ -3,413 +3,555 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sales Pipeline Manager</title>
+    <title>Modern Sales Pipeline Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .pulse { animation: pulse 2s infinite; }
+        
         .pipeline-stage {
-            min-height: 300px;
             transition: all 0.3s ease;
         }
+        .pipeline-stage:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        
+        #pipelineVisualization path {
+            transition: all 0.5s ease;
+        }
+        
         .deal-card {
-            transition: transform 0.2s;
+            transition: all 0.2s ease;
         }
         .deal-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        }
-        .stage-prospect { border-left: 4px solid #3B82F6; }
-        .stage-qualification { border-left: 4px solid #10B981; }
-        .stage-proposal { border-left: 4px solid #F59E0B; }
-        .stage-negotiation { border-left: 4px solid #EC4899; }
-        .stage-closed { border-left: 4px solid #8B5CF6; }
-        .sortable-ghost {
-            opacity: 0.5;
-        }
-        .sortable-chosen {
-            background-color: #e0f7fa; /* Light blue background for the chosen item */
-        }
-        .sortable-drag {
-            border: 2px dashed #3B82F6; /* Dashed border for the dragging item */
+            transform: scale(1.02);
         }
     </style>
 </head>
 <body class="bg-gray-50">
-    <div class="max-w-7xl mx-auto px-4">
+    <div class="min-h-screen">
         <!-- Header -->
-        <header class="py-6">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h1 class="text-3xl font-bold text-gray-800">Sales Pipeline Manager</h1>
-                    <p class="text-gray-600">Visualize and track your sales opportunities</p>
+        <header class="bg-white shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
+                <div class="flex items-center">
+                    <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/05ee6734-8c1f-4fc9-aa68-def82d54af6b.png" alt="Company logo with abstract modern design in blue and white colors" class="h-10 w-10 rounded-md">
+                    <h1 class="ml-3 text-xl font-bold text-gray-900">Sales Pulse</h1>
                 </div>
-                <div class="flex space-x-4">
-                    <button onclick="openModal('addDealModal')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-                        + New Deal
-                    </button>
-                    <button onclick="showStats()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg">
-                        View Stats
-                    </button>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-search text-gray-400"></i>
+                        </div>
+                        <input type="text" class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Search...">
+                    </div>
+                    <div class="relative">
+                        <button class="p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <i class="fas fa-bell h-6 w-6"></i>
+                            <span class="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+                        </button>
+                    </div>
+                    <div class="flex items-center">
+                        <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/2eb0309a-58b3-4ad6-bf7b-ced95b3060fb.png" alt="Headshot of sales manager with professional attire and friendly expression" class="h-8 w-8 rounded-full">
+                        <span class="ml-2 text-sm font-medium text-gray-700">John Doe</span>
+                    </div>
                 </div>
             </div>
         </header>
 
-        <!-- Pipeline Visualization -->
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-            <div class="pipeline-stage stage-prospect bg-white p-4 rounded-lg shadow">
-                <h3 class="font-semibold text-lg mb-4">Prospect</h3>
-                <div id="prospect-stage" class="space-y-3">
-                    <!-- Deal cards will be inserted here by JavaScript -->
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+            <!-- Stats Overview -->
+            <div class="grid grid-cols-1 gap-5 mt-6 sm:grid-cols-2 lg:grid-cols-4">
+                <!-- Closed Won -->
+                <div class="bg-gradient-to-r from-green-500 to-green-400 overflow-hidden shadow rounded-lg pulse">
+                    <div class="px-4 py-5 sm:p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-white bg-opacity-20 p-3 rounded-md">
+                                <i class="fas fa-trophy text-white"></i>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-white truncate">Closed Won</dt>
+                                    <dd>
+                                        <div class="text-lg font-medium text-white">$48,324</div>
+                                    </dd>
+                                </dl>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <div class="h-1 bg-white bg-opacity-20 rounded-full">
+                                <div class="h-1 bg-white rounded-full" style="width: 85%"></div>
+                            </div>
+                            <p class="mt-1 text-xs text-white">85% of monthly target</p>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="pipeline-stage stage-qualification bg-white p-4 rounded-lg shadow">
-                <h3 class="font-semibold text-lg mb-4">Qualification</h3>
-                <div id="qualification-stage" class="space-y-3"></div>
-            </div>
-            <div class="pipeline-stage stage-proposal bg-white p-4 rounded-lg shadow">
-                <h3 class="font-semibold text-lg mb-4">Proposal</h3>
-                <div id="proposal-stage" class="space-y-3"></div>
-            </div>
-            <div class="pipeline-stage stage-negotiation bg-white p-4 rounded-lg shadow">
-                <h3 class="font-semibold text-lg mb-4">Negotiation</h3>
-                <div id="negotiation-stage" class="space-y-3"></div>
-            </div>
-            <div class="pipeline-stage stage-closed bg-white p-4 rounded-lg shadow">
-                <h3 class="font-semibold text-lg mb-4">Closed</h3>
-                <div id="closed-stage" class="space-y-3"></div>
-            </div>
-        </div>
 
-        <!-- Recent Activity Section -->
-        <div class="bg-white p-6 rounded-lg shadow mb-8">
-            <h2 class="text-xl font-semibold mb-4">Recent Activity</h2>
-            <div id="activity-feed" class="space-y-4">
-                <div class="p-4 bg-gray-50 rounded-lg">
-                    <p class="text-gray-500">System: Welcome to your sales pipeline! Add your first deal to get started.</p>
+                <!-- In Pipeline -->
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="px-4 py-5 sm:p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-blue-100 p-3 rounded-md">
+                                <i class="fas fa-funnel-dollar text-blue-600"></i>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">In Pipeline</dt>
+                                    <dd>
+                                        <div class="text-lg font-medium text-gray-900">$129,453</div>
+                                    </dd>
+                                </dl>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <div class="h-1 bg-gray-200 rounded-full">
+                                <div class="h-1 bg-blue-500 rounded-full" style="width: 65%"></div>
+                            </div>
+                            <p class="mt-1 text-xs text-gray-500">65% through pipeline</p>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
 
-        <!-- Stats Section (hidden by default) -->
-        <div id="stats-section" class="hidden bg-white p-6 rounded-lg shadow mb-8">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-semibold">Sales Performance</h2>
-                <button onclick="hideStats()" class="text-gray-500 hover:text-gray-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <canvas id="dealSizeChart"></canvas>
+                <!-- New Leads -->
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="px-4 py-5 sm:p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-yellow-100 p-3 rounded-md">
+                                <i class="fas fa-user-plus text-yellow-600"></i>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">New Leads</dt>
+                                    <dd>
+                                        <div class="text-lg font-medium text-gray-900">47</div>
+                                    </dd>
+                                </dl>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <div class="h-1 bg-gray-200 rounded-full">
+                                <div class="h-1 bg-yellow-500 rounded-full" style="width: 32%"></div>
+                            </div>
+                            <p class="mt-1 text-xs text-gray-500">32% conversion so far</p>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <canvas id="winRateChart"></canvas>
-                </div>
-            </div>
-            <div class="mt-6">
-                <canvas id="pipelineValueChart"></canvas>
-            </div>
-        </div>
-    </div>
 
-    <!-- Add Deal Modal -->
-    <div id="addDealModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
-        <div class="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 class="text-xl font-semibold mb-4">Add New Deal</h2>
-            <form id="dealForm">
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2" for="dealName">Deal Name</label>
-                    <input type="text" id="dealName" class="w-full p-2 border rounded-lg" required>
+                <!-- Avg. Deal Size -->
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="px-4 py-5 sm:p-6">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 bg-purple-100 p-3 rounded-md">
+                                <i class="fas fa-chart-line text-purple-600"></i>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Avg. Deal Size</dt>
+                                    <dd>
+                                        <div class="text-lg font-medium text-gray-900">$3,250</div>
+                                    </dd>
+                                </dl>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <div class="h-1 bg-gray-200 rounded-full">
+                                <div class="h-1 bg-purple-500 rounded-full" style="width: 15%"></div>
+                            </div>
+                            <p class="mt-1 text-xs text-gray-500">15% from last month</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2" for="companyName">Company</label>
-                    <input type="text" id="companyName" class="w-full p-2 border rounded-lg">
+            </div>
+
+            <!-- Pipeline Visualization & Main Content -->
+            <div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <!-- Left Column - Pipeline Stages -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white shadow rounded-lg overflow-hidden">
+                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                            <h3 class="text-lg font-medium leading-6 text-gray-900">Sales Pipeline</h3>
+                            <p class="mt-1 text-sm text-gray-500">Visual overview of deals in each stage</p>
+                        </div>
+                        <div class="px-4 py-5 sm:p-6">
+                            <!-- Stages Visualization -->
+                            <div class="flex justify-between h-64 mb-6">
+                                <!-- Lead -->
+                                <div class="pipeline-stage w-1/5 flex flex-col items-center">
+                                    <div class="relative">
+                                        <div class="h-20 w-20 rounded-full bg-blue-100 flex items-center justify-center">
+                                            <i class="fas fa-user-tie text-blue-500 text-2xl"></i>
+                                        </div>
+                                        <span class="absolute -top-1 -right-1 h-5 w-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">24</span>
+                                    </div>
+                                    <span class="mt-2 text-sm font-medium text-gray-700">Lead</span>
+                                    <span class="text-xs text-gray-500">$24,300</span>
+                                </div>
+                                
+                                <!-- Contacted -->
+                                <div class="pipeline-stage w-1/5 flex flex-col items-center">
+                                    <div class="relative">
+                                        <div class="h-20 w-20 rounded-full bg-yellow-100 flex items-center justify-center">
+                                            <i class="fas fa-comment-dots text-yellow-500 text-2xl"></i>
+                                        </div>
+                                        <span class="absolute -top-1 -right-1 h-5 w-5 bg-yellow-500 rounded-full flex items-center justify-center text-white text-xs font-bold">18</span>
+                                    </div>
+                                    <span class="mt-2 text-sm font-medium text-gray-700">Contacted</span>
+                                    <span class="text-xs text-gray-500">$38,400</span>
+                                    <div class="w-20 h-1 bg-yellow-200 mt-4">
+                                        <div class="h-1 bg-yellow-500" style="width: 60%"></div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Proposal Sent -->
+                                <div class="pipeline-stage w-1/5 flex flex-col items-center">
+                                    <div class="relative">
+                                        <div class="h-20 w-20 rounded-full bg-purple-100 flex items-center justify-center">
+                                            <i class="fas fa-file-alt text-purple-500 text-2xl"></i>
+                                        </div>
+                                        <span class="absolute -top-1 -right-1 h-5 w-5 bg-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold">15</span>
+                                    </div>
+                                    <span class="mt-2 text-sm font-medium text-gray-700">Proposal</span>
+                                    <span class="text-xs text-gray-500">$52,100</span>
+                                    <div class="w-20 h-1 bg-purple-200 mt-4">
+                                        <div class="w-1/2 h-1 bg-purple-500"></div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Negotiation -->
+                                <div class="pipeline-stage w-1/5 flex flex-col items-center">
+                                    <div class="relative">
+                                        <div class="h-20 w-20 rounded-full bg-orange-100 flex items-center justify-center">
+                                            <i class="fas fa-handshake text-orange-500 text-2xl"></i>
+                                        </div>
+                                        <span class="absolute -top-1 -right-1 h-5 w-5 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-bold">9</span>
+                                    </div>
+                                    <span class="mt-2 text-sm font-medium text-gray-700">Negotiation</span>
+                                    <span class="text-xs text-gray-500">$21,800</span>
+                                    <div class="w-20 h-1 bg-orange-200 mt-4">
+                                        <div class="w-30 h-1 bg-orange-500"></div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Closed/Won -->
+                                <div class="pipeline-stage w-1/5 flex flex-col items-center">
+                                    <div class="relative">
+                                        <div class="h-20 w-20 rounded-full bg-green-100 flex items-center justify-center">
+                                            <i class="fas fa-check-circle text-green-500 text-2xl"></i>
+                                        </div>
+                                        <span class="absolute -top-1 -right-1 h-5 w-5 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">7</span>
+                                    </div>
+                                    <span class="mt-2 text-sm font-medium text-gray-700">Closed Won</span>
+                                    <span class="text-xs text-gray-500">$48,300</span>
+                                    <div class="w-20 h-1 bg-green-200 mt-4">
+                                        <div class="w-3/4 h-1 bg-green-500"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Flow Visualization -->
+                            <div class="mt-8">
+                                <div class="flex justify-center">
+                                    <svg width="100%" height="60" viewBox="0 0 800 60" id="pipelineVisualization">
+                                        <!-- Lead to Contacted -->
+                                        <path d="M80,20 C180,20 220,20 320,20" stroke="#93c5fd" stroke-width="2" fill="none" 
+                                              marker-end="url(#arrowhead1)"/>
+                                        <!-- Contacted to Proposal -->
+                                        <path d="M320,20 C420,20 460,20 560,20" stroke="#facc15" stroke-width="2" fill="none"
+                                              marker-end="url(#arrowhead2)"/>
+                                        <!-- Proposal to Negotiation -->
+                                        <path d="M560,20 C630,20 650,20 720,20" stroke="#a78bfa" stroke-width="2" fill="none"
+                                              marker-end="url(#arrowhead3)"/>
+                                        <!-- Negotiation to Closed -->
+                                        <path d="M720,20 C770,20 780,20 800,20" stroke="#fdba74" stroke-width="2" fill="none"
+                                              marker-end="url(#arrowhead4)"/>
+                                        
+                                        <!-- Arrows -->
+                                        <defs>
+                                            <marker id="arrowhead1" markerWidth="10" markerHeight="7" refX="5" refY="3.5" orient="auto">
+                                                <polygon points="0 0, 10 3.5, 0 7" fill="#93c5fd" />
+                                            </marker>
+                                            <marker id="arrowhead2" markerWidth="10" markerHeight="7" refX="5" refY="3.5" orient="auto">
+                                                <polygon points="0 0, 10 3.5, 0 7" fill="#facc15" />
+                                            </marker>
+                                            <marker id="arrowhead3" markerWidth="10" markerHeight="7" refX="5" refY="3.5" orient="auto">
+                                                <polygon points="0 0, 10 3.5, 0 7" fill="#a78bfa" />
+                                            </marker>
+                                            <marker id="arrowhead4" markerWidth="10" markerHeight="7" refX="5" refY="3.5" orient="auto">
+                                                <polygon points="0 0, 10 3.5, 0 7" fill="#fdba74" />
+                                            </marker>
+                                        </defs>
+                                    </svg>
+                                </div>
+                                <div class="mt-4 flex justify-between text-xs text-gray-500">
+                                    <span>Conversion: 75%</span>
+                                    <span>Conversion: 64%</span>
+                                    <span>Conversion: 60%</span>
+                                    <span>Conversion: 78%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Deals -->
+                    <div class="mt-6 bg-white shadow rounded-lg overflow-hidden">
+                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                            <h3 class="text-lg font-medium leading-6 text-gray-900">Recent Deals</h3>
+                            <p class="mt-1 text-sm text-gray-500">Latest opportunities in your pipeline</p>
+                        </div>
+                        <div class="px-4 py-4">
+                            <div class="space-y-4">
+                                <!-- Deal 1 -->
+                                <div class="deal-card bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-300">
+                                    <div class="flex items-start">
+                                        <div class="flex-shrink-0 bg-blue-100 rounded-md p-3">
+                                            <i class="fas fa-building text-blue-600"></i>
+                                        </div>
+                                        <div class="ml-4 flex-1">
+                                            <div class="flex items-center justify-between">
+                                                <h4 class="text-sm font-medium text-gray-900">Acme Corporation</h4>
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                    <i class="fas fa-caret-up mr-1"></i> High
+                                                </span>
+                                            </div>
+                                            <p class="mt-1 text-sm text-gray-500">Enterprise sales software renewal</p>
+                                            <div class="mt-2 flex items-center justify-between">
+                                                <div>
+                                                    <span class="text-xs font-medium text-gray-500">Est. Amount:</span>
+                                                    <span class="ml-1 text-sm font-medium text-gray-900">$24,500</span>
+                                                </div>
+                                                <div class="flex items-center">
+                                                    <div class="h-2 w-48 bg-gray-200 rounded-full overflow-hidden">
+                                                        <div class="h-2 bg-blue-500 rounded-full" style="width: 70%"></div>
+                                                    </div>
+                                                    <span class="ml-2 text-xs text-gray-500">70%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Deal 2 -->
+                                <div class="deal-card bg-white border border-gray-200 rounded-lg p-4 hover:border-purple-300">
+                                    <div class="flex items-start">
+                                        <div class="flex-shrink-0 bg-purple-100 rounded-md p-3">
+                                            <i class="fas fa-mobile-alt text-purple-600"></i>
+                                        </div>
+                                        <div class="ml-4 flex-1">
+                                            <div class="flex items-center justify-between">
+                                                <h4 class="text-sm font-medium text-gray-900">MobileX Inc</h4>
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                    <i class="fas fa-minus mr-1"></i> Medium
+                                                </span>
+                                            </div>
+                                            <p class="mt-1 text-sm text-gray-500">Mobile app development package</p>
+                                            <div class="mt-2 flex items-center justify-between">
+                                                <div>
+                                                    <span class="text-xs font-medium text-gray-500">Est. Amount:</span>
+                                                    <span class="ml-1 text-sm font-medium text-gray-900">$15,200</span>
+                                                </div>
+                                                <div class="flex items-center">
+                                                    <div class="h-2 w-48 bg-gray-200 rounded-full overflow-hidden">
+                                                        <div class="h-2 bg-purple-500 rounded-full" style="width: 50%"></div>
+                                                    </div>
+                                                    <span class="ml-2 text-xs text-gray-500">50%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Deal 3 -->
+                                <div class="deal-card bg-white border border-gray-200 rounded-lg p-4 hover:border-orange-300">
+                                    <div class="flex items-start">
+                                        <div class="flex-shrink-0 bg-orange-100 rounded-md p-3">
+                                            <i class="fas fa-store text-orange-600"></i>
+                                        </div>
+                                        <div class="ml-4 flex-1">
+                                            <div class="flex items-center justify-between">
+                                                <h4 class="text-sm font-medium text-gray-900">Global Retail</h4>
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                    <i class="fas fa-caret-down mr-1"></i> Low
+                                                </span>
+                                            </div>
+                                            <p class="mt-1 text-sm text-gray-500">POS system integration</p>
+                                            <div class="mt-2 flex items-center justify-between">
+                                                <div>
+                                                    <span class="text-xs font-medium text-gray-500">Est. Amount:</span>
+                                                    <span class="ml-1 text-sm font-medium text-gray-900">$8,700</span>
+                                                </div>
+                                                <div class="flex items-center">
+                                                    <div class="h-2 w-48 bg-gray-200 rounded-full overflow-hidden">
+                                                        <div class="h-2 bg-orange-500 rounded-full" style="width: 30%"></div>
+                                                    </div>
+                                                    <span class="ml-2 text-xs text-gray-500">30%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2" for="contactName">Contact Name</label>
-                    <input type="text" id="contactName" class="w-full p-2 border rounded-lg">
+                
+                <!-- Right Column -->
+                <div class="space-y-6">
+                    <!-- Performance Chart -->
+                    <div class="bg-white shadow rounded-lg overflow-hidden">
+                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                            <h3 class="text-lg font-medium leading-6 text-gray-900">Sales Performance</h3>
+                            <p class="mt-1 text-sm text-gray-500">Last 6 months revenue trend</p>
+                        </div>
+                        <div class="px-4 py-4">
+                            <div class="h-64">
+                                <!-- Chart placeholder (would use Chart.js in real implementation) -->
+                                <div class="flex items-end h-48">
+                                    <div class="w-1/6 text-center">
+                                        <div class="bg-blue-500 w-full mx-auto rounded-t" style="height: 60%"></div>
+                                        <p class="text-xs text-gray-500 mt-1">Jan</p>
+                                    </div>
+                                    <div class="w-1/6 text-center">
+                                        <div class="bg-blue-500 w-full mx-auto rounded-t" style="height: 45%"></div>
+                                        <p class="text-xs text-gray-500 mt-1">Feb</p>
+                                    </div>
+                                    <div class="w-1/6 text-center">
+                                        <div class="bg-blue-500 w-full mx-auto rounded-t" style="height: 70%"></div>
+                                        <p class="text-xs text-gray-500 mt-1">Mar</p>
+                                    </div>
+                                    <div class="w-1/6 text-center">
+                                        <div class="bg-blue-500 w-full mx-auto rounded-t" style="height: 85%"></div>
+                                        <p class="text-xs text-gray-500 mt-1">Apr</p>
+                                    </div>
+                                    <div class="w-1/6 text-center">
+                                        <div class="bg-blue-500 w-full mx-auto rounded-t" style="height: 65%"></div>
+                                        <p class="text-xs text-gray-500 mt-1">May</p>
+                                    </div>
+                                    <div class="w-1/6 text-center">
+                                        <div class="bg-blue-500 w-full mx-auto rounded-t" style="height: 90%"></div>
+                                        <p class="text-xs text-gray-500 mt-1">Jun</p>
+                                    </div>
+                                </div>
+                                <div class="mt-4 flex justify-between">
+                                    <div class="text-sm">
+                                        <span class="font-medium text-gray-900">$128,450</span>
+                                        <span class="ml-1 text-green-600">+12.4%</span>
+                                    </div>
+                                    <div class="text-sm text-gray-500">YTD Performance</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Top Performers -->
+                    <div class="bg-white shadow rounded-lg overflow-hidden">
+                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                            <h3 class="text-lg font-medium leading-6 text-gray-900">Top Performers</h3>
+                            <p class="mt-1 text-sm text-gray-500">Leading sales reps this quarter</p>
+                        </div>
+                        <div class="px-4 py-4">
+                            <ul class="space-y-4">
+                                <li class="flex items-center">
+                                    <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/21670d01-5915-4594-ab2f-caeae02e182c.png" alt="Portrait of Sarah Johnson, top sales executive with professional attire and confident smile" class="h-10 w-10 rounded-full">
+                                    <div class="ml-4">
+                                        <h4 class="text-sm font-medium text-gray-900">Sarah Johnson</h4>
+                                        <p class="text-sm text-gray-500">$68,400 in closed deals</p>
+                                    </div>
+                                    <div class="ml-auto bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                                        #1 performer
+                                    </div>
+                                </li>
+                                <li class="flex items-center">
+                                    <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/dc2f8767-baa7-43d8-b116-471a547ca68b.png" alt="Portrait of Michael Chen, sales associate with professional appearance and friendly demeanor" class="h-10 w-10 rounded-full">
+                                    <div class="ml-4">
+                                        <h4 class="text-sm font-medium text-gray-900">Michael Chen</h4>
+                                        <p class="text-sm text-gray-500">$52,100 in closed deals</p>
+                                    </div>
+                                    <div class="ml-auto bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                                        #2 performer
+                                    </div>
+                                </li>
+                                <li class="flex items-center">
+                                    <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/a0b4df23-4e03-4dc4-9b85-3c70bbb33c38.png" alt="Portrait of David Rodriguez, sales specialist with approachable expression and business casual attire" class="h-10 w-10 rounded-full">
+                                    <div class="ml-4">
+                                        <h4 class="text-sm font-medium text-gray-900">David Rodriguez</h4>
+                                        <p class="text-sm text-gray-500">$45,800 in closed deals</p>
+                                    </div>
+                                    <div class="ml-auto bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                                        #3 performer
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="bg-white shadow rounded-lg overflow-hidden">
+                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                            <h3 class="text-lg font-medium leading-6 text-gray-900">Quick Actions</h3>
+                        </div>
+                        <div class="px-4 py-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <button type="button" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    <i class="fas fa-plus mr-2"></i> New Lead
+                                </button>
+                                <button type="button" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                    <i class="fas fa-file-alt mr-2"></i> Create Proposal
+                                </button>
+                                <button type="button" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                                    <i class="fas fa-chart-line mr-2"></i> View Reports
+                                </button>
+                                <button type="button" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-pink-700 bg-pink-100 hover:bg-pink-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500">
+                                    <i class="fas fa-tasks mr-2"></i> Tasks
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2" for="value">Value ($)</label>
-                    <input type="number" id="value" class="w-full p-2 border rounded-lg">
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2" for="stage">Stage</label>
-                    <select id="stage" class="w-full p-2 border rounded-lg">
-                        <option value="prospect">Prospect</option>
-                        <option value="qualification">Qualification</option>
-                        <option value="proposal">Proposal</option>
-                        <option value="negotiation">Negotiation</option>
-                    </select>
-                </div>
-                <div class="flex justify-end space-x-2">
-                    <button type="button" onclick="closeModal('addDealModal')" class="px-4 py-2 text-gray-600 hover:text-gray-800">
-                        Cancel
-                    </button>
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
-                        Save Deal
-                    </button>
-                </div>
-            </form>
-        </div>
+            </div>
+        </main>
     </div>
 
     <script>
-        // Sample data
-        let deals = [];
-        let activities = [
-            { id: 1, text: "System: Welcome to your sales pipeline! Add your first deal to get started.", date: new Date() }
-        ];
-
-        // Initialize Sortable for drag and drop
+        // Simple animation for the pipeline visualization
         document.addEventListener('DOMContentLoaded', function() {
-            const stages = ['prospect', 'qualification', 'proposal', 'negotiation', 'closed'];
-
-            stages.forEach(stage => {
-                new Sortable(document.getElementById(`${stage}-stage`), {
-                    group: 'pipeline',
-                    animation: 150,
-                    onEnd: updateDealStage,
-                    draggable: '.deal-card',
-                    ghostClass: 'sortable-ghost', // Class name for the drop placeholder
-                    chosenClass: 'sortable-chosen', // Class name for the chosen item
-                    dragClass: 'sortable-drag' // Class name for the dragging item
+            // Animate pipeline paths
+            const paths = document.querySelectorAll('#pipelineVisualization path');
+            paths.forEach((path, index) => {
+                const length = path.getTotalLength();
+                path.style.strokeDasharray = length + ' ' + length;
+                path.style.strokeDashoffset = length;
+                
+                // Start animation with slight delay for each path
+                setTimeout(() => {
+                    path.style.transition = 'stroke-dashoffset 1.5s ease-out';
+                    path.style.strokeDashoffset = '0';
+                }, index * 300);
+            });
+            
+            // Add hover effect to deal cards
+            const dealCards = document.querySelectorAll('.deal-card');
+            dealCards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    const icon = this.querySelector('.fa-solid, .fas, .far, .fab');
+                    if (icon) {
+                        icon.classList.add('animate-bounce');
+                    }
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                    const icon = this.querySelector('.fa-solid, .fas, .far, .fab');
+                    if (icon) {
+                        icon.classList.remove('animate-bounce');
+                    }
                 });
             });
-
-            // Form submission
-            document.getElementById('dealForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                addNewDeal();
-            });
         });
-
-        // Modal functions
-        function openModal(id) {
-            document.getElementById(id).classList.remove('hidden');
-        }
-
-        function closeModal(id) {
-            document.getElementById(id).classList.add('hidden');
-            document.getElementById('dealForm').reset();
-        }
-
-        function showStats() {
-            document.getElementById('stats-section').classList.remove('hidden');
-            updateCharts();
-        }
-
-        function hideStats() {
-            document.getElementById('stats-section').classList.add('hidden');
-        }
-
-        // Deal functions
-        function addNewDeal() {
-            const dealName = document.getElementById('dealName').value;
-            const companyName = document.getElementById('companyName').value;
-            const contactName = document.getElementById('contactName').value;
-            const value = document.getElementById('value').value;
-            const stage = document.getElementById('stage').value;
-            
-            const newDeal = {
-                id: Date.now(),
-                name: dealName,
-                company: companyName,
-                contact: contactName,
-                value: value ? parseFloat(value) : 0,
-                stage: stage,
-                created: new Date()
-            };
-            
-            deals.push(newDeal);
-            renderDeal(newDeal);
-            
-            // Add activity
-            addActivity(`Added new deal: ${dealName}`);
-            
-            closeModal('addDealModal');
-            document.getElementById('dealForm').reset();
-        }
-
-        function renderDeal(deal) {
-            const dealCard = document.createElement('div');
-            dealCard.className = 'deal-card bg-white p-3 rounded-lg cursor-move shadow';
-            dealCard.dataset.id = deal.id;
-            
-            dealCard.innerHTML = `
-                <div class="flex justify-between items-start mb-2">
-                    <h4 class="font-medium">${deal.name}</h4>
-                    <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">$${deal.value.toLocaleString()}</span>
-                </div>
-                <p class="text-sm text-gray-600 mb-1">${deal.company}</p>
-                <p class="text-xs text-gray-500">${deal.contact}</p>
-                <div class="flex justify-between items-center mt-3">
-                    <button onclick="showDealDetails(${deal.id})" class="text-xs text-blue-600 hover:text-blue-800">Details</button>
-                    <span class="text-xs text-gray-500">${deal.created.toLocaleDateString()}</span>
-                </div>
-            `;
-            
-            document.getElementById(`${deal.stage}-stage`).appendChild(dealCard);
-        }
-
-        function updateDealStage(evt) {
-            const dealId = parseInt(evt.item.dataset.id);
-            const newStage = evt.to.id.replace('-stage', '');
-            
-            const dealIndex = deals.findIndex(d => d.id === dealId);
-            if (dealIndex !== -1) {
-                deals[dealIndex].stage = newStage;
-                addActivity(`Moved ${deals[dealIndex].name} to ${newStage} stage`);
-            }
-        }
-
-        function addActivity(text) {
-            const newActivity = {
-                id: Date.now(),
-                text: text,
-                date: new Date()
-            };
-            
-            activities.unshift(newActivity);
-            
-            // Add to activity feed
-            const activityElement = document.createElement('div');
-            activityElement.className = 'p-4 bg-gray-50 rounded-lg';
-            activityElement.innerHTML = `
-                <p class="text-gray-500">${newActivity.text}</p>
-                <p class="text-xs text-gray-400 mt-1">${newActivity.date.toLocaleString()}</p>
-            `;
-            
-            const activityFeed = document.getElementById('activity-feed');
-            if (activityFeed.firstChild) {
-                activityFeed.insertBefore(activityElement, activityFeed.firstChild);
-            } else {
-                activityFeed.appendChild(activityElement);
-            }
-        }
-
-        function updateCharts() {
-            // Deal size distribution chart
-            const dealSizeCtx = document.getElementById('dealSizeChart').getContext('2d');
-            new Chart(dealSizeCtx, {
-                type: 'bar',
-                data: {
-                    labels: ['$0-$1000', '$1000-$5000', '$5000-$10000', '$10000+'],
-                    datasets: [{
-                        label: 'Number of Deals',
-                        data: calculateDealSizeDistribution(),
-                        backgroundColor: [
-                            'rgba(59, 130, 246, 0.6)',
-                            'rgba(16, 185, 129, 0.6)',
-                            'rgba(245, 158, 11, 0.6)',
-                            'rgba(236, 72, 153, 0.6)'
-                        ],
-                        borderColor: [
-                            'rgba(59, 130, 246, 1)',
-                            'rgba(16, 185, 129, 1)',
-                            'rgba(245, 158, 11, 1)',
-                            'rgba(236, 72, 153, 1)'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Deal Size Distribution'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-
-            // Win rate chart
-            const winRateCtx = document.getElementById('winRateChart').getContext('2d');
-            new Chart(winRateCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Closed Won', 'Closed Lost', 'In Progress'],
-                    datasets: [{
-                        data: [25, 15, 60], // Sample data
-                        backgroundColor: [
-                            'rgba(139, 92, 246, 0.6)',
-                            'rgba(239, 68, 68, 0.6)',
-                            'rgba(59, 130, 246, 0.6)'
-                        ],
-                        borderColor: [
-                            'rgba(139, 92, 246, 1)',
-                            'rgba(239, 68, 68, 1)',
-                            'rgba(59, 130, 246, 1)'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Win Rate'
-                        },
-                        legend: {
-                            position: 'right',
-                        }
-                    }
-                }
-            });
-
-            // Pipeline value chart
-            const pipelineValueCtx = document.getElementById('pipelineValueChart').getContext('2d');
-            new Chart(pipelineValueCtx, {
-                type: 'line',
-                data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-                    datasets: [{
-                        label: 'Pipeline Value',
-                        data: [15000, 25000, 35000, 30000, 40000, 45000], // Sample data
-                        fill: true,
-                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                        borderColor: 'rgba(59, 130, 246, 1)',
-                        tension: 0.2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Pipeline Value Trend'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-        }
-
-        function calculateDealSizeDistribution() {
-            // Sample implementation - would need to calculate based on actual deals
-            return [5, 8, 3, 2];
-        }
-
-        function showDealDetails(dealId) {
-            const deal = deals.find(d => d.id === dealId);
-            if (!deal) return;
-
-            alert(`Deal Details:\n\nName: ${deal.name}\nCompany: ${deal.company}\nContact: ${deal.contact}\nValue: $${deal.value}\nStage: ${deal.stage}\nCreated: ${deal.created.toLocaleDateString()}`);
-        }
     </script>
 </body>
 </html>
+
