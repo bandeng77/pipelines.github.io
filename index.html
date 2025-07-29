@@ -24,6 +24,15 @@
         .stage-proposal { border-left: 4px solid #F59E0B; }
         .stage-negotiation { border-left: 4px solid #EC4899; }
         .stage-closed { border-left: 4px solid #8B5CF6; }
+        .sortable-ghost {
+            opacity: 0.5;
+        }
+        .sortable-chosen {
+            background-color: #e0f7fa; /* Light blue background for the chosen item */
+        }
+        .sortable-drag {
+            border: 2px dashed #3B82F6; /* Dashed border for the dragging item */
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -157,34 +166,18 @@
 
         // Initialize Sortable for drag and drop
         document.addEventListener('DOMContentLoaded', function() {
-            new Sortable(document.getElementById('prospect-stage'), {
-                group: 'pipeline',
-                animation: 150,
-                onEnd: updateDealStage
-            });
-            
-            new Sortable(document.getElementById('qualification-stage'), {
-                group: 'pipeline',
-                animation: 150,
-                onEnd: updateDealStage
-            });
-            
-            new Sortable(document.getElementById('proposal-stage'), {
-                group: 'pipeline',
-                animation: 150,
-                onEnd: updateDealStage
-            });
-            
-            new Sortable(document.getElementById('negotiation-stage'), {
-                group: 'pipeline',
-                animation: 150,
-                onEnd: updateDealStage
-            });
-            
-            new Sortable(document.getElementById('closed-stage'), {
-                group: 'pipeline',
-                animation: 150,
-                onEnd: updateDealStage
+            const stages = ['prospect', 'qualification', 'proposal', 'negotiation', 'closed'];
+
+            stages.forEach(stage => {
+                new Sortable(document.getElementById(`${stage}-stage`), {
+                    group: 'pipeline',
+                    animation: 150,
+                    onEnd: updateDealStage,
+                    draggable: '.deal-card',
+                    ghostClass: 'sortable-ghost', // Class name for the drop placeholder
+                    chosenClass: 'sortable-chosen', // Class name for the chosen item
+                    dragClass: 'sortable-drag' // Class name for the dragging item
+                });
             });
 
             // Form submission
@@ -420,4 +413,3 @@
     </script>
 </body>
 </html>
-
