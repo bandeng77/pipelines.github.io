@@ -6,6 +6,9 @@
     <title>Modern Sales Pipeline Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Add Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
     <style>
         @keyframes pulse {
             0%, 100% { opacity: 1; }
@@ -496,16 +499,16 @@
                         </div>
                         <div class="px-4 py-4">
                             <div class="grid grid-cols-2 gap-4">
-                                <button type="button" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <button type="button" onclick="handleNewLead()" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer transition-colors duration-200">
                                     <i class="fas fa-plus mr-2"></i> New Lead
                                 </button>
-                                <button type="button" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                <button type="button" onclick="handleCreateProposal()" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 cursor-pointer transition-colors duration-200">
                                     <i class="fas fa-file-alt mr-2"></i> Create Proposal
                                 </button>
-                                <button type="button" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                                <button type="button" onclick="handleViewReports()" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 cursor-pointer transition-colors duration-200">
                                     <i class="fas fa-chart-line mr-2"></i> View Reports
                                 </button>
-                                <button type="button" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-pink-700 bg-pink-100 hover:bg-pink-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500">
+                                <button type="button" onclick="handleTasks()" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-pink-700 bg-pink-100 hover:bg-pink-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 cursor-pointer transition-colors duration-200">
                                     <i class="fas fa-tasks mr-2"></i> Tasks
                                 </button>
                             </div>
@@ -517,7 +520,110 @@
     </div>
 
     <script>
-        // Simple animation for the pipeline visualization
+        // Firebase configuration
+        const firebaseConfig = {
+  apiKey: "AIzaSyA630jQdTLNt1XHjVAXX10IjIeMVJ_vNn8",
+  authDomain: "pipelineefk.firebaseapp.com",
+  projectId: "pipelineefk",
+  storageBucket: "pipelineefk.firebasestorage.app",
+  messagingSenderId: "763507094626",
+  appId: "1:763507094626:web:57838068505c964f654d3b"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Button handlers with Firebase integration
+        function handleNewLead() {
+            db.collection("leads").add({
+                name: "New Lead " + Math.floor(Math.random() * 100),
+                value: Math.floor(Math.random() * 10000) + 1000,
+                status: "lead",
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                alert("New lead added to Firebase!");
+                refreshData();
+            })
+            .catch((error) => {
+                console.error("Error adding lead: ", error);
+            });
+        }
+        
+        function handleCreateProposal() {
+            alert('Create Proposal button clicked!');
+            // Replace with your actual logic
+        }
+        
+        function handleViewReports() {
+            alert('View Reports button clicked!');
+            // Replace with your actual logic
+        }
+        
+        function handleTasks() {
+            db.collection("tasks").add({
+                title: "Follow up with client",
+                due: new Date(),
+                status: "pending"
+            })
+            .then(() => {
+                alert("New task added to Firebase!");
+            })
+            .catch((error) => {
+                console.error("Error adding task: ", error);
+            });
+        }
+
+        // Function to refresh data from Firestore
+        function refreshData() {
+            // Get leads count by status
+            ['lead', 'contacted', 'proposal', 'negotiation', 'closed'].forEach(status => {
+                db.collection("leads")
+                    .where("status", "==", status)
+                    .get()
+                    .then((querySnapshot) => {
+                        const count = querySnapshot.size;
+                        document.querySelector(`.pipeline-stage .bg-${status === 'lead' ? 'blue' : status === 'contacted' ? 'yellow' : status === 'proposal' ? 'purple' : status === 'negotiation' ? 'orange' : 'green'}-100 + span`).textContent = count;
+                    });
+            });
+
+            // Get recent deals
+            db.collection("leads")
+                .orderBy("createdAt", "desc")
+                .limit(3)
+                .get()
+                .then((querySnapshot) => {
+                    const dealsContainer = document.querySelector('.space-y-4');
+                    dealsContainer.innerHTML = '';
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        dealsContainer.innerHTML += `
+                            <div class="deal-card bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-300">
+                                <div class="flex items-start">
+                                    <div class="flex-shrink-0 bg-blue-100 rounded-md p-3">
+                                        <i class="fas fa-building text-blue-600"></i>
+                                    </div>
+                                    <div class="ml-4 flex-1">
+                                        <h4 class="text-sm font-medium text-gray-900">${data.name}</h4>
+                                        <p class="mt-1 text-sm text-gray-500">${data.status} stage</p>
+                                        <div class="mt-2 flex items-center justify-between">
+                                            <div>
+                                                <span class="text-xs font-medium text-gray-500">Est. Amount:</span>
+                                                <span class="ml-1 text-sm font-medium text-gray-900">${data.value}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>`;
+                    });
+                });
+        }
+
+        // Initialize data when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshData();
+            refreshData();
         document.addEventListener('DOMContentLoaded', function() {
             // Animate pipeline paths
             const paths = document.querySelectorAll('#pipelineVisualization path');
@@ -554,4 +660,3 @@
     </script>
 </body>
 </html>
-
