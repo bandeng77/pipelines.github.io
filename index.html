@@ -552,13 +552,39 @@
         }
         
         function handleCreateProposal() {
-            alert('Create Proposal button clicked!');
-            // Replace with your actual logic
+            const companyName = prompt("Enter company name for proposal:");
+            if (companyName) {
+                db.collection("proposals").add({
+                    company: companyName,
+                    amount: Math.floor(Math.random() * 50000) + 10000,
+                    status: "draft",
+                    created: firebase.firestore.FieldValue.serverTimestamp()
+                })
+                .then(() => {
+                    alert(`Proposal created for ${companyName}!`);
+                    refreshData();
+                })
+                .catch((error) => {
+                    console.error("Error creating proposal: ", error);
+                });
+            }
         }
         
         function handleViewReports() {
-            alert('View Reports button clicked!');
-            // Replace with your actual logic
+            db.collection("leads").get()
+                .then((querySnapshot) => {
+                    const leadCount = querySnapshot.size;
+                    const amounts = [];
+                    querySnapshot.forEach(doc => {
+                        amounts.push(doc.data().value || 0);
+                    });
+                    const totalValue = amounts.reduce((a,b) => a + b, 0);
+                    
+                    alert(`Sales Dashboard:\n\nTotal Leads: ${leadCount}\nTotal Pipeline Value: ${totalValue.toLocaleString()}\nAvg Deal Size: ${Math.round(totalValue/leadCount).toLocaleString()}`);
+                })
+                .catch((error) => {
+                    console.error("Error getting reports: ", error);
+                });
         }
         
         function handleTasks() {
@@ -584,7 +610,20 @@
                     .get()
                     .then((querySnapshot) => {
                         const count = querySnapshot.size;
-                        document.querySelector(`.pipeline-stage .bg-${status === 'lead' ? 'blue' : status === 'contacted' ? 'yellow' : status === 'proposal' ? 'purple' : status === 'negotiation' ? 'orange' : 'green'}-100 + span`).textContent = count;
+                        const amounts = [];
+                        querySnapshot.forEach(doc => {
+                            amounts.push(doc.data().value || 0);
+                        });
+                        const totalValue = amounts.reduce((a,b) => a + b, 0);
+                        
+                        const stageElement = document.querySelector(`.pipeline-stage .bg-${status === 'lead' ? 'blue' : status === 'contacted' ? 'yellow' : status === 'proposal' ? 'purple' : status === 'negotiation' ? 'orange' : 'green'}-100 + span`);
+                        stageElement.textContent = count;
+                        
+                        // Update the dollar value display
+                        const valueElement = stageElement.parentElement.querySelectorAll('span')[2];
+                        if (valueElement) {
+                            valueElement.textContent = `${totalValue.toLocaleString()}`;
+                        }
                     });
             });
 
@@ -623,8 +662,7 @@
         // Initialize data when page loads
         document.addEventListener('DOMContentLoaded', function() {
             refreshData();
-            refreshData();
-        document.addEventListener('DOMContentLoaded', function() {
+            
             // Animate pipeline paths
             const paths = document.querySelectorAll('#pipelineVisualization path');
             paths.forEach((path, index) => {
@@ -655,6 +693,19 @@
                         icon.classList.remove('animate-bounce');
                     }
                 });
+            });
+        }
+        
+        function handleConvertLead(leadId, newStatus) {
+            db.collection("leads").doc(leadId).update({
+                status: newStatus,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                refreshData();
+            })
+            .catch((error) => {
+                console.error("Error updating lead: ", error);
             });
         });
     </script>
