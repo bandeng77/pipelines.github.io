@@ -3,711 +3,1014 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modern Sales Pipeline Dashboard</title>
+    <title>Supercharged Sales Pipeline Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Add Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* Lighter background */
         }
-        .pulse { animation: pulse 2s infinite; }
-        
         .pipeline-stage {
+            min-height: 400px; /* Increased min-height for better drag-drop */
             transition: all 0.3s ease;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background-color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
         }
-        .pipeline-stage:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        .pipeline-stage-header {
+            padding: 1.25rem;
+            border-bottom: 1px solid #e2e8f0;
+            background-color: #f1f5f9; /* Light header background */
         }
-        
-        #pipelineVisualization path {
-            transition: all 0.5s ease;
+        .pipeline-stage-content {
+            flex-grow: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
         }
-        
         .deal-card {
-            transition: all 0.2s ease;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: grab;
+            position: relative;
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
         .deal-card:hover {
-            transform: scale(1.02);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        }
+        .deal-card:active {
+            cursor: grabbing;
+        }
+        .stage-prospect { border-left: 5px solid #3B82F6; } /* Blue */
+        .stage-qualification { border-left: 5px solid #10B981; } /* Green */
+        .stage-proposal { border-left: 5px solid #F59E0B; } /* Amber */
+        .stage-negotiation { border-left: 5px solid #EC4899; } /* Pink */
+        .stage-closed-won { border-left: 5px solid #22C55E; } /* Emerald Green */
+        .stage-closed-lost { border-left: 5px solid #EF4444; } /* Red */
+
+        /* Custom scrollbar */
+        .pipeline-stage-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        .pipeline-stage-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .pipeline-stage-content::-webkit-scrollbar-thumb {
+            background: #cbd5e1; /* Gray-300 */
+            border-radius: 10px;
+        }
+        .pipeline-stage-content::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; /* Gray-400 */
+        }
+
+        /* Modal animation */
+        .modal-content-enter {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        .modal-content-enter-active {
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+        }
+        .modal-content-leave {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .modal-content-leave-active {
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 0.3s ease-in, transform 0.3s ease-in;
+        }
+
+        /* Toast Notification */
+        #toast-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .toast {
+            background-color: #333;
+            color: white;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transform: translateX(100%);
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
         }
     </style>
 </head>
-<body class="bg-gray-50">
-    <div class="min-h-screen">
+<body class="bg-gray-50 text-gray-800">
+    <div class="max-w-7xl mx-auto px-4 py-8">
         <!-- Header -->
-        <header class="bg-white shadow-sm">
-            <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
-                <div class="flex items-center">
-                    <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/05ee6734-8c1f-4fc9-aa68-def82d54af6b.png" alt="Company logo with abstract modern design in blue and white colors" class="h-10 w-10 rounded-md">
-                    <h1 class="ml-3 text-xl font-bold text-gray-900">Sales Pulse</h1>
+        <header class="mb-8 bg-white p-6 rounded-lg shadow-md">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                <div>
+                    <h1 class="text-4xl font-extrabold text-gray-900">Sales Pipeline Manager <i class="fas fa-chart-line text-blue-600 ml-2"></i></h1>
+                    <p class="text-gray-600 mt-1">Visualize, track, and manage your sales opportunities with ease.</p>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i class="fas fa-search text-gray-400"></i>
-                        </div>
-                        <input type="text" class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Search...">
-                    </div>
-                    <div class="relative">
-                        <button class="p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                            <i class="fas fa-bell h-6 w-6"></i>
-                            <span class="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
-                        </button>
-                    </div>
-                    <div class="flex items-center">
-                        <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/2eb0309a-58b3-4ad6-bf7b-ced95b3060fb.png" alt="Headshot of sales manager with professional attire and friendly expression" class="h-8 w-8 rounded-full">
-                        <span class="ml-2 text-sm font-medium text-gray-700">John Doe</span>
-                    </div>
+                <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-4 sm:mt-0">
+                    <button onclick="openDealModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center">
+                        <i class="fas fa-plus-circle mr-2"></i> New Deal
+                    </button>
+                    <button onclick="showStats()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center">
+                        <i class="fas fa-chart-pie mr-2"></i> View Stats
+                    </button>
                 </div>
+            </div>
+            <div class="mt-6 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
+                <input type="text" id="searchDeals" onkeyup="filterDeals()" placeholder="Search deals by name, company, contact..." class="w-full sm:w-1/2 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150">
+                <select id="filterStage" onchange="filterDeals()" class="w-full sm:w-1/4 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150">
+                    <option value="all">All Stages</option>
+                    <option value="prospect">Prospect</option>
+                    <option value="qualification">Qualification</option>
+                    <option value="proposal">Proposal</option>
+                    <option value="negotiation">Negotiation</option>
+                    <option value="closed-won">Closed Won</option>
+                    <option value="closed-lost">Closed Lost</option>
+                </select>
+                <select id="filterPriority" onchange="filterDeals()" class="w-full sm:w-1/4 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150">
+                    <option value="all">All Priorities</option>
+                    <option value="hot">Hot</option>
+                    <option value="warm">Warm</option>
+                    <option value="cold">Cold</option>
+                </select>
             </div>
         </header>
 
-        <!-- Main Content -->
-        <main class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-            <!-- Stats Overview -->
-            <div class="grid grid-cols-1 gap-5 mt-6 sm:grid-cols-2 lg:grid-cols-4">
-                <!-- Closed Won -->
-                <div class="bg-gradient-to-r from-green-500 to-green-400 overflow-hidden shadow rounded-lg pulse">
-                    <div class="px-4 py-5 sm:p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-white bg-opacity-20 p-3 rounded-md">
-                                <i class="fas fa-trophy text-white"></i>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-white truncate">Closed Won</dt>
-                                    <dd>
-                                        <div class="text-lg font-medium text-white">$48,324</div>
-                                    </dd>
-                                </dl>
-                            </div>
-                        </div>
-                        <div class="mt-4">
-                            <div class="h-1 bg-white bg-opacity-20 rounded-full">
-                                <div class="h-1 bg-white rounded-full" style="width: 85%"></div>
-                            </div>
-                            <p class="mt-1 text-xs text-white">85% of monthly target</p>
-                        </div>
-                    </div>
+        <!-- Pipeline Visualization -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-10">
+            <div class="pipeline-stage stage-prospect">
+                <div class="pipeline-stage-header flex justify-between items-center">
+                    <h3 class="font-bold text-xl text-gray-800">Prospect</h3>
+                    <span id="prospect-value" class="text-sm font-semibold text-blue-600">$0</span>
                 </div>
-
-                <!-- In Pipeline -->
-                <div class="bg-white overflow-hidden shadow rounded-lg">
-                    <div class="px-4 py-5 sm:p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-blue-100 p-3 rounded-md">
-                                <i class="fas fa-funnel-dollar text-blue-600"></i>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">In Pipeline</dt>
-                                    <dd>
-                                        <div class="text-lg font-medium text-gray-900">$129,453</div>
-                                    </dd>
-                                </dl>
-                            </div>
-                        </div>
-                        <div class="mt-4">
-                            <div class="h-1 bg-gray-200 rounded-full">
-                                <div class="h-1 bg-blue-500 rounded-full" style="width: 65%"></div>
-                            </div>
-                            <p class="mt-1 text-xs text-gray-500">65% through pipeline</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- New Leads -->
-                <div class="bg-white overflow-hidden shadow rounded-lg">
-                    <div class="px-4 py-5 sm:p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-yellow-100 p-3 rounded-md">
-                                <i class="fas fa-user-plus text-yellow-600"></i>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">New Leads</dt>
-                                    <dd>
-                                        <div class="text-lg font-medium text-gray-900">47</div>
-                                    </dd>
-                                </dl>
-                            </div>
-                        </div>
-                        <div class="mt-4">
-                            <div class="h-1 bg-gray-200 rounded-full">
-                                <div class="h-1 bg-yellow-500 rounded-full" style="width: 32%"></div>
-                            </div>
-                            <p class="mt-1 text-xs text-gray-500">32% conversion so far</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Avg. Deal Size -->
-                <div class="bg-white overflow-hidden shadow rounded-lg">
-                    <div class="px-4 py-5 sm:p-6">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 bg-purple-100 p-3 rounded-md">
-                                <i class="fas fa-chart-line text-purple-600"></i>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">Avg. Deal Size</dt>
-                                    <dd>
-                                        <div class="text-lg font-medium text-gray-900">$3,250</div>
-                                    </dd>
-                                </dl>
-                            </div>
-                        </div>
-                        <div class="mt-4">
-                            <div class="h-1 bg-gray-200 rounded-full">
-                                <div class="h-1 bg-purple-500 rounded-full" style="width: 15%"></div>
-                            </div>
-                            <p class="mt-1 text-xs text-gray-500">15% from last month</p>
-                        </div>
-                    </div>
+                <div id="prospect-stage" class="pipeline-stage-content space-y-4">
+                    <!-- Deals and empty message will be rendered here -->
                 </div>
             </div>
-
-            <!-- Pipeline Visualization & Main Content -->
-            <div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
-                <!-- Left Column - Pipeline Stages -->
-                <div class="lg:col-span-2">
-                    <div class="bg-white shadow rounded-lg overflow-hidden">
-                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                            <h3 class="text-lg font-medium leading-6 text-gray-900">Sales Pipeline</h3>
-                            <p class="mt-1 text-sm text-gray-500">Visual overview of deals in each stage</p>
-                        </div>
-                        <div class="px-4 py-5 sm:p-6">
-                            <!-- Stages Visualization -->
-                            <div class="flex justify-between h-64 mb-6">
-                                <!-- Lead -->
-                                <div class="pipeline-stage w-1/5 flex flex-col items-center">
-                                    <div class="relative">
-                                        <div class="h-20 w-20 rounded-full bg-blue-100 flex items-center justify-center">
-                                            <i class="fas fa-user-tie text-blue-500 text-2xl"></i>
-                                        </div>
-                                        <span class="absolute -top-1 -right-1 h-5 w-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">24</span>
-                                    </div>
-                                    <span class="mt-2 text-sm font-medium text-gray-700">Lead</span>
-                                    <span class="text-xs text-gray-500">$24,300</span>
-                                </div>
-                                
-                                <!-- Contacted -->
-                                <div class="pipeline-stage w-1/5 flex flex-col items-center">
-                                    <div class="relative">
-                                        <div class="h-20 w-20 rounded-full bg-yellow-100 flex items-center justify-center">
-                                            <i class="fas fa-comment-dots text-yellow-500 text-2xl"></i>
-                                        </div>
-                                        <span class="absolute -top-1 -right-1 h-5 w-5 bg-yellow-500 rounded-full flex items-center justify-center text-white text-xs font-bold">18</span>
-                                    </div>
-                                    <span class="mt-2 text-sm font-medium text-gray-700">Contacted</span>
-                                    <span class="text-xs text-gray-500">$38,400</span>
-                                    <div class="w-20 h-1 bg-yellow-200 mt-4">
-                                        <div class="h-1 bg-yellow-500" style="width: 60%"></div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Proposal Sent -->
-                                <div class="pipeline-stage w-1/5 flex flex-col items-center">
-                                    <div class="relative">
-                                        <div class="h-20 w-20 rounded-full bg-purple-100 flex items-center justify-center">
-                                            <i class="fas fa-file-alt text-purple-500 text-2xl"></i>
-                                        </div>
-                                        <span class="absolute -top-1 -right-1 h-5 w-5 bg-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold">15</span>
-                                    </div>
-                                    <span class="mt-2 text-sm font-medium text-gray-700">Proposal</span>
-                                    <span class="text-xs text-gray-500">$52,100</span>
-                                    <div class="w-20 h-1 bg-purple-200 mt-4">
-                                        <div class="w-1/2 h-1 bg-purple-500"></div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Negotiation -->
-                                <div class="pipeline-stage w-1/5 flex flex-col items-center">
-                                    <div class="relative">
-                                        <div class="h-20 w-20 rounded-full bg-orange-100 flex items-center justify-center">
-                                            <i class="fas fa-handshake text-orange-500 text-2xl"></i>
-                                        </div>
-                                        <span class="absolute -top-1 -right-1 h-5 w-5 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-bold">9</span>
-                                    </div>
-                                    <span class="mt-2 text-sm font-medium text-gray-700">Negotiation</span>
-                                    <span class="text-xs text-gray-500">$21,800</span>
-                                    <div class="w-20 h-1 bg-orange-200 mt-4">
-                                        <div class="w-30 h-1 bg-orange-500"></div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Closed/Won -->
-                                <div class="pipeline-stage w-1/5 flex flex-col items-center">
-                                    <div class="relative">
-                                        <div class="h-20 w-20 rounded-full bg-green-100 flex items-center justify-center">
-                                            <i class="fas fa-check-circle text-green-500 text-2xl"></i>
-                                        </div>
-                                        <span class="absolute -top-1 -right-1 h-5 w-5 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">7</span>
-                                    </div>
-                                    <span class="mt-2 text-sm font-medium text-gray-700">Closed Won</span>
-                                    <span class="text-xs text-gray-500">$48,300</span>
-                                    <div class="w-20 h-1 bg-green-200 mt-4">
-                                        <div class="w-3/4 h-1 bg-green-500"></div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Flow Visualization -->
-                            <div class="mt-8">
-                                <div class="flex justify-center">
-                                    <svg width="100%" height="60" viewBox="0 0 800 60" id="pipelineVisualization">
-                                        <!-- Lead to Contacted -->
-                                        <path d="M80,20 C180,20 220,20 320,20" stroke="#93c5fd" stroke-width="2" fill="none" 
-                                              marker-end="url(#arrowhead1)"/>
-                                        <!-- Contacted to Proposal -->
-                                        <path d="M320,20 C420,20 460,20 560,20" stroke="#facc15" stroke-width="2" fill="none"
-                                              marker-end="url(#arrowhead2)"/>
-                                        <!-- Proposal to Negotiation -->
-                                        <path d="M560,20 C630,20 650,20 720,20" stroke="#a78bfa" stroke-width="2" fill="none"
-                                              marker-end="url(#arrowhead3)"/>
-                                        <!-- Negotiation to Closed -->
-                                        <path d="M720,20 C770,20 780,20 800,20" stroke="#fdba74" stroke-width="2" fill="none"
-                                              marker-end="url(#arrowhead4)"/>
-                                        
-                                        <!-- Arrows -->
-                                        <defs>
-                                            <marker id="arrowhead1" markerWidth="10" markerHeight="7" refX="5" refY="3.5" orient="auto">
-                                                <polygon points="0 0, 10 3.5, 0 7" fill="#93c5fd" />
-                                            </marker>
-                                            <marker id="arrowhead2" markerWidth="10" markerHeight="7" refX="5" refY="3.5" orient="auto">
-                                                <polygon points="0 0, 10 3.5, 0 7" fill="#facc15" />
-                                            </marker>
-                                            <marker id="arrowhead3" markerWidth="10" markerHeight="7" refX="5" refY="3.5" orient="auto">
-                                                <polygon points="0 0, 10 3.5, 0 7" fill="#a78bfa" />
-                                            </marker>
-                                            <marker id="arrowhead4" markerWidth="10" markerHeight="7" refX="5" refY="3.5" orient="auto">
-                                                <polygon points="0 0, 10 3.5, 0 7" fill="#fdba74" />
-                                            </marker>
-                                        </defs>
-                                    </svg>
-                                </div>
-                                <div class="mt-4 flex justify-between text-xs text-gray-500">
-                                    <span>Conversion: 75%</span>
-                                    <span>Conversion: 64%</span>
-                                    <span>Conversion: 60%</span>
-                                    <span>Conversion: 78%</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Recent Deals -->
-                    <div class="mt-6 bg-white shadow rounded-lg overflow-hidden">
-                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                            <h3 class="text-lg font-medium leading-6 text-gray-900">Recent Deals</h3>
-                            <p class="mt-1 text-sm text-gray-500">Latest opportunities in your pipeline</p>
-                        </div>
-                        <div class="px-4 py-4">
-                            <div class="space-y-4">
-                                <!-- Deal 1 -->
-                                <div class="deal-card bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-300">
-                                    <div class="flex items-start">
-                                        <div class="flex-shrink-0 bg-blue-100 rounded-md p-3">
-                                            <i class="fas fa-building text-blue-600"></i>
-                                        </div>
-                                        <div class="ml-4 flex-1">
-                                            <div class="flex items-center justify-between">
-                                                <h4 class="text-sm font-medium text-gray-900">Acme Corporation</h4>
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                    <i class="fas fa-caret-up mr-1"></i> High
-                                                </span>
-                                            </div>
-                                            <p class="mt-1 text-sm text-gray-500">Enterprise sales software renewal</p>
-                                            <div class="mt-2 flex items-center justify-between">
-                                                <div>
-                                                    <span class="text-xs font-medium text-gray-500">Est. Amount:</span>
-                                                    <span class="ml-1 text-sm font-medium text-gray-900">$24,500</span>
-                                                </div>
-                                                <div class="flex items-center">
-                                                    <div class="h-2 w-48 bg-gray-200 rounded-full overflow-hidden">
-                                                        <div class="h-2 bg-blue-500 rounded-full" style="width: 70%"></div>
-                                                    </div>
-                                                    <span class="ml-2 text-xs text-gray-500">70%</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Deal 2 -->
-                                <div class="deal-card bg-white border border-gray-200 rounded-lg p-4 hover:border-purple-300">
-                                    <div class="flex items-start">
-                                        <div class="flex-shrink-0 bg-purple-100 rounded-md p-3">
-                                            <i class="fas fa-mobile-alt text-purple-600"></i>
-                                        </div>
-                                        <div class="ml-4 flex-1">
-                                            <div class="flex items-center justify-between">
-                                                <h4 class="text-sm font-medium text-gray-900">MobileX Inc</h4>
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                    <i class="fas fa-minus mr-1"></i> Medium
-                                                </span>
-                                            </div>
-                                            <p class="mt-1 text-sm text-gray-500">Mobile app development package</p>
-                                            <div class="mt-2 flex items-center justify-between">
-                                                <div>
-                                                    <span class="text-xs font-medium text-gray-500">Est. Amount:</span>
-                                                    <span class="ml-1 text-sm font-medium text-gray-900">$15,200</span>
-                                                </div>
-                                                <div class="flex items-center">
-                                                    <div class="h-2 w-48 bg-gray-200 rounded-full overflow-hidden">
-                                                        <div class="h-2 bg-purple-500 rounded-full" style="width: 50%"></div>
-                                                    </div>
-                                                    <span class="ml-2 text-xs text-gray-500">50%</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Deal 3 -->
-                                <div class="deal-card bg-white border border-gray-200 rounded-lg p-4 hover:border-orange-300">
-                                    <div class="flex items-start">
-                                        <div class="flex-shrink-0 bg-orange-100 rounded-md p-3">
-                                            <i class="fas fa-store text-orange-600"></i>
-                                        </div>
-                                        <div class="ml-4 flex-1">
-                                            <div class="flex items-center justify-between">
-                                                <h4 class="text-sm font-medium text-gray-900">Global Retail</h4>
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                    <i class="fas fa-caret-down mr-1"></i> Low
-                                                </span>
-                                            </div>
-                                            <p class="mt-1 text-sm text-gray-500">POS system integration</p>
-                                            <div class="mt-2 flex items-center justify-between">
-                                                <div>
-                                                    <span class="text-xs font-medium text-gray-500">Est. Amount:</span>
-                                                    <span class="ml-1 text-sm font-medium text-gray-900">$8,700</span>
-                                                </div>
-                                                <div class="flex items-center">
-                                                    <div class="h-2 w-48 bg-gray-200 rounded-full overflow-hidden">
-                                                        <div class="h-2 bg-orange-500 rounded-full" style="width: 30%"></div>
-                                                    </div>
-                                                    <span class="ml-2 text-xs text-gray-500">30%</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <div class="pipeline-stage stage-qualification">
+                <div class="pipeline-stage-header flex justify-between items-center">
+                    <h3 class="font-bold text-xl text-gray-800">Qualification</h3>
+                    <span id="qualification-value" class="text-sm font-semibold text-green-600">$0</span>
                 </div>
-                
-                <!-- Right Column -->
-                <div class="space-y-6">
-                    <!-- Performance Chart -->
-                    <div class="bg-white shadow rounded-lg overflow-hidden">
-                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                            <h3 class="text-lg font-medium leading-6 text-gray-900">Sales Performance</h3>
-                            <p class="mt-1 text-sm text-gray-500">Last 6 months revenue trend</p>
-                        </div>
-                        <div class="px-4 py-4">
-                            <div class="h-64">
-                                <!-- Chart placeholder (would use Chart.js in real implementation) -->
-                                <div class="flex items-end h-48">
-                                    <div class="w-1/6 text-center">
-                                        <div class="bg-blue-500 w-full mx-auto rounded-t" style="height: 60%"></div>
-                                        <p class="text-xs text-gray-500 mt-1">Jan</p>
-                                    </div>
-                                    <div class="w-1/6 text-center">
-                                        <div class="bg-blue-500 w-full mx-auto rounded-t" style="height: 45%"></div>
-                                        <p class="text-xs text-gray-500 mt-1">Feb</p>
-                                    </div>
-                                    <div class="w-1/6 text-center">
-                                        <div class="bg-blue-500 w-full mx-auto rounded-t" style="height: 70%"></div>
-                                        <p class="text-xs text-gray-500 mt-1">Mar</p>
-                                    </div>
-                                    <div class="w-1/6 text-center">
-                                        <div class="bg-blue-500 w-full mx-auto rounded-t" style="height: 85%"></div>
-                                        <p class="text-xs text-gray-500 mt-1">Apr</p>
-                                    </div>
-                                    <div class="w-1/6 text-center">
-                                        <div class="bg-blue-500 w-full mx-auto rounded-t" style="height: 65%"></div>
-                                        <p class="text-xs text-gray-500 mt-1">May</p>
-                                    </div>
-                                    <div class="w-1/6 text-center">
-                                        <div class="bg-blue-500 w-full mx-auto rounded-t" style="height: 90%"></div>
-                                        <p class="text-xs text-gray-500 mt-1">Jun</p>
-                                    </div>
-                                </div>
-                                <div class="mt-4 flex justify-between">
-                                    <div class="text-sm">
-                                        <span class="font-medium text-gray-900">$128,450</span>
-                                        <span class="ml-1 text-green-600">+12.4%</span>
-                                    </div>
-                                    <div class="text-sm text-gray-500">YTD Performance</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Top Performers -->
-                    <div class="bg-white shadow rounded-lg overflow-hidden">
-                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                            <h3 class="text-lg font-medium leading-6 text-gray-900">Top Performers</h3>
-                            <p class="mt-1 text-sm text-gray-500">Leading sales reps this quarter</p>
-                        </div>
-                        <div class="px-4 py-4">
-                            <ul class="space-y-4">
-                                <li class="flex items-center">
-                                    <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/21670d01-5915-4594-ab2f-caeae02e182c.png" alt="Portrait of Sarah Johnson, top sales executive with professional attire and confident smile" class="h-10 w-10 rounded-full">
-                                    <div class="ml-4">
-                                        <h4 class="text-sm font-medium text-gray-900">Sarah Johnson</h4>
-                                        <p class="text-sm text-gray-500">$68,400 in closed deals</p>
-                                    </div>
-                                    <div class="ml-auto bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                                        #1 performer
-                                    </div>
-                                </li>
-                                <li class="flex items-center">
-                                    <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/dc2f8767-baa7-43d8-b116-471a547ca68b.png" alt="Portrait of Michael Chen, sales associate with professional appearance and friendly demeanor" class="h-10 w-10 rounded-full">
-                                    <div class="ml-4">
-                                        <h4 class="text-sm font-medium text-gray-900">Michael Chen</h4>
-                                        <p class="text-sm text-gray-500">$52,100 in closed deals</p>
-                                    </div>
-                                    <div class="ml-auto bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                                        #2 performer
-                                    </div>
-                                </li>
-                                <li class="flex items-center">
-                                    <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/a0b4df23-4e03-4dc4-9b85-3c70bbb33c38.png" alt="Portrait of David Rodriguez, sales specialist with approachable expression and business casual attire" class="h-10 w-10 rounded-full">
-                                    <div class="ml-4">
-                                        <h4 class="text-sm font-medium text-gray-900">David Rodriguez</h4>
-                                        <p class="text-sm text-gray-500">$45,800 in closed deals</p>
-                                    </div>
-                                    <div class="ml-auto bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                                        #3 performer
-                                    </div>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                    
-                    <!-- Quick Actions -->
-                    <div class="bg-white shadow rounded-lg overflow-hidden">
-                        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                            <h3 class="text-lg font-medium leading-6 text-gray-900">Quick Actions</h3>
-                        </div>
-                        <div class="px-4 py-4">
-                            <div class="grid grid-cols-2 gap-4">
-                                <button type="button" onclick="handleNewLead()" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer transition-colors duration-200">
-                                    <i class="fas fa-plus mr-2"></i> New Lead
-                                </button>
-                                <button type="button" onclick="handleCreateProposal()" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 cursor-pointer transition-colors duration-200">
-                                    <i class="fas fa-file-alt mr-2"></i> Create Proposal
-                                </button>
-                                <button type="button" onclick="handleViewReports()" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-purple-700 bg-purple-100 hover:bg-purple-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 cursor-pointer transition-colors duration-200">
-                                    <i class="fas fa-chart-line mr-2"></i> View Reports
-                                </button>
-                                <button type="button" onclick="handleTasks()" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-pink-700 bg-pink-100 hover:bg-pink-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 cursor-pointer transition-colors duration-200">
-                                    <i class="fas fa-tasks mr-2"></i> Tasks
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                <div id="qualification-stage" class="pipeline-stage-content space-y-4">
+                    <!-- Deals and empty message will be rendered here -->
                 </div>
             </div>
-        </main>
+            <div class="pipeline-stage stage-proposal">
+                <div class="pipeline-stage-header flex justify-between items-center">
+                    <h3 class="font-bold text-xl text-gray-800">Proposal</h3>
+                    <span id="proposal-value" class="text-sm font-semibold text-amber-600">$0</span>
+                </div>
+                <div id="proposal-stage" class="pipeline-stage-content space-y-4">
+                    <!-- Deals and empty message will be rendered here -->
+                </div>
+            </div>
+            <div class="pipeline-stage stage-negotiation">
+                <div class="pipeline-stage-header flex justify-between items-center">
+                    <h3 class="font-bold text-xl text-gray-800">Negotiation</h3>
+                    <span id="negotiation-value" class="text-sm font-semibold text-pink-600">$0</span>
+                </div>
+                <div id="negotiation-stage" class="pipeline-stage-content space-y-4">
+                    <!-- Deals and empty message will be rendered here -->
+                </div>
+            </div>
+            <div class="pipeline-stage stage-closed-won">
+                <div class="pipeline-stage-header flex justify-between items-center">
+                    <h3 class="font-bold text-xl text-gray-800">Closed Won</h3>
+                    <span id="closed-won-value" class="text-sm font-semibold text-emerald-600">$0</span>
+                </div>
+                <div id="closed-won-stage" class="pipeline-stage-content space-y-4">
+                    <!-- Deals and empty message will be rendered here -->
+                </div>
+            </div>
+            <div class="pipeline-stage stage-closed-lost">
+                <div class="pipeline-stage-header flex justify-between items-center">
+                    <h3 class="font-bold text-xl text-gray-800">Closed Lost</h3>
+                    <span id="closed-lost-value" class="text-sm font-semibold text-red-600">$0</span>
+                </div>
+                <div id="closed-lost-stage" class="pipeline-stage-content space-y-4">
+                    <!-- Deals and empty message will be rendered here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity Section -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-10">
+            <h2 class="text-2xl font-bold mb-5 text-gray-900 flex items-center"><i class="fas fa-history mr-3 text-gray-500"></i> Recent Activity</h2>
+            <div id="activity-feed" class="space-y-4">
+                <!-- Activities will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Stats Section (hidden by default) -->
+        <div id="stats-section" class="hidden bg-white p-6 rounded-lg shadow-md mb-10">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 flex items-center"><i class="fas fa-chart-bar mr-3 text-gray-500"></i> Sales Performance Analytics</h2>
+                <button onclick="hideStats()" class="text-gray-500 hover:text-gray-700 transition duration-200">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                    <canvas id="dealSizeChart"></canvas>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                    <canvas id="winRateChart"></canvas>
+                </div>
+            </div>
+            <div class="mt-8 bg-gray-50 p-4 rounded-lg shadow-inner">
+                <canvas id="pipelineValueChart"></canvas>
+            </div>
+        </div>
     </div>
 
+    <!-- Add/Edit Deal Modal -->
+    <div id="dealModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-xl p-8 w-full max-w-md shadow-2xl modal-content-enter" id="dealModalContent">
+            <h2 class="text-2xl font-bold mb-6 text-gray-900" id="modalTitle">Add New Deal</h2>
+            <form id="dealForm">
+                <input type="hidden" id="dealId">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-semibold mb-2" for="dealName">Deal Name <span class="text-red-500">*</span></label>
+                    <input type="text" id="dealName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-semibold mb-2" for="companyName">Company</label>
+                    <input type="text" id="companyName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-semibold mb-2" for="contactName">Contact Name</label>
+                    <input type="text" id="contactName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-semibold mb-2" for="value">Value ($)</label>
+                    <input type="number" id="value" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150" min="0">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-semibold mb-2" for="stage">Stage <span class="text-red-500">*</span></label>
+                    <select id="stage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150" required>
+                        <option value="prospect">Prospect</option>
+                        <option value="qualification">Qualification</option>
+                        <option value="proposal">Proposal</option>
+                        <option value="negotiation">Negotiation</option>
+                        <option value="closed-won">Closed Won</option>
+                        <option value="closed-lost">Closed Lost</option>
+                    </select>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-semibold mb-2" for="priority">Priority</label>
+                    <select id="priority" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150">
+                        <option value="cold">Cold</option>
+                        <option value="warm">Warm</option>
+                        <option value="hot">Hot</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeDealModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg shadow-md font-medium transition duration-200 ease-in-out transform hover:scale-105">
+                        Save Deal
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-xl p-8 w-full max-w-sm shadow-2xl modal-content-enter" id="deleteModalContent">
+            <h2 class="text-xl font-bold mb-4 text-gray-900">Confirm Deletion</h2>
+            <p class="text-gray-700 mb-6">Are you sure you want to delete "<span id="dealToDeleteName" class="font-semibold"></span>"? This action cannot be undone.</p>
+            <div class="flex justify-end space-x-3">
+                <button type="button" onclick="closeDeleteModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200">
+                    Cancel
+                </button>
+                <button type="button" id="confirmDeleteBtn" class="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-lg shadow-md font-medium transition duration-200 ease-in-out transform hover:scale-105">
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container"></div>
+
     <script>
-        // Firebase configuration
-        const firebaseConfig = {
-  apiKey: "AIzaSyA630jQdTLNt1XHjVAXX10IjIeMVJ_vNn8",
-  authDomain: "pipelineefk.firebaseapp.com",
-  projectId: "pipelineefk",
-  storageBucket: "pipelineefk.firebasestorage.app",
-  messagingSenderId: "763507094626",
-  appId: "1:763507094626:web:57838068505c964f654d3b"
+        let deals = [];
+        let activities = [];
+        let charts = {}; // To store chart instances
+
+        const STAGE_NAMES = {
+            'prospect': 'Prospect',
+            'qualification': 'Qualification',
+            'proposal': 'Proposal',
+            'negotiation': 'Negotiation',
+            'closed-won': 'Closed Won',
+            'closed-lost': 'Closed Lost'
         };
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+        const STAGE_ORDER = ['prospect', 'qualification', 'proposal', 'negotiation', 'closed-won', 'closed-lost'];
 
-        // Button handlers with Firebase integration
-        function handleNewLead() {
-            db.collection("leads").add({
-                name: "New Lead " + Math.floor(Math.random() * 100),
-                value: Math.floor(Math.random() * 10000) + 1000,
-                status: "lead",
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            })
-            .then(() => {
-                alert("New lead added to Firebase!");
-                refreshData();
-            })
-            .catch((error) => {
-                console.error("Error adding lead: ", error);
-            });
-        }
-        
-        function handleCreateProposal() {
-            const companyName = prompt("Enter company name for proposal:");
-            if (companyName) {
-                db.collection("proposals").add({
-                    company: companyName,
-                    amount: Math.floor(Math.random() * 50000) + 10000,
-                    status: "draft",
-                    created: firebase.firestore.FieldValue.serverTimestamp()
-                })
-                .then(() => {
-                    alert(`Proposal created for ${companyName}!`);
-                    refreshData();
-                })
-                .catch((error) => {
-                    console.error("Error creating proposal: ", error);
-                });
-            }
-        }
-        
-        function handleViewReports() {
-            db.collection("leads").get()
-                .then((querySnapshot) => {
-                    const leadCount = querySnapshot.size;
-                    const amounts = [];
-                    querySnapshot.forEach(doc => {
-                        amounts.push(doc.data().value || 0);
-                    });
-                    const totalValue = amounts.reduce((a,b) => a + b, 0);
-                    
-                    alert(`Sales Dashboard:\n\nTotal Leads: ${leadCount}\nTotal Pipeline Value: ${totalValue.toLocaleString()}\nAvg Deal Size: ${Math.round(totalValue/leadCount).toLocaleString()}`);
-                })
-                .catch((error) => {
-                    console.error("Error getting reports: ", error);
-                });
-        }
-        
-        function handleTasks() {
-            db.collection("tasks").add({
-                title: "Follow up with client",
-                due: new Date(),
-                status: "pending"
-            })
-            .then(() => {
-                alert("New task added to Firebase!");
-            })
-            .catch((error) => {
-                console.error("Error adding task: ", error);
-            });
-        }
-
-        // Function to refresh data from Firestore
-        function refreshData() {
-            // Get leads count by status
-            ['lead', 'contacted', 'proposal', 'negotiation', 'closed'].forEach(status => {
-                db.collection("leads")
-                    .where("status", "==", status)
-                    .get()
-                    .then((querySnapshot) => {
-                        const count = querySnapshot.size;
-                        const amounts = [];
-                        querySnapshot.forEach(doc => {
-                            amounts.push(doc.data().value || 0);
-                        });
-                        const totalValue = amounts.reduce((a,b) => a + b, 0);
-                        
-                        const stageElement = document.querySelector(`.pipeline-stage .bg-${status === 'lead' ? 'blue' : status === 'contacted' ? 'yellow' : status === 'proposal' ? 'purple' : status === 'negotiation' ? 'orange' : 'green'}-100 + span`);
-                        stageElement.textContent = count;
-                        
-                        // Update the dollar value display
-                        const valueElement = stageElement.parentElement.querySelectorAll('span')[2];
-                        if (valueElement) {
-                            valueElement.textContent = `${totalValue.toLocaleString()}`;
-                        }
-                    });
-            });
-
-            // Get recent deals
-            db.collection("leads")
-                .orderBy("createdAt", "desc")
-                .limit(3)
-                .get()
-                .then((querySnapshot) => {
-                    const dealsContainer = document.querySelector('.space-y-4');
-                    dealsContainer.innerHTML = '';
-                    querySnapshot.forEach((doc) => {
-                        const data = doc.data();
-                        dealsContainer.innerHTML += `
-                            <div class="deal-card bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-300">
-                                <div class="flex items-start">
-                                    <div class="flex-shrink-0 bg-blue-100 rounded-md p-3">
-                                        <i class="fas fa-building text-blue-600"></i>
-                                    </div>
-                                    <div class="ml-4 flex-1">
-                                        <h4 class="text-sm font-medium text-gray-900">${data.name}</h4>
-                                        <p class="mt-1 text-sm text-gray-500">${data.status} stage</p>
-                                        <div class="mt-2 flex items-center justify-between">
-                                            <div>
-                                                <span class="text-xs font-medium text-gray-500">Est. Amount:</span>
-                                                <span class="ml-1 text-sm font-medium text-gray-900">${data.value}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>`;
-                    });
-                });
-        }
-
-        // Initialize data when page loads
+        // Load data from localStorage on startup
         document.addEventListener('DOMContentLoaded', function() {
-            refreshData();
-            
-            // Animate pipeline paths
-            const paths = document.querySelectorAll('#pipelineVisualization path');
-            paths.forEach((path, index) => {
-                const length = path.getTotalLength();
-                path.style.strokeDasharray = length + ' ' + length;
-                path.style.strokeDashoffset = length;
-                
-                // Start animation with slight delay for each path
-                setTimeout(() => {
-                    path.style.transition = 'stroke-dashoffset 1.5s ease-out';
-                    path.style.strokeDashoffset = '0';
-                }, index * 300);
-            });
-            
-            // Add hover effect to deal cards
-            const dealCards = document.querySelectorAll('.deal-card');
-            dealCards.forEach(card => {
-                card.addEventListener('mouseenter', function() {
-                    const icon = this.querySelector('.fa-solid, .fas, .far, .fab');
-                    if (icon) {
-                        icon.classList.add('animate-bounce');
-                    }
-                });
-                
-                card.addEventListener('mouseleave', function() {
-                    const icon = this.querySelector('.fa-solid, .fas, .far, .fab');
-                    if (icon) {
-                        icon.classList.remove('animate-bounce');
-                    }
-                });
-            });
-        }
-        
-        function handleConvertLead(leadId, newStatus) {
-            db.collection("leads").doc(leadId).update({
-                status: newStatus,
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            })
-            .then(() => {
-                refreshData();
-            })
-            .catch((error) => {
-                console.error("Error updating lead: ", error);
+            loadData();
+            renderAllDeals(); // Initial render of all deals
+            renderActivityFeed();
+            updatePipelineValues();
+            initSortable(); // Initialize Sortable after initial render
+
+            document.getElementById('dealForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveDeal();
             });
         });
+
+        function loadData() {
+            const storedDeals = localStorage.getItem('salesPipelineDeals');
+            const storedActivities = localStorage.getItem('salesPipelineActivities');
+
+            if (storedDeals) {
+                deals = JSON.parse(storedDeals).map(deal => ({
+                    ...deal,
+                    created: new Date(deal.created) // Convert string back to Date object
+                }));
+            } else {
+                deals = [];
+            }
+
+            if (storedActivities) {
+                activities = JSON.parse(storedActivities).map(activity => ({
+                    ...activity,
+                    date: new Date(activity.date) // Convert string back to Date object
+                }));
+            } else {
+                activities = [{ id: Date.now(), text: "System: Welcome to your sales pipeline! Add your first deal to get started.", date: new Date() }];
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('salesPipelineDeals', JSON.stringify(deals));
+            localStorage.setItem('salesPipelineActivities', JSON.stringify(activities));
+        }
+
+        // Modal functions with animation
+        function openModal(id) {
+            const modal = document.getElementById(id);
+            const modalContent = document.getElementById(`${id}Content`);
+            modal.classList.remove('hidden');
+            // Trigger animation
+            requestAnimationFrame(() => {
+                modalContent.classList.remove('modal-content-enter');
+                modalContent.classList.add('modal-content-enter-active');
+            });
+        }
+
+        function closeModal(id) {
+            const modal = document.getElementById(id);
+            const modalContent = document.getElementById(`${id}Content`);
+            modalContent.classList.remove('modal-content-enter-active');
+            modalContent.classList.add('modal-content-leave-active');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modalContent.classList.remove('modal-content-leave-active');
+                modalContent.classList.add('modal-content-enter'); // Reset for next open
+            }, 300); // Match transition duration
+        }
+
+        function openDealModal(deal = null) {
+            openModal('dealModal');
+            if (deal) {
+                document.getElementById('modalTitle').innerText = 'Edit Deal';
+                document.getElementById('dealId').value = deal.id;
+                document.getElementById('dealName').value = deal.name;
+                document.getElementById('companyName').value = deal.company;
+                document.getElementById('contactName').value = deal.contact;
+                document.getElementById('value').value = deal.value;
+                document.getElementById('stage').value = deal.stage;
+                document.getElementById('priority').value = deal.priority || 'cold';
+            } else {
+                document.getElementById('modalTitle').innerText = 'Add New Deal';
+                document.getElementById('dealForm').reset();
+                document.getElementById('dealId').value = '';
+                document.getElementById('priority').value = 'cold'; // Default priority
+            }
+        }
+
+        function closeDealModal() {
+            closeModal('dealModal');
+            document.getElementById('dealForm').reset();
+        }
+
+        function showStats() {
+            document.getElementById('stats-section').classList.remove('hidden');
+            updateCharts();
+        }
+
+        function hideStats() {
+            document.getElementById('stats-section').classList.add('hidden');
+        }
+
+        // Deal functions
+        function saveDeal() {
+            const dealId = document.getElementById('dealId').value;
+            const dealName = document.getElementById('dealName').value;
+            const companyName = document.getElementById('companyName').value;
+            const contactName = document.getElementById('contactName').value;
+            const value = parseFloat(document.getElementById('value').value) || 0;
+            const stage = document.getElementById('stage').value;
+            const priority = document.getElementById('priority').value;
+
+            if (dealId) {
+                // Edit existing deal
+                const dealIndex = deals.findIndex(d => d.id == dealId);
+                if (dealIndex !== -1) {
+                    const oldDeal = { ...deals[dealIndex] };
+                    deals[dealIndex] = {
+                        ...oldDeal,
+                        name: dealName,
+                        company: companyName,
+                        contact: contactName,
+                        value: value,
+                        stage: stage,
+                        priority: priority
+                    };
+                    showToast(`Deal "${dealName}" updated!`);
+                    addActivity(`Edited deal: ${dealName} (from ${STAGE_NAMES[oldDeal.stage]} to ${STAGE_NAMES[stage]})`);
+                }
+            } else {
+                // Add new deal
+                const newDeal = {
+                    id: Date.now(),
+                    name: dealName,
+                    company: companyName,
+                    contact: contactName,
+                    value: value,
+                    stage: stage,
+                    priority: priority,
+                    created: new Date()
+                };
+                deals.push(newDeal);
+                showToast(`New deal "${dealName}" added!`);
+                addActivity(`Added new deal: ${dealName} in ${STAGE_NAMES[stage]} stage`);
+            }
+
+            saveData();
+            renderAllDeals(); // Re-render all deals after saving
+            updatePipelineValues();
+            closeDealModal();
+        }
+
+        function renderAllDeals() {
+            // Clear all stages first and re-add empty messages
+            STAGE_ORDER.forEach(stageId => {
+                const stageElement = document.getElementById(`${stageId}-stage`);
+                stageElement.innerHTML = ''; // Clear existing deals
+
+                // Re-add empty message template
+                const emptyMessage = document.createElement('div');
+                emptyMessage.className = 'empty-stage-message text-center text-gray-400 p-4';
+                if (stageId === 'closed-won') {
+                    emptyMessage.innerHTML = '<i class="fas fa-trophy text-4xl mb-2 text-yellow-500"></i><p>Great job! No won deals yet.</p>';
+                } else if (stageId === 'closed-lost') {
+                    emptyMessage.innerHTML = '<i class="fas fa-times-circle text-4xl mb-2 text-red-400"></i><p>No lost deals yet.</p>';
+                } else {
+                    emptyMessage.innerHTML = '<i class="fas fa-box-open text-4xl mb-2"></i><p>No deals here yet.</p>';
+                }
+                stageElement.appendChild(emptyMessage);
+            });
+
+            // Render deals based on current filters
+            const searchTerm = document.getElementById('searchDeals').value.toLowerCase();
+            const filterStage = document.getElementById('filterStage').value;
+            const filterPriority = document.getElementById('filterPriority').value;
+
+            deals.forEach(deal => {
+                const matchesSearch = (deal.name.toLowerCase().includes(searchTerm) ||
+                                     deal.company.toLowerCase().includes(searchTerm) ||
+                                     deal.contact.toLowerCase().includes(searchTerm));
+                const matchesStage = (filterStage === 'all' || deal.stage === filterStage);
+                const matchesPriority = (filterPriority === 'all' || deal.priority === filterPriority);
+
+                if (matchesSearch && matchesStage && matchesPriority) {
+                    renderDeal(deal);
+                }
+            });
+
+            // Show/hide empty messages based on actual content
+            STAGE_ORDER.forEach(stageId => {
+                const stageElement = document.getElementById(`${stageId}-stage`);
+                const emptyMessage = stageElement.querySelector('.empty-stage-message');
+                // If there are child elements other than the empty message, hide the empty message
+                if (stageElement.children.length > 1) {
+                    emptyMessage.classList.add('hidden');
+                } else {
+                    emptyMessage.classList.remove('hidden');
+                }
+            });
+        }
+
+        function renderDeal(deal) {
+            const dealCard = document.createElement('div');
+            dealCard.className = `deal-card`;
+            dealCard.dataset.id = deal.id;
+            dealCard.dataset.stage = deal.stage;
+            dealCard.dataset.priority = deal.priority;
+
+            let valueColor = 'text-blue-600';
+            if (deal.stage === 'closed-won') valueColor = 'text-emerald-600';
+            if (deal.stage === 'closed-lost') valueColor = 'text-red-600';
+
+            let priorityIcon = '';
+            let priorityColor = '';
+            if (deal.priority === 'hot') {
+                priorityIcon = '<i class="fas fa-fire text-red-500"></i>';
+                priorityColor = 'bg-red-100 text-red-800';
+            } else if (deal.priority === 'warm') {
+                priorityIcon = '<i class="fas fa-sun text-orange-500"></i>';
+                priorityColor = 'bg-orange-100 text-orange-800';
+            } else { // cold
+                priorityIcon = '<i class="fas fa-snowflake text-blue-400"></i>';
+                priorityColor = 'bg-blue-100 text-blue-800';
+            }
+
+            // Calculate progress based on stage order
+            const currentStageIndex = STAGE_ORDER.indexOf(deal.stage);
+            // Exclude closed-won/lost from progress calculation as they are terminal stages
+            const activeStages = STAGE_ORDER.slice(0, STAGE_ORDER.indexOf('closed-won'));
+            const totalActiveStages = activeStages.length;
+            let progress = 0;
+            if (currentStageIndex >= 0 && currentStageIndex < totalActiveStages) {
+                progress = ((currentStageIndex + 1) / totalActiveStages) * 100;
+            } else if (deal.stage === 'closed-won') {
+                progress = 100;
+            }
+
+
+            dealCard.innerHTML = `
+                <div class="flex justify-between items-start mb-2">
+                    <h4 class="font-semibold text-lg text-gray-900">${deal.name}</h4>
+                    <span class="text-sm font-bold ${valueColor} px-2 py-1 rounded-full bg-gray-100">$${deal.value.toLocaleString()}</span>
+                </div>
+                <p class="text-sm text-gray-600 mb-1 flex items-center"><i class="fas fa-building mr-2 text-gray-400"></i>${deal.company || 'N/A'}</p>
+                <p class="text-xs text-gray-500 flex items-center"><i class="fas fa-user mr-2 text-gray-400"></i>${deal.contact || 'N/A'}</p>
+                
+                <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
+                    <span class="text-xs font-medium ${priorityColor} px-2 py-1 rounded-full flex items-center">
+                        ${priorityIcon} <span class="ml-1">${deal.priority.charAt(0).toUpperCase() + deal.priority.slice(1)}</span>
+                    </span>
+                    <div class="flex space-x-2">
+                        <button onclick="openDealModal(${deal.id})" class="text-xs text-blue-500 hover:text-blue-700 font-medium flex items-center"><i class="fas fa-edit mr-1"></i>Edit</button>
+                        <button onclick="confirmDeleteDeal(${deal.id})" class="text-xs text-red-500 hover:text-red-700 font-medium flex items-center"><i class="fas fa-trash-alt mr-1"></i>Delete</button>
+                    </div>
+                </div>
+                ${deal.stage !== 'closed-won' && deal.stage !== 'closed-lost' ? `
+                <div class="mt-3">
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div class="bg-blue-500 h-2.5 rounded-full" style="width: ${progress}%"></div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1 text-right">${Math.round(progress)}% Progress</p>
+                </div>
+                ` : ''}
+            `;
+
+            document.getElementById(`${deal.stage}-stage`).appendChild(dealCard);
+        }
+
+        function confirmDeleteDeal(dealId) {
+            const deal = deals.find(d => d.id === dealId);
+            if (deal) {
+                document.getElementById('dealToDeleteName').innerText = deal.name;
+                document.getElementById('confirmDeleteBtn').onclick = () => deleteDeal(dealId);
+                openModal('deleteModal');
+            }
+        }
+
+        function closeDeleteModal() {
+            closeModal('deleteModal');
+        }
+
+        function deleteDeal(dealId) {
+            const dealIndex = deals.findIndex(d => d.id === dealId);
+            if (dealIndex !== -1) {
+                const deletedDealName = deals[dealIndex].name;
+                deals.splice(dealIndex, 1);
+                showToast(`Deal "${deletedDealName}" deleted!`);
+                addActivity(`Deleted deal: ${deletedDealName}`);
+                saveData();
+                renderAllDeals();
+                updatePipelineValues();
+                closeDeleteModal();
+            }
+        }
+
+        function filterDeals() {
+            renderAllDeals(); // Re-render all deals based on current filter/search
+        }
+
+        function updatePipelineValues() {
+            const stageValues = {
+                'prospect': 0,
+                'qualification': 0,
+                'proposal': 0,
+                'negotiation': 0,
+                'closed-won': 0,
+                'closed-lost': 0
+            };
+
+            deals.forEach(deal => {
+                if (stageValues.hasOwnProperty(deal.stage)) {
+                    stageValues[deal.stage] += deal.value;
+                }
+            });
+
+            for (const stage in stageValues) {
+                document.getElementById(`${stage}-value`).innerText = `$${stageValues[stage].toLocaleString()}`;
+            }
+        }
+
+        // Sortable.js initialization
+        function initSortable() {
+            // Destroy existing Sortable instances to prevent duplicates
+            STAGE_ORDER.forEach(stageId => {
+                const stageElement = document.getElementById(`${stageId}-stage`);
+                if (stageElement && stageElement.sortable) {
+                    stageElement.sortable.destroy();
+                }
+            });
+
+            // Initialize new Sortable instances
+            STAGE_ORDER.forEach(stageId => {
+                const stageElement = document.getElementById(`${stageId}-stage`);
+                if (stageElement) {
+                    stageElement.sortable = new Sortable(stageElement, { // Store instance on element
+                        group: 'pipeline', // All lists in the same group
+                        animation: 150,
+                        ghostClass: 'bg-blue-100 border-blue-400 opacity-75', // Class for the ghost element
+                        chosenClass: 'shadow-lg border-blue-500', // Class for the chosen item
+                        dragClass: 'opacity-50', // Class for the dragging item
+                        onEnd: function (evt) {
+                            const dealId = parseInt(evt.item.dataset.id);
+                            const oldStage = evt.from.id.replace('-stage', '');
+                            const newStage = evt.to.id.replace('-stage', '');
+
+                            const dealIndex = deals.findIndex(d => d.id === dealId);
+                            if (dealIndex !== -1 && deals[dealIndex].stage !== newStage) {
+                                deals[dealIndex].stage = newStage;
+                                evt.item.dataset.stage = newStage; // Update dataset for filtering
+                                showToast(`Deal "${deals[dealIndex].name}" moved to ${STAGE_NAMES[newStage]}!`);
+                                addActivity(`Moved ${deals[dealIndex].name} from ${STAGE_NAMES[oldStage]} to ${STAGE_NAMES[newStage]}`);
+                                saveData();
+                                renderAllDeals(); // Re-render to update progress bar/icons if needed
+                                updatePipelineValues();
+                                if (!document.getElementById('stats-section').classList.contains('hidden')) {
+                                    updateCharts(); // Update charts if stats are visible
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        // Activity Feed functions
+        function addActivity(text) {
+            const newActivity = {
+                id: Date.now(),
+                text: text,
+                date: new Date()
+            };
+
+            activities.unshift(newActivity); // Add to the beginning
+            if (activities.length > 20) { // Keep activity feed manageable
+                activities.pop();
+            }
+            saveData();
+            renderActivityFeed();
+        }
+
+        function renderActivityFeed() {
+            const activityFeed = document.getElementById('activity-feed');
+            activityFeed.innerHTML = ''; // Clear existing activities
+
+            if (activities.length === 0) {
+                activityFeed.innerHTML = `
+                    <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 text-center text-gray-500">
+                        <i class="fas fa-clipboard-list text-3xl mb-2"></i>
+                        <p>No recent activity.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            activities.forEach(activity => {
+                const activityElement = document.createElement('div');
+                activityElement.className = 'p-4 bg-gray-50 rounded-lg border border-gray-200';
+                activityElement.innerHTML = `
+                    <p class="text-gray-700">${activity.text}</p>
+                    <p class="text-xs text-gray-500 mt-1">${activity.date.toLocaleString()}</p>
+                `;
+                activityFeed.appendChild(activityElement);
+            });
+        }
+
+        // Toast Notification
+        function showToast(message, duration = 3000) {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = message;
+            toastContainer.appendChild(toast);
+
+            // Show animation
+            requestAnimationFrame(() => {
+                toast.classList.add('show');
+            });
+
+            // Hide animation and remove after duration
+            setTimeout(() => {
+                toast.classList.remove('show');
+                toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+            }, duration);
+        }
+
+        // Chart functions
+        function updateCharts() {
+            // Destroy existing charts before creating new ones to prevent memory leaks
+            for (const chartId in charts) {
+                if (charts[chartId]) {
+                    charts[chartId].destroy();
+                }
+            }
+
+            // Deal size distribution chart
+            const dealSizeCtx = document.getElementById('dealSizeChart').getContext('2d');
+            charts.dealSizeChart = new Chart(dealSizeCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['<$1K', '$1K-$5K', '$5K-$10K', '$10K-$50K', '$50K+'],
+                    datasets: [{
+                        label: 'Number of Deals',
+                        data: calculateDealSizeDistribution(),
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.8)', // Blue
+                            'rgba(16, 185, 129, 0.8)', // Green
+                            'rgba(245, 158, 11, 0.8)', // Amber
+                            'rgba(236, 72, 153, 0.8)', // Pink
+                            'rgba(139, 92, 246, 0.8)'  // Purple
+                        ],
+                        borderColor: [
+                            'rgba(59, 130, 246, 1)',
+                            'rgba(16, 185, 129, 1)',
+                            'rgba(245, 158, 11, 1)',
+                            'rgba(236, 72, 153, 1)',
+                            'rgba(139, 92, 246, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Deal Size Distribution (Active & Won Deals)',
+                            font: { size: 16, weight: 'bold' },
+                            color: '#333'
+                        },
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Deals: ${context.parsed.y}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Deals'
+                            },
+                            ticks: {
+                                precision: 0
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Deal Value Range'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Win rate chart
+            const winRateCtx = document.getElementById('winRateChart').getContext('2d');
+            const { won, lost, inProgress } = calculateWinRate();
+            charts.winRateChart = new Chart(winRateCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Closed Won', 'Closed Lost', 'In Progress'],
+                    datasets: [{
+                        data: [won, lost, inProgress],
+                        backgroundColor: [
+                            'rgba(34, 197, 94, 0.8)',  // Emerald Green
+                            'rgba(239, 68, 68, 0.8)',  // Red
+                            'rgba(59, 130, 246, 0.8)'   // Blue
+                        ],
+                        borderColor: [
+                            'rgba(34, 197, 94, 1)',
+                            'rgba(239, 68, 68, 1)',
+                            'rgba(59, 130, 246, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Win Rate & Pipeline Status',
+                            font: { size: 16, weight: 'bold' },
+                            color: '#333'
+                        },
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                font: { size: 12 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += context.parsed;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Pipeline value trend chart
+            const pipelineValueCtx = document.getElementById('pipelineValueChart').getContext('2d');
+            const { labels, data } = calculatePipelineValueTrend();
+            charts.pipelineValueChart = new Chart(pipelineValueCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total Pipeline Value',
+                        data: data,
+                        fill: true,
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        tension: 0.4,
+                        pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(59, 130, 246, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Pipeline Value Trend Over Time',
+                            font: { size: 16, weight: 'bold' },
+                            color: '#333'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Value: $${context.parsed.y.toLocaleString()}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Value ($)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function calculateDealSizeDistribution() {
+            const distribution = [0, 0, 0, 0, 0]; // <1K, 1K-5K, 5K-10K, 10K-50K, 50K+
+
+            deals.forEach(deal => {
+                // Only count deals that are still in pipeline or closed won
+                if (deal.stage !== 'closed-lost') {
+                    if (deal.value < 1000) {
+                        distribution[0]++;
+                    } else if (deal.value >= 1000 && deal.value < 5000) {
+                        distribution[1]++;
+                    } else if (deal.value >= 5000 && deal.value < 10000) {
+                        distribution[2]++;
+                    } else if (deal.value >= 10000 && deal.value < 50000) {
+                        distribution[3]++;
+                    } else if (deal.value >= 50000) {
+                        distribution[4]++;
+                    }
+                }
+            });
+            return distribution;
+        }
+
+        function calculateWinRate() {
+            let closedWon = deals.filter(d => d.stage === 'closed-won').length;
+            let closedLost = deals.filter(d => d.stage === 'closed-lost').length;
+            let inProgress = deals.filter(d => d.stage !== 'closed-won' && d.stage !== 'closed-lost').length;
+
+            return { won: closedWon, lost: closedLost, inProgress: inProgress };
+        }
+
+        function calculatePipelineValueTrend() {
+            const monthlyValues = {};
+            const allDates = new Set();
+
+            deals.forEach(deal => {
+                const monthYearKey = `${deal.created.getFullYear()}-${(deal.created.getMonth() + 1).toString().padStart(2, '0')}`;
+                allDates.add(monthYearKey);
+
+                if (!monthlyValues[monthYearKey]) {
+                    monthlyValues[monthYearKey] = 0;
+                }
+                // For pipeline value trend, we usually sum up all active deals
+                // For simplicity here, we'll sum up deals created in that month that are not lost
+                if (deal.stage !== 'closed-lost') {
+                    monthlyValues[monthYearKey] += deal.value;
+                }
+            });
+
+            const sortedMonthKeys = Array.from(allDates).sort();
+
+            const labels = sortedMonthKeys.map(key => {
+                const [year, month] = key.split('-');
+                return new Date(year, month - 1).toLocaleString('en-US', { month: 'short', year: 'numeric' });
+            });
+            const data = sortedMonthKeys.map(key => monthlyValues[key] || 0);
+
+            return { labels, data };
+        }
     </script>
 </body>
 </html>
