@@ -3,19 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Supercharged Sales Pipeline Manager</title>
+    <title>Firebase Sales Pipeline Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+    <!-- Optional: If you plan to use Authentication -->
+    <!-- <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script> -->
+
     <style>
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc; /* Lighter background */
         }
         .pipeline-stage {
-            min-height: 450px; /* Increased min-height for better drag-drop */
+            min-height: 480px; /* Increased min-height for better drag-drop */
             transition: all 0.3s ease;
             border-radius: 0.75rem;
             overflow: hidden;
@@ -34,12 +41,11 @@
             padding: 1rem;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-            /* Ensure enough space for dropping */
-            min-height: 100px; /* Added to ensure drop area even if empty */
+            min-height: 100px; /* Ensure enough space for dropping */
         }
         .deal-card {
             transition: transform 0.2s, box-shadow 0.2s;
-            cursor: grab;
+            cursor: grab; /* Indicate draggable */
             position: relative;
             background-color: #ffffff;
             border: 1px solid #e2e8f0;
@@ -53,8 +59,22 @@
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
         }
         .deal-card:active {
-            cursor: grabbing;
+            cursor: grabbing; /* Indicate actively dragging */
         }
+        /* Sortable.js classes for visual feedback */
+        .sortable-ghost {
+            opacity: 0.4;
+            background-color: #e0f2fe; /* Light blue background for ghost */
+            border: 1px dashed #90cdf4; /* Dashed border */
+        }
+        .sortable-chosen {
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            transform: scale(1.02);
+        }
+        .sortable-drag {
+            opacity: 0.9;
+        }
+
         .stage-prospect { border-left: 5px solid #3B82F6; } /* Blue */
         .stage-qualification { border-left: 5px solid #10B981; } /* Green */
         .stage-proposal { border-left: 5px solid #F59E0B; } /* Amber */
@@ -323,8 +343,29 @@
     <div id="toast-container"></div>
 
     <script>
-        let deals = [];
-        let activities = [];
+        // Firebase Configuration
+        const firebaseConfig = {
+          apiKey: "AIzaSyA630jQdTLNt1XHjVAXX10IjIeMVJ_vNn8",
+          authDomain: "pipelineefk.firebaseapp.com",
+          projectId: "pipelineefk",
+          storageBucket: "pipelineefk.firebasestorage.app",
+          messagingSenderId: "763507094626",
+          appId: "1:763507094626:web:57838068505c964f654d3b"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+
+        // Get a reference to the Firestore service
+        const db = firebase.firestore();
+
+        // Reference to the 'deals' collection
+        const dealsCollection = db.collection('deals');
+        // Reference to the 'activities' collection
+        const activitiesCollection = db.collection('activities');
+
+        let deals = []; // Local array to hold deals fetched from Firebase
+        let activities = []; // Local array to hold activities fetched from Firebase
         let charts = {}; // To store chart instances
 
         const STAGE_NAMES = {
@@ -338,13 +379,10 @@
 
         const STAGE_ORDER = ['prospect', 'qualification', 'proposal', 'negotiation', 'closed-won', 'closed-lost'];
 
-        // Load data from localStorage on startup
+        // --- Firebase Data Loading ---
         document.addEventListener('DOMContentLoaded', function() {
-            loadData();
-            renderAllDeals(); // Initial render of all deals
-            renderActivityFeed();
-            updatePipelineValues();
-            initSortable(); // Initialize Sortable after initial render
+            loadDealsFromFirebase(); // Start loading deals
+            loadActivitiesFromFirebase(); // Start loading activities
 
             document.getElementById('dealForm').addEventListener('submit', function(e) {
                 e.preventDefault();
@@ -352,40 +390,55 @@
             });
         });
 
-        function loadData() {
-            const storedDeals = localStorage.getItem('salesPipelineDeals');
-            const storedActivities = localStorage.getItem('salesPipelineActivities');
-
-            if (storedDeals) {
-                deals = JSON.parse(storedDeals).map(deal => ({
-                    ...deal,
-                    created: new Date(deal.created) // Convert string back to Date object
-                }));
-            } else {
-                deals = [];
-            }
-
-            if (storedActivities) {
-                activities = JSON.parse(storedActivities).map(activity => ({
-                    ...activity,
-                    date: new Date(activity.date) // Convert string back to Date object
-                }));
-            } else {
-                activities = [{ id: Date.now(), text: "System: Welcome to your sales pipeline! Add your first deal to get started.", date: new Date() }];
+        async function loadDealsFromFirebase() {
+            try {
+                // Fetch deals, ordered by creation date (or any other relevant field)
+                const snapshot = await dealsCollection.orderBy('created', 'asc').get();
+                deals = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id, // Use Firestore document ID as deal ID
+                        ...data,
+                        // Convert Firebase Timestamp to Date object if it exists
+                        created: data.created ? data.created.toDate() : new Date() 
+                    };
+                });
+                console.log("Deals loaded from Firebase:", deals);
+                renderAllDeals(); // Render after loading
+                updatePipelineValues(); // Update values after loading
+                initSortable(); // Re-initialize Sortable after DOM is updated
+            } catch (error) {
+                console.error("Error loading deals from Firebase:", error);
+                showToast("Error loading deals. Please try again.", 5000);
             }
         }
 
-        function saveData() {
-            localStorage.setItem('salesPipelineDeals', JSON.stringify(deals));
-            localStorage.setItem('salesPipelineActivities', JSON.stringify(activities));
+        async function loadActivitiesFromFirebase() {
+            try {
+                // Fetch latest 20 activities, ordered by date descending
+                const snapshot = await activitiesCollection.orderBy('date', 'desc').limit(20).get();
+                activities = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id,
+                        ...data,
+                        // Convert Firebase Timestamp to Date object if it exists
+                        date: data.date ? data.date.toDate() : new Date() 
+                    };
+                });
+                console.log("Activities loaded from Firebase:", activities);
+                renderActivityFeed(); // Render after loading
+            } catch (error) {
+                console.error("Error loading activities from Firebase:", error);
+                showToast("Error loading activities. Please try again.", 5000);
+            }
         }
 
-        // Modal functions with animation
+        // --- Modal Functions ---
         function openModal(id) {
             const modal = document.getElementById(id);
             const modalContent = document.getElementById(`${id}Content`);
             modal.classList.remove('hidden');
-            // Trigger animation
             requestAnimationFrame(() => {
                 modalContent.classList.remove('modal-content-enter');
                 modalContent.classList.add('modal-content-enter-active');
@@ -400,8 +453,8 @@
             setTimeout(() => {
                 modal.classList.add('hidden');
                 modalContent.classList.remove('modal-content-leave-active');
-                modalContent.classList.add('modal-content-enter'); // Reset for next open
-            }, 300); // Match transition duration
+                modalContent.classList.add('modal-content-enter');
+            }, 300);
         }
 
         function openDealModal(deal = null) {
@@ -419,7 +472,7 @@
                 document.getElementById('modalTitle').innerText = 'Add New Deal';
                 document.getElementById('dealForm').reset();
                 document.getElementById('dealId').value = '';
-                document.getElementById('priority').value = 'cold'; // Default priority
+                document.getElementById('priority').value = 'cold';
             }
         }
 
@@ -437,8 +490,8 @@
             document.getElementById('stats-section').classList.add('hidden');
         }
 
-        // Deal functions
-        function saveDeal() {
+        // --- Deal CRUD Operations (Firebase Integrated) ---
+        async function saveDeal() {
             const dealId = document.getElementById('dealId').value;
             const dealName = document.getElementById('dealName').value;
             const companyName = document.getElementById('companyName').value;
@@ -447,53 +500,67 @@
             const stage = document.getElementById('stage').value;
             const priority = document.getElementById('priority').value;
 
-            if (dealId) {
-                // Edit existing deal
-                const dealIndex = deals.findIndex(d => d.id == dealId);
-                if (dealIndex !== -1) {
-                    const oldDeal = { ...deals[dealIndex] };
-                    deals[dealIndex] = {
-                        ...oldDeal,
-                        name: dealName,
-                        company: companyName,
-                        contact: contactName,
-                        value: value,
-                        stage: stage,
-                        priority: priority
-                    };
-                    showToast(`Deal "${dealName}" updated!`);
-                    addActivity(`Edited deal: ${dealName} (from ${STAGE_NAMES[oldDeal.stage]} to ${STAGE_NAMES[stage]})`);
-                }
-            } else {
-                // Add new deal
-                const newDeal = {
-                    id: Date.now(),
-                    name: dealName,
-                    company: companyName,
-                    contact: contactName,
-                    value: value,
-                    stage: stage,
-                    priority: priority,
-                    created: new Date()
-                };
-                deals.push(newDeal);
-                showToast(`New deal "${dealName}" added!`);
-                addActivity(`Added new deal: ${dealName} in ${STAGE_NAMES[stage]} stage`);
-            }
+            const dealData = {
+                name: dealName,
+                company: companyName,
+                contact: contactName,
+                value: value,
+                stage: stage,
+                priority: priority,
+            };
 
-            saveData();
-            renderAllDeals(); // Re-render all deals after saving
-            updatePipelineValues();
-            closeDealModal();
+            try {
+                if (dealId) {
+                    // Update existing deal in Firestore
+                    const oldDeal = deals.find(d => d.id == dealId);
+                    await dealsCollection.doc(dealId).update(dealData);
+                    showToast(`Deal "${dealName}" updated!`);
+                    addActivityToFirebase(`Edited deal: ${dealName} (from ${STAGE_NAMES[oldDeal.stage]} to ${STAGE_NAMES[stage]})`);
+                } else {
+                    // Add new deal to Firestore
+                    dealData.created = firebase.firestore.FieldValue.serverTimestamp(); // Use server timestamp
+                    await dealsCollection.add(dealData);
+                    showToast(`New deal "${dealName}" added!`);
+                    addActivityToFirebase(`Added new deal: ${dealName} in ${STAGE_NAMES[stage]} stage`);
+                }
+                await loadDealsFromFirebase(); // Reload all deals to update UI
+                closeDealModal();
+            } catch (error) {
+                console.error("Error saving deal to Firebase:", error);
+                showToast("Error saving deal. Please try again.", 5000);
+            }
         }
 
+        async function confirmDeleteDeal(dealId) {
+            const deal = deals.find(d => d.id === dealId);
+            if (deal) {
+                document.getElementById('dealToDeleteName').innerText = deal.name;
+                document.getElementById('confirmDeleteBtn').onclick = () => deleteDeal(dealId);
+                openModal('deleteModal');
+            }
+        }
+
+        async function deleteDeal(dealId) {
+            try {
+                const dealToDelete = deals.find(d => d.id === dealId);
+                await dealsCollection.doc(dealId).delete();
+                showToast(`Deal "${dealToDelete.name}" deleted!`);
+                addActivityToFirebase(`Deleted deal: ${dealToDelete.name}`);
+                await loadDealsFromFirebase(); // Reload all deals
+                closeDeleteModal();
+            } catch (error) {
+                console.error("Error deleting deal from Firebase:", error);
+                showToast("Error deleting deal. Please try again.", 5000);
+            }
+        }
+
+        // --- UI Rendering ---
         function renderAllDeals() {
             // Clear all stages first and re-add empty messages
             STAGE_ORDER.forEach(stageId => {
                 const stageElement = document.getElementById(`${stageId}-stage`);
                 stageElement.innerHTML = ''; // Clear existing deals
 
-                // Re-add empty message template
                 const emptyMessage = document.createElement('div');
                 emptyMessage.className = 'empty-stage-message text-center text-gray-400 p-4';
                 if (stageId === 'closed-won') {
@@ -527,8 +594,7 @@
             STAGE_ORDER.forEach(stageId => {
                 const stageElement = document.getElementById(`${stageId}-stage`);
                 const emptyMessage = stageElement.querySelector('.empty-stage-message');
-                // If there are child elements other than the empty message, hide the empty message
-                if (stageElement.children.length > 1) {
+                if (stageElement.children.length > 1) { // More than just the empty message
                     emptyMessage.classList.add('hidden');
                 } else {
                     emptyMessage.classList.remove('hidden');
@@ -562,7 +628,6 @@
 
             // Calculate progress based on stage order
             const currentStageIndex = STAGE_ORDER.indexOf(deal.stage);
-            // Exclude closed-won/lost from progress calculation as they are terminal stages
             const activeStages = STAGE_ORDER.slice(0, STAGE_ORDER.indexOf('closed-won'));
             const totalActiveStages = activeStages.length;
             let progress = 0;
@@ -571,7 +636,6 @@
             } else if (deal.stage === 'closed-won') {
                 progress = 100;
             }
-
 
             dealCard.innerHTML = `
                 <div class="flex justify-between items-start mb-2">
@@ -606,35 +670,8 @@
             document.getElementById(`${deal.stage}-stage`).appendChild(dealCard);
         }
 
-        function confirmDeleteDeal(dealId) {
-            const deal = deals.find(d => d.id === dealId);
-            if (deal) {
-                document.getElementById('dealToDeleteName').innerText = deal.name;
-                document.getElementById('confirmDeleteBtn').onclick = () => deleteDeal(dealId);
-                openModal('deleteModal');
-            }
-        }
-
-        function closeDeleteModal() {
-            closeModal('deleteModal');
-        }
-
-        function deleteDeal(dealId) {
-            const dealIndex = deals.findIndex(d => d.id === dealId);
-            if (dealIndex !== -1) {
-                const deletedDealName = deals[dealIndex].name;
-                deals.splice(dealIndex, 1);
-                showToast(`Deal "${deletedDealName}" deleted!`);
-                addActivity(`Deleted deal: ${deletedDealName}`);
-                saveData();
-                renderAllDeals();
-                updatePipelineValues();
-                closeDeleteModal();
-            }
-        }
-
         function filterDeals() {
-            renderAllDeals(); // Re-render all deals based on current filter/search
+            renderAllDeals();
         }
 
         function updatePipelineValues() {
@@ -658,47 +695,66 @@
             }
         }
 
-        // Sortable.js initialization
+        // --- Sortable.js Initialization and Event Handling ---
+        let sortableInstances = {}; // Store Sortable instances
+
         function initSortable() {
             // Destroy existing Sortable instances to prevent duplicates
             STAGE_ORDER.forEach(stageId => {
                 const stageElement = document.getElementById(`${stageId}-stage`);
-                if (stageElement && stageElement.sortable) {
-                    stageElement.sortable.destroy();
-                    stageElement.sortable = null; // Clear reference
+                if (stageElement && sortableInstances[stageId]) {
+                    sortableInstances[stageId].destroy();
+                    delete sortableInstances[stageId]; // Remove from our tracking object
                 }
             });
 
-            // Initialize new Sortable instances
+            // Initialize new Sortable instances for each stage
             STAGE_ORDER.forEach(stageId => {
                 const stageElement = document.getElementById(`${stageId}-stage`);
                 if (stageElement) {
-                    stageElement.sortable = new Sortable(stageElement, { // Store instance on element
+                    sortableInstances[stageId] = new Sortable(stageElement, {
                         group: 'pipeline', // All lists in the same group
                         animation: 150,
-                        ghostClass: 'bg-blue-100 border-blue-400 opacity-75', // Class for the ghost element
-                        chosenClass: 'shadow-lg border-blue-500', // Class for the chosen item
-                        dragClass: 'opacity-50', // Class for the dragging item
-                        // Handle: '.deal-card' or a specific drag handle if needed
+                        ghostClass: 'sortable-ghost', // Custom class for ghost element
+                        chosenClass: 'sortable-chosen', // Custom class for chosen element
+                        dragClass: 'sortable-drag', // Custom class for dragging element
                         // filter: '.empty-stage-message', // Prevent dragging the empty message
-                        onEnd: function (evt) {
+                        onEnd: async function (evt) {
                             console.log('Sortable onEnd triggered!'); // Debugging
-                            const dealId = parseInt(evt.item.dataset.id);
+                            const dealId = evt.item.dataset.id;
                             const oldStage = evt.from.id.replace('-stage', '');
                             const newStage = evt.to.id.replace('-stage', '');
 
-                            const dealIndex = deals.findIndex(d => d.id === dealId);
-                            if (dealIndex !== -1 && deals[dealIndex].stage !== newStage) {
-                                deals[dealIndex].stage = newStage;
-                                evt.item.dataset.stage = newStage; // Update dataset for filtering
-                                showToast(`Deal "${deals[dealIndex].name}" moved to ${STAGE_NAMES[newStage]}!`);
-                                addActivity(`Moved ${deals[dealIndex].name} from ${STAGE_NAMES[oldStage]} to ${STAGE_NAMES[newStage]}`);
-                                saveData();
-                                renderAllDeals(); // Re-render to update progress bar/icons if needed
-                                updatePipelineValues();
-                                if (!document.getElementById('stats-section').classList.contains('hidden')) {
-                                    updateCharts(); // Update charts if stats are visible
+                            // Only update if the stage actually changed
+                            if (oldStage !== newStage) {
+                                try {
+                                    // Update deal in Firebase
+                                    await dealsCollection.doc(dealId).update({ stage: newStage });
+                                    
+                                    // Find the deal in our local array to get its name for toast/activity
+                                    const movedDeal = deals.find(d => d.id === dealId);
+                                    if (movedDeal) {
+                                        showToast(`Deal "${movedDeal.name}" moved to ${STAGE_NAMES[newStage]}!`);
+                                        addActivityToFirebase(`Moved ${movedDeal.name} from ${STAGE_NAMES[oldStage]} to ${STAGE_NAMES[newStage]}`);
+                                    }
+
+                                    // Reload all deals from Firebase to ensure UI is consistent with DB
+                                    await loadDealsFromFirebase(); 
+                                    if (!document.getElementById('stats-section').classList.contains('hidden')) {
+                                        updateCharts(); // Update charts if stats are visible
+                                    }
+                                } catch (error) {
+                                    console.error("Error updating deal stage in Firebase:", error);
+                                    showToast("Error moving deal. Please try again.", 5000);
+                                    // If Firebase update fails, reload to revert UI to actual DB state
+                                    await loadDealsFromFirebase(); 
                                 }
+                            } else {
+                                // If deal was dropped back into the same stage, just re-render to ensure order is saved
+                                // Sortable.js automatically updates the DOM order, but we need to persist it if order matters
+                                // For simplicity, we're not persisting order within a stage in this example.
+                                // If you need to persist order, you'd update a 'position' field in Firebase here.
+                                console.log("Deal dropped in the same stage. No Firebase update needed for stage change.");
                             }
                         }
                     });
@@ -706,25 +762,22 @@
             });
         }
 
-        // Activity Feed functions
-        function addActivity(text) {
-            const newActivity = {
-                id: Date.now(),
-                text: text,
-                date: new Date()
-            };
-
-            activities.unshift(newActivity); // Add to the beginning
-            if (activities.length > 20) { // Keep activity feed manageable
-                activities.pop();
+        // --- Activity Feed (Firebase Integrated) ---
+        async function addActivityToFirebase(text) {
+            try {
+                await activitiesCollection.add({
+                    text: text,
+                    date: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                await loadActivitiesFromFirebase(); // Reload activities to update the feed
+            } catch (error) {
+                console.error("Error adding activity to Firebase:", error);
             }
-            saveData();
-            renderActivityFeed();
         }
 
         function renderActivityFeed() {
             const activityFeed = document.getElementById('activity-feed');
-            activityFeed.innerHTML = ''; // Clear existing activities
+            activityFeed.innerHTML = '';
 
             if (activities.length === 0) {
                 activityFeed.innerHTML = `
@@ -747,7 +800,7 @@
             });
         }
 
-        // Toast Notification
+        // --- Toast Notification ---
         function showToast(message, duration = 3000) {
             const toastContainer = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -755,28 +808,24 @@
             toast.innerText = message;
             toastContainer.appendChild(toast);
 
-            // Show animation
             requestAnimationFrame(() => {
                 toast.classList.add('show');
             });
 
-            // Hide animation and remove after duration
             setTimeout(() => {
                 toast.classList.remove('show');
                 toast.addEventListener('transitionend', () => toast.remove(), { once: true });
             }, duration);
         }
 
-        // Chart functions
+        // --- Chart Functions ---
         function updateCharts() {
-            // Destroy existing charts before creating new ones to prevent memory leaks
             for (const chartId in charts) {
                 if (charts[chartId]) {
                     charts[chartId].destroy();
                 }
             }
 
-            // Deal size distribution chart
             const dealSizeCtx = document.getElementById('dealSizeChart').getContext('2d');
             charts.dealSizeChart = new Chart(dealSizeCtx, {
                 type: 'bar',
@@ -786,65 +835,27 @@
                         label: 'Number of Deals',
                         data: calculateDealSizeDistribution(),
                         backgroundColor: [
-                            'rgba(59, 130, 246, 0.8)', // Blue
-                            'rgba(16, 185, 129, 0.8)', // Green
-                            'rgba(245, 158, 11, 0.8)', // Amber
-                            'rgba(236, 72, 153, 0.8)', // Pink
-                            'rgba(139, 92, 246, 0.8)'  // Purple
+                            'rgba(59, 130, 246, 0.8)', 'rgba(16, 185, 129, 0.8)', 'rgba(245, 158, 11, 0.8)',
+                            'rgba(236, 72, 153, 0.8)', 'rgba(139, 92, 246, 0.8)'
                         ],
                         borderColor: [
-                            'rgba(59, 130, 246, 1)',
-                            'rgba(16, 185, 129, 1)',
-                            'rgba(245, 158, 11, 1)',
-                            'rgba(236, 72, 153, 1)',
-                            'rgba(139, 92, 246, 1)'
+                            'rgba(59, 130, 246, 1)', 'rgba(16, 185, 129, 1)', 'rgba(245, 158, 11, 1)',
+                            'rgba(236, 72, 153, 1)', 'rgba(139, 92, 246, 1)'
                         ],
                         borderWidth: 1
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     plugins: {
-                        title: {
-                            display: true,
-                            text: 'Deal Size Distribution (Active & Won Deals)',
-                            font: { size: 16, weight: 'bold' },
-                            color: '#333'
-                        },
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return `Deals: ${context.parsed.y}`;
-                                }
-                            }
-                        }
+                        title: { display: true, text: 'Deal Size Distribution (Active & Won Deals)', font: { size: 16, weight: 'bold' }, color: '#333' },
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: function(context) { return `Deals: ${context.parsed.y}`; } } }
                     },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Number of Deals'
-                            },
-                            ticks: {
-                                precision: 0
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Deal Value Range'
-                            }
-                        }
-                    }
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'Number of Deals' }, ticks: { precision: 0 } }, x: { title: { display: true, text: 'Deal Value Range' } } }
                 }
             });
 
-            // Win rate chart
             const winRateCtx = document.getElementById('winRateChart').getContext('2d');
             const { won, lost, inProgress } = calculateWinRate();
             charts.winRateChart = new Chart(winRateCtx, {
@@ -854,53 +865,24 @@
                     datasets: [{
                         data: [won, lost, inProgress],
                         backgroundColor: [
-                            'rgba(34, 197, 94, 0.8)',  // Emerald Green
-                            'rgba(239, 68, 68, 0.8)',  // Red
-                            'rgba(59, 130, 246, 0.8)'   // Blue
+                            'rgba(34, 197, 94, 0.8)', 'rgba(239, 68, 68, 0.8)', 'rgba(59, 130, 246, 0.8)'
                         ],
                         borderColor: [
-                            'rgba(34, 197, 94, 1)',
-                            'rgba(239, 68, 68, 1)',
-                            'rgba(59, 130, 246, 1)'
+                            'rgba(34, 197, 94, 1)', 'rgba(239, 68, 68, 1)', 'rgba(59, 130, 246, 1)'
                         ],
                         borderWidth: 1
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     plugins: {
-                        title: {
-                            display: true,
-                            text: 'Win Rate & Pipeline Status',
-                            font: { size: 16, weight: 'bold' },
-                            color: '#333'
-                        },
-                        legend: {
-                            position: 'right',
-                            labels: {
-                                font: { size: 12 }
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed !== null) {
-                                        label += context.parsed;
-                                    }
-                                    return label;
-                                }
-                            }
-                        }
+                        title: { display: true, text: 'Win Rate & Pipeline Status', font: { size: 16, weight: 'bold' }, color: '#333' },
+                        legend: { position: 'right', labels: { font: { size: 12 } } },
+                        tooltip: { callbacks: { label: function(context) { let label = context.label || ''; if (label) { label += ': '; } if (context.parsed !== null) { label += context.parsed; } return label; } } }
                     }
                 }
             });
 
-            // Pipeline value trend chart
             const pipelineValueCtx = document.getElementById('pipelineValueChart').getContext('2d');
             const { labels, data } = calculatePipelineValueTrend();
             charts.pipelineValueChart = new Chart(pipelineValueCtx, {
@@ -921,64 +903,24 @@
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     plugins: {
-                        title: {
-                            display: true,
-                            text: 'Pipeline Value Trend Over Time',
-                            font: { size: 16, weight: 'bold' },
-                            color: '#333'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return `Value: $${context.parsed.y.toLocaleString()}`;
-                                }
-                            }
-                        }
+                        title: { display: true, text: 'Pipeline Value Trend Over Time', font: { size: 16, weight: 'bold' }, color: '#333' },
+                        tooltip: { callbacks: { label: function(context) { return `Value: $${context.parsed.y.toLocaleString()}`; } } }
                     },
                     scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Value ($)'
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return '$' + value.toLocaleString();
-                                }
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Date'
-                            }
-                        }
+                        y: { beginAtZero: true, title: { display: true, text: 'Value ($)' }, ticks: { callback: function(value) { return '$' + value.toLocaleString(); } } },
+                        x: { title: { display: true, text: 'Date' } }
                     }
                 }
             });
         }
 
         function calculateDealSizeDistribution() {
-            const distribution = [0, 0, 0, 0, 0]; // <1K, 1K-5K, 5K-10K, 10K-50K, 50K+
-
+            const distribution = [0, 0, 0, 0, 0];
             deals.forEach(deal => {
-                // Only count deals that are still in pipeline or closed won
                 if (deal.stage !== 'closed-lost') {
-                    if (deal.value < 1000) {
-                        distribution[0]++;
-                    } else if (deal.value >= 1000 && deal.value < 5000) {
-                        distribution[1]++;
-                    } else if (deal.value >= 5000 && deal.value < 10000) {
-                        distribution[2]++;
-                    } else if (deal.value >= 10000 && deal.value < 50000) {
-                        distribution[3]++;
-                    } else if (deal.value >= 50000) {
-                        distribution[4]++;
-                    }
+                    if (deal.value < 1000) { distribution[0]++; } else if (deal.value >= 1000 && deal.value < 5000) { distribution[1]++; } else if (deal.value >= 5000 && deal.value < 10000) { distribution[2]++; } else if (deal.value >= 10000 && deal.value < 50000) { distribution[3]++; } else if (deal.value >= 50000) { distribution[4]++; }
                 }
             });
             return distribution;
@@ -988,36 +930,24 @@
             let closedWon = deals.filter(d => d.stage === 'closed-won').length;
             let closedLost = deals.filter(d => d.stage === 'closed-lost').length;
             let inProgress = deals.filter(d => d.stage !== 'closed-won' && d.stage !== 'closed-lost').length;
-
             return { won: closedWon, lost: closedLost, inProgress: inProgress };
         }
 
         function calculatePipelineValueTrend() {
             const monthlyValues = {};
             const allDates = new Set();
-
             deals.forEach(deal => {
                 const monthYearKey = `${deal.created.getFullYear()}-${(deal.created.getMonth() + 1).toString().padStart(2, '0')}`;
                 allDates.add(monthYearKey);
-
-                if (!monthlyValues[monthYearKey]) {
-                    monthlyValues[monthYearKey] = 0;
-                }
-                // For pipeline value trend, we usually sum up all active deals
-                // For simplicity here, we'll sum up deals created in that month that are not lost
-                if (deal.stage !== 'closed-lost') {
-                    monthlyValues[monthYearKey] += deal.value;
-                }
+                if (!monthlyValues[monthYearKey]) { monthlyValues[monthYearKey] = 0; }
+                if (deal.stage !== 'closed-lost') { monthlyValues[monthYearKey] += deal.value; }
             });
-
             const sortedMonthKeys = Array.from(allDates).sort();
-
             const labels = sortedMonthKeys.map(key => {
                 const [year, month] = key.split('-');
                 return new Date(year, month - 1).toLocaleString('en-US', { month: 'short', year: 'numeric' });
             });
             const data = sortedMonthKeys.map(key => monthlyValues[key] || 0);
-
             return { labels, data };
         }
     </script>
