@@ -189,17 +189,25 @@
             margin-top: 0.25rem;
         }
 
-        /* Custom styles for smaller icons */
+        /* Custom styles for smaller and tighter icons */
         .deal-card .text-xs i { /* Target ikon di dalam span prioritas */
-            font-size: 0.75rem; /* Sesuaikan ukuran ikon agar sama dengan teks atau sedikit lebih besar */
+            font-size: 0.7rem; /* Sedikit lebih kecil dari 0.75rem */
         }
+
         .deal-card .flex.space-x-2 button i {
-            font-size: 0.9rem; /* Mengurangi ukuran ikon edit/delete */
-            vertical-align: middle; /* Membantu penataan vertikal */
+            font-size: 0.8rem; /* Mengurangi ukuran ikon dari 0.9rem menjadi 0.8rem */
+            vertical-align: middle;
         }
+
         .deal-card .flex.space-x-2 button {
-            padding: 0.25rem; /* Mengurangi padding tombol edit/delete */
-            font-size: 0.875rem; /* Mengurangi ukuran font tombol edit/delete */
+            padding: 0.15rem 0.3rem; /* Mengurangi padding tombol agar lebih rapat */
+            font-size: 0.75rem; /* Mengurangi ukuran font tombol */
+            /* margin-left: 0.2rem; */ /* Dihapus karena gap sudah menangani */
+        }
+
+        /* Pastikan container tombol juga rapat */
+        .deal-card .flex.space-x-2 {
+            gap: 0.2rem; /* Mengurangi jarak antar elemen flex */
         }
     </style>
 </head>
