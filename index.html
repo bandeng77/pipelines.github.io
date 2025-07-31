@@ -408,6 +408,10 @@
                             <input type="text" id="pic" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                         </div>
                         <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="projectDate">Project Date</label>
+                            <input type="date" id="projectDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                        </div>
+                        <div class="mb-4">
                             <label class="block text-gray-700 text-sm font-semibold mb-2" for="stage">Stage <span class="text-red-500">*</span></label>
                             <select id="stage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
                                 <option value="prospect">Prospect</option>
@@ -483,7 +487,7 @@
                     <p id="detailPIC" class="text-gray-900"></p>
                 </div>
                 <div>
-                    <p class="text-gray-700 font-semibold">Created Date:</p>
+                    <p class="text-gray-700 font-semibold">Project Date:</p>
                     <p id="detailCreatedDate" class="text-gray-900"></p>
                 </div>
             </div>
@@ -594,7 +598,8 @@
                         id: doc.id, // Use Firestore document ID as deal ID
                         ...data,
                         // Convert Firebase Timestamp to Date object if it exists
-                        created: data.created ? data.created.toDate() : new Date() 
+                        created: data.created ? data.created.toDate() : new Date(),
+                        projectDate: data.projectDate ? data.projectDate.toDate() : null // Tambahkan ini
                     };
                 });
                 console.log("Deals loaded from Firebase:", deals);
@@ -668,6 +673,8 @@
                 document.getElementById('pic').value = deal.pic || '';
                 document.getElementById('stage').value = deal.stage;
                 document.getElementById('priority').value = deal.priority || 'cold';
+                // Tambahkan ini untuk memuat projectDate
+                document.getElementById('projectDate').value = deal.projectDate ? new Date(deal.projectDate).toISOString().split('T')[0] : '';
             } else {
                 document.getElementById('modalTitle').innerText = 'Add New Deal';
                 document.getElementById('dealForm').reset();
@@ -677,6 +684,7 @@
                 document.getElementById('package').value = '';
                 document.getElementById('product').value = '';
                 document.getElementById('facility').value = '';
+                document.getElementById('projectDate').value = ''; // Pastikan kosong saat menambah baru
             }
         }
 
@@ -696,7 +704,8 @@
             document.getElementById('detailConsultant').innerText = deal.consultant || 'N/A';
             document.getElementById('detailContractor').innerText = deal.contractor || 'N/A';
             document.getElementById('detailPIC').innerText = deal.pic || 'N/A';
-            document.getElementById('detailCreatedDate').innerText = deal.created ? deal.created.toLocaleDateString() : 'N/A';
+            // Ubah baris ini untuk menampilkan projectDate
+            document.getElementById('detailCreatedDate').innerText = deal.projectDate ? deal.projectDate.toLocaleDateString() : 'N/A';
             openModal('dealDetailModal');
         }
 
@@ -743,6 +752,7 @@
             const pic = document.getElementById('pic').value;
             const stage = document.getElementById('stage').value;
             const priority = document.getElementById('priority').value;
+            const projectDate = document.getElementById('projectDate').value; // Tambahkan ini
 
             const dealData = {
                 name: dealName,
@@ -757,6 +767,7 @@
                 pic: pic,
                 stage: stage,
                 priority: priority,
+                projectDate: projectDate ? new Date(projectDate) : null, // Tambahkan ini, konversi ke Date object
             };
 
             try {
@@ -965,7 +976,7 @@
                                     const movedDeal = deals.find(d => d.id === dealId);
                                     if (movedDeal) {
                                         showToast(`Deal "${movedDeal.name}" moved to ${STAGE_NAMES[newStage]}!`);
-                                        addActivityToFirebase(`Moved ${movedDeal.name} from ${STAGE_NAMES[oldStage]} to ${STAGE_NAMES[newStage]}`);
+                                        addActivityToFirebase(`Moved ${movedDeal.name} from ${STAGE_NAMES[oldDeal]} to ${STAGE_NAMES[newStage]}`);
                                     }
 
                                     // Reload all deals from Firebase to ensure UI is consistent with DB
@@ -1182,7 +1193,9 @@
             const monthlyValues = {};
             const allDates = new Set();
             deals.forEach(deal => {
-                const monthYearKey = `${deal.created.getFullYear()}-${(deal.created.getMonth() + 1).toString().padStart(2, '0')}`;
+                // Use projectDate for trend calculation if available, otherwise fallback to created date
+                const dateToUse = deal.projectDate || deal.created;
+                const monthYearKey = `${dateToUse.getFullYear()}-${(dateToUse.getMonth() + 1).toString().padStart(2, '0')}`;
                 allDates.add(monthYearKey);
                 if (!monthlyValues[monthYearKey]) { monthlyValues[monthYearKey] = 0; }
                 if (deal.stage !== 'lost') {
