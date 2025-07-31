@@ -317,12 +317,12 @@
                     <!-- Left Column -->
                     <div>
                         <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="dealName">Deal Name <span class="text-red-500">*</span></label>
+                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="dealName">Project Name <span class="text-red-500">*</span></label>
                             <input type="text" id="dealName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
                         </div>
                         <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="companyName">Company</label>
-                            <input type="text" id="companyName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="facility">Facility</label>
+                            <input type="text" id="facility" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                         </div>
                         <div class="mb-4">
                             <label class="block text-gray-700 text-sm font-semibold mb-2" for="salesName">Sales Name</label>
@@ -342,8 +342,8 @@
                             <input type="number" id="value" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0">
                         </div>
                         <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="facility">Facility</label>
-                            <input type="text" id="facility" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="package">Package</label>
+                            <input type="text" id="package" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                         </div>
                         <div class="mb-4">
                             <label class="block text-gray-700 text-sm font-semibold mb-2" for="product">Product</label>
@@ -591,10 +591,10 @@
                 document.getElementById('modalTitle').innerText = 'Edit Deal';
                 document.getElementById('dealId').value = deal.id;
                 document.getElementById('dealName').value = deal.name;
-                document.getElementById('companyName').value = deal.company;
+                document.getElementById('facility').value = deal.facility || '';
                 document.getElementById('salesName').value = deal.salesName || ''; // Use salesName
                 document.getElementById('value').value = deal.value;
-                document.getElementById('facility').value = deal.facility || '';
+                document.getElementById('package').value = deal.package || '';
                 document.getElementById('product').value = deal.product || '';
                 document.getElementById('discount').value = deal.discount || '';
                 document.getElementById('consultant').value = deal.consultant || '';
@@ -657,10 +657,10 @@
         async function saveDeal() {
             const dealId = document.getElementById('dealId').value;
             const dealName = document.getElementById('dealName').value;
-            const companyName = document.getElementById('companyName').value;
+            const facility = document.getElementById('facility').value;
             const salesName = document.getElementById('salesName').value; // Get sales name
             const value = parseFloat(document.getElementById('value').value) || 0;
-            const facility = document.getElementById('facility').value;
+            const package = document.getElementById('package').value;
             const product = document.getElementById('product').value;
             const discount = document.getElementById('discount').value;
             const consultant = document.getElementById('consultant').value;
@@ -671,10 +671,10 @@
 
             const dealData = {
                 name: dealName,
-                company: companyName,
+                facility: facility,
                 salesName: salesName, // Save sales name
                 value: value,
-                facility: facility,
+                package: package,
                 product: product,
                 discount: discount,
                 consultant: consultant,
@@ -816,9 +816,9 @@
                 <div class="flex justify-between items-start mb-2">
                     <h4 class="font-semibold text-base text-gray-900 cursor-pointer" onclick="openDealDetailModal(deals.find(d => d.id === '${deal.id}'))">${deal.name}</h4>
                 </div>
-                <p class="text-xs text-gray-600 mb-1 flex items-center"><i class="fas fa-building mr-2 text-gray-400"></i>${deal.company || 'N/A'}</p>
+                <p class="text-xs text-gray-600 mb-1 flex items-center"><i class="fas fa-building mr-2 text-gray-400"></i>${deal.facility || 'N/A'}</p>
                 <p class="text-xs text-gray-500 flex items-center"><i class="fas fa-user-tie mr-2 text-gray-400"></i>${deal.salesName || 'N/A'}</p>
-                <p class="text-xs text-gray-500 flex items-center"><i class="fas fa-industry mr-2 text-gray-400"></i>${deal.facility || 'N/A'}</p>
+                <p class="text-xs text-gray-500 flex items-center"><i class="fas fa-industry mr-2 text-gray-400"></i>${deal.package || 'N/A'}</p>
                 <p class="text-xs text-gray-500 flex items-center"><i class="fas fa-box mr-2 text-gray-400"></i>${deal.product || 'N/A'}</p>
                 
                 <div class="flex justify-between items-center mt-3">
