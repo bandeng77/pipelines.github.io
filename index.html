@@ -309,21 +309,18 @@
 
     <!-- Add/Edit Deal Modal -->
     <div id="dealModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
-        <div class="bg-white rounded-xl p-8 w-full max-w-4xl shadow-2xl modal-content-enter" id="dealModalContent"> <!-- Increased max-w-3xl to max-w-4xl for more space -->
+        <div class="bg-white rounded-xl p-8 w-full max-w-4xl shadow-2xl modal-content-enter" id="dealModalContent">
             <h2 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900" id="modalTitle">Add New Deal</h2>
             <form id="dealForm">
                 <input type="hidden" id="dealId">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"> <!-- Changed to 3 columns for better layout -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <!-- Column 1 -->
                     <div>
                         <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="dealName">Deal Name <span class="text-red-500">*</span></label>
+                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="dealName">Project Name <span class="text-red-500">*</span></label>
                             <input type="text" id="dealName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
                         </div>
-                        <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="companyName">Company</label>
-                            <input type="text" id="companyName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                        </div>
+                        <!-- Company Name Removed -->
                         <div class="mb-4">
                             <label class="block text-gray-700 text-sm font-semibold mb-2" for="salesName">Sales Name</label>
                             <select id="salesName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
@@ -632,10 +629,10 @@
                 document.getElementById('modalTitle').innerText = 'Edit Deal';
                 document.getElementById('dealId').value = deal.id;
                 document.getElementById('dealName').value = deal.name;
-                document.getElementById('companyName').value = deal.company;
+                // Company Name Removed
                 document.getElementById('salesName').value = deal.salesName || '';
                 document.getElementById('value').value = deal.value;
-                document.getElementById('package').value = deal.package || ''; // Set package value
+                document.getElementById('package').value = deal.package || '';
                 document.getElementById('product').value = deal.product || '';
                 document.getElementById('facility').value = deal.facility || '';
                 document.getElementById('discount').value = deal.discount || '';
@@ -650,9 +647,9 @@
                 document.getElementById('dealId').value = '';
                 document.getElementById('priority').value = 'cold';
                 document.getElementById('salesName').value = '';
-                document.getElementById('package').value = ''; // Reset package dropdown
-                document.getElementById('product').value = ''; // Reset product dropdown
-                document.getElementById('facility').value = ''; // Reset facility dropdown
+                document.getElementById('package').value = '';
+                document.getElementById('product').value = '';
+                document.getElementById('facility').value = '';
             }
         }
 
@@ -663,7 +660,7 @@
 
         function openDealDetailModal(deal) {
             document.getElementById('dealDetailTitle').innerText = `Details for ${deal.name}`;
-            document.getElementById('detailPackage').innerText = deal.package || 'N/A'; // Display package
+            document.getElementById('detailPackage').innerText = deal.package || 'N/A';
             document.getElementById('detailProduct').innerText = deal.product || 'N/A';
             document.getElementById('detailFacility').innerText = deal.facility || 'N/A';
             document.getElementById('detailDiscount').innerText = deal.discount || 'N/A';
@@ -705,10 +702,10 @@
         async function saveDeal() {
             const dealId = document.getElementById('dealId').value;
             const dealName = document.getElementById('dealName').value;
-            const companyName = document.getElementById('companyName').value;
+            // Company Name Removed
             const salesName = document.getElementById('salesName').value;
             const value = parseFloat(document.getElementById('value').value) || 0;
-            const package = document.getElementById('package').value; // Get package value
+            const package = document.getElementById('package').value;
             const product = document.getElementById('product').value;
             const facility = document.getElementById('facility').value;
             const discount = document.getElementById('discount').value;
@@ -720,10 +717,10 @@
 
             const dealData = {
                 name: dealName,
-                company: companyName,
+                // company: companyName, // Company Name Removed
                 salesName: salesName,
                 value: value,
-                package: package, // Save package
+                package: package,
                 product: product,
                 facility: facility,
                 discount: discount,
@@ -805,8 +802,7 @@
 
             deals.forEach(deal => {
                 const matchesSearch = (deal.name.toLowerCase().includes(searchTerm) ||
-                                     deal.company.toLowerCase().includes(searchTerm) ||
-                                     (deal.salesName && deal.salesName.toLowerCase().includes(searchTerm))); // Search by salesName
+                                     (deal.salesName && deal.salesName.toLowerCase().includes(searchTerm))); // Search by salesName, company removed
                 const matchesStage = (filterStage === 'all' || deal.stage === filterStage);
                 const matchesPriority = (filterPriority === 'all' || deal.priority === filterPriority);
 
@@ -866,9 +862,8 @@
                 <div class="flex justify-between items-start mb-2">
                     <h4 class="font-semibold text-base text-gray-900 cursor-pointer" onclick="openDealDetailModal(deals.find(d => d.id === '${deal.id}'))">${deal.name}</h4>
                 </div>
-                <p class="text-xs text-gray-600 mb-1 flex items-center"><i class="fas fa-building mr-2 text-gray-400"></i>${deal.company || 'N/A'}</p>
                 <p class="text-xs text-gray-500 flex items-center"><i class="fas fa-user-tie mr-2 text-gray-400"></i>${deal.salesName || 'N/A'}</p>
-                <p class="text-xs text-gray-500 flex items-center"><i class="fas fa-box-open mr-2 text-gray-400"></i>${deal.package || 'N/A'}</p> <!-- Display package -->
+                <p class="text-xs text-gray-500 flex items-center"><i class="fas fa-box-open mr-2 text-gray-400"></i>${deal.package || 'N/A'}</p>
                 <p class="text-xs text-gray-500 flex items-center"><i class="fas fa-industry mr-2 text-gray-400"></i>${deal.facility || 'N/A'}</p>
                 <p class="text-xs text-gray-500 flex items-center"><i class="fas fa-box mr-2 text-gray-400"></i>${deal.product || 'N/A'}</p>
                 
@@ -889,10 +884,10 @@
                 ` : ''}
 
                 <div class="mt-3 pt-3 border-t border-gray-100">
-                    <div class="flex justify-end mb-2"> <!-- New div for IDR value -->
+                    <div class="flex justify-end mb-2">
                         <span class="text-xs font-bold ${valueColor}">IDR ${deal.value.toLocaleString()}</span>
                     </div>
-                    <div class="flex justify-end space-x-2"> <!-- Existing div for buttons -->
+                    <div class="flex justify-end space-x-2">
                         <button onclick="openDealModal(deals.find(d => d.id === '${deal.id}'))" class="text-blue-500 hover:text-blue-700 font-medium flex items-center text-base"><i class="fas fa-edit"></i></button>
                         <button onclick="confirmDeleteDeal('${deal.id}')" class="text-red-500 hover:text-red-700 font-medium flex items-center text-base"><i class="fas fa-trash-alt"></i></button>
                     </div>
@@ -967,7 +962,7 @@
                                     const movedDeal = deals.find(d => d.id === dealId);
                                     if (movedDeal) {
                                         showToast(`Deal "${movedDeal.name}" moved to ${STAGE_NAMES[newStage]}!`);
-                                        addActivityToFirebase(`Moved ${movedDeal.name} from ${STAGE_NAMES[oldDeal.stage]} to ${STAGE_NAMES[newStage]}`);
+                                        addActivityToFirebase(`Moved ${movedDeal.name} from ${STAGE_NAMES[oldStage]} to ${STAGE_NAMES[newStage]}`);
                                     }
 
                                     // Reload all deals from Firebase to ensure UI is consistent with DB
