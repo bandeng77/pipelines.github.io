@@ -30,6 +30,7 @@
             flex-direction: column;
             background-color: #ffffff;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            box-sizing: border-box; /* Added for consistent box model */
         }
         .pipeline-stage-header {
             padding: 1.25rem;
@@ -41,13 +42,13 @@
             gap: 0.25rem; /* Smaller gap */
         }
         .pipeline-stage-header h3 {
-            font-size: 1.125rem; /* text-lg */
+            font-size: 1rem; /* text-base (changed from text-lg) */
             font-weight: 700; /* font-bold */
             color: #1f2937; /* gray-800 */
             flex-shrink: 0; /* Prevent title from shrinking */
         }
         .pipeline-stage-header span {
-            font-size: 0.875rem; /* text-sm */
+            font-size: 0.75rem; /* text-xs (changed from text-sm) */
             font-weight: 600; /* font-semibold */
             white-space: nowrap; /* Prevent value from wrapping */
         }
@@ -92,11 +93,13 @@
         }
 
         .stage-prospect { border-left: 5px solid #3B82F6; } /* Blue */
-        .stage-qualification { border-left: 5px solid #10B981; } /* Green */
-        .stage-proposal { border-left: 5px solid #F59E0B; } /* Amber */
-        .stage-negotiation { border-left: 5px solid #EC4899; } /* Pink */
-        .stage-closed-won { border-left: 5px solid #22C55E; } /* Emerald Green */
-        .stage-closed-lost { border-left: 5px solid #EF4444; } /* Red */
+        .stage-tender-stage-me { border-left: 5px solid #10B981; } /* Green */
+        .stage-tender-main-con { border-left: 5px solid #F59E0B; } /* Amber */
+        .stage-contract-award { border-left: 5px solid #EC4899; } /* Pink */
+        .stage-identified { border-left: 5px solid #22C55E; } /* Emerald Green */
+        .stage-on-hold { border-left: 5px solid #94a3b8; } /* Gray for On Hold */
+        .stage-lost { border-left: 5px solid #EF4444; } /* Red */
+
 
         /* Custom scrollbar */
         .pipeline-stage-content::-webkit-scrollbar {
@@ -212,11 +215,12 @@
                 <select id="filterStage" onchange="filterDeals()" class="w-full sm:w-1/4 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                     <option value="all">All Stages</option>
                     <option value="prospect">Prospect</option>
-                    <option value="qualification">Qualification</option>
-                    <option value="proposal">Proposal</option>
-                    <option value="negotiation">Negotiation</option>
-                    <option value="closed-won">Closed Won</option>
-                    <option value="closed-lost">Closed Lost</option>
+                    <option value="tender-stage-me">Tender Stage M&E</option>
+                    <option value="tender-main-con">Tender Main Con</option>
+                    <option value="contract-award">Contract Award</option>
+                    <option value="identified">Identified</option>
+                    <option value="on-hold">On Hold</option>
+                    <option value="lost">Lost</option>
                 </select>
                 <select id="filterPriority" onchange="filterDeals()" class="w-full sm:w-1/4 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                     <option value="all">All Priorities</option>
@@ -228,7 +232,7 @@
         </header>
 
         <!-- Pipeline Visualization -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-10">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-6 mb-10">
             <div class="pipeline-stage stage-prospect">
                 <div class="pipeline-stage-header">
                     <h3>Prospect</h3>
@@ -238,48 +242,57 @@
                     <!-- Deals and empty message will be rendered here -->
                 </div>
             </div>
-            <div class="pipeline-stage stage-qualification">
+            <div class="pipeline-stage stage-tender-stage-me">
                 <div class="pipeline-stage-header">
-                    <h3>Qualification</h3>
-                    <span id="qualification-value" class="text-green-600">IDR 0</span>
+                    <h3>Tender Stage M&E</h3>
+                    <span id="tender-stage-me-value" class="text-green-600">IDR 0</span>
                 </div>
-                <div id="qualification-stage" class="pipeline-stage-content space-y-4">
+                <div id="tender-stage-me-stage" class="pipeline-stage-content space-y-4">
                     <!-- Deals and empty message will be rendered here -->
                 </div>
             </div>
-            <div class="pipeline-stage stage-proposal">
+            <div class="pipeline-stage stage-tender-main-con">
                 <div class="pipeline-stage-header">
-                    <h3>Proposal</h3>
-                    <span id="proposal-value" class="text-amber-600">IDR 0</span>
+                    <h3>Tender Main Con</h3>
+                    <span id="tender-main-con-value" class="text-amber-600">IDR 0</span>
                 </div>
-                <div id="proposal-stage" class="pipeline-stage-content space-y-4">
+                <div id="tender-main-con-stage" class="pipeline-stage-content space-y-4">
                     <!-- Deals and empty message will be rendered here -->
                 </div>
             </div>
-            <div class="pipeline-stage stage-negotiation">
+            <div class="pipeline-stage stage-contract-award">
                 <div class="pipeline-stage-header">
-                    <h3>Negotiation</h3>
-                    <span id="negotiation-value" class="text-pink-600">IDR 0</span>
+                    <h3>Contract Award</h3>
+                    <span id="contract-award-value" class="text-pink-600">IDR 0</span>
                 </div>
-                <div id="negotiation-stage" class="pipeline-stage-content space-y-4">
+                <div id="contract-award-stage" class="pipeline-stage-content space-y-4">
                     <!-- Deals and empty message will be rendered here -->
                 </div>
             </div>
-            <div class="pipeline-stage stage-closed-won">
+            <div class="pipeline-stage stage-identified">
                 <div class="pipeline-stage-header">
-                    <h3>Closed Won</h3>
-                    <span id="closed-won-value" class="text-emerald-600">IDR 0</span>
+                    <h3>Identified</h3>
+                    <span id="identified-value" class="text-emerald-600">IDR 0</span>
                 </div>
-                <div id="closed-won-stage" class="pipeline-stage-content space-y-4">
+                <div id="identified-stage" class="pipeline-stage-content space-y-4">
                     <!-- Deals and empty message will be rendered here -->
                 </div>
             </div>
-            <div class="pipeline-stage stage-closed-lost">
+            <div class="pipeline-stage stage-on-hold">
                 <div class="pipeline-stage-header">
-                    <h3>Closed Lost</h3>
-                    <span id="closed-lost-value" class="text-red-600">IDR 0</span>
+                    <h3>On Hold</h3>
+                    <span id="on-hold-value" class="text-gray-600">IDR 0</span>
                 </div>
-                <div id="closed-lost-stage" class="pipeline-stage-content space-y-4">
+                <div id="on-hold-stage" class="pipeline-stage-content space-y-4">
+                    <!-- Deals and empty message will be rendered here -->
+                </div>
+            </div>
+            <div class="pipeline-stage stage-lost">
+                <div class="pipeline-stage-header">
+                    <h3>Lost</h3>
+                    <span id="lost-value" class="text-red-600">IDR 0</span>
+                </div>
+                <div id="lost-stage" class="pipeline-stage-content space-y-4">
                     <!-- Deals and empty message will be rendered here -->
                 </div>
             </div>
@@ -398,11 +411,12 @@
                             <label class="block text-gray-700 text-sm font-semibold mb-2" for="stage">Stage <span class="text-red-500">*</span></label>
                             <select id="stage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
                                 <option value="prospect">Prospect</option>
-                                <option value="qualification">Qualification</option>
-                                <option value="proposal">Proposal</option>
-                                <option value="negotiation">Negotiation</option>
-                                <option value="closed-won">Closed Won</option>
-                                <option value="closed-lost">Closed Lost</option>
+                                <option value="tender-stage-me">Tender Stage M&E</option>
+                                <option value="tender-main-con">Tender Main Con</option>
+                                <option value="contract-award">Contract Award</option>
+                                <option value="identified">Identified</option>
+                                <option value="on-hold">On Hold</option>
+                                <option value="lost">Lost</option>
                             </select>
                         </div>
                         <div class="mb-6">
@@ -548,14 +562,16 @@
 
         const STAGE_NAMES = {
             'prospect': 'Prospect',
-            'qualification': 'Qualification',
-            'proposal': 'Proposal',
-            'negotiation': 'Negotiation',
-            'closed-won': 'Closed Won',
-            'closed-lost': 'Closed Lost'
+            'tender-stage-me': 'Tender Stage M&E',
+            'tender-main-con': 'Tender Main Con',
+            'contract-award': 'Contract Award',
+            'identified': 'Identified',
+            'on-hold': 'On Hold',
+            'lost': 'Lost'
         };
 
-        const STAGE_ORDER = ['prospect', 'qualification', 'proposal', 'negotiation', 'closed-won', 'closed-lost'];
+        // Updated STAGE_ORDER to place 'on-hold' before 'lost'
+        const STAGE_ORDER = ['prospect', 'tender-stage-me', 'tender-main-con', 'contract-award', 'identified', 'on-hold', 'lost'];
 
         // --- Firebase Data Loading ---
         document.addEventListener('DOMContentLoaded', function() {
@@ -797,10 +813,12 @@
 
                 const emptyMessage = document.createElement('div');
                 emptyMessage.className = 'empty-stage-message text-center text-gray-400 p-4 text-sm'; /* Adjusted font size */
-                if (stageId === 'closed-won') {
-                    emptyMessage.innerHTML = '<i class="fas fa-trophy text-3xl mb-2 text-yellow-500"></i><p>Great job! No won deals yet.</p>'; /* Adjusted icon size */
-                } else if (stageId === 'closed-lost') {
+                if (stageId === 'identified') {
+                    emptyMessage.innerHTML = '<i class="fas fa-box-open text-3xl mb-2"></i><p>No deals here yet.</p>'; /* Changed logo for identified */
+                } else if (stageId === 'lost') {
                     emptyMessage.innerHTML = '<i class="fas fa-times-circle text-3xl mb-2 text-red-400"></i><p>No lost deals yet.</p>'; /* Adjusted icon size */
+                } else if (stageId === 'on-hold') {
+                    emptyMessage.innerHTML = '<i class="fas fa-pause-circle text-3xl mb-2 text-gray-400"></i><p>No deals on hold yet.</p>'; /* Adjusted icon size */
                 } else {
                     emptyMessage.innerHTML = '<i class="fas fa-box-open text-3xl mb-2"></i><p>No deals here yet.</p>'; /* Adjusted icon size */
                 }
@@ -843,8 +861,10 @@
             dealCard.dataset.priority = deal.priority;
 
             let valueColor = 'text-blue-600';
-            if (deal.stage === 'closed-won') valueColor = 'text-emerald-600';
-            if (deal.stage === 'closed-lost') valueColor = 'text-red-600';
+            if (deal.stage === 'identified') valueColor = 'text-emerald-600';
+            if (deal.stage === 'lost') valueColor = 'text-red-600';
+            if (deal.stage === 'on-hold') valueColor = 'text-gray-600';
+
 
             let priorityIcon = '';
             let priorityColor = '';
@@ -886,11 +906,12 @@
         function updatePipelineValues() {
             const stageValues = {
                 'prospect': 0,
-                'qualification': 0,
-                'proposal': 0,
-                'negotiation': 0,
-                'closed-won': 0,
-                'closed-lost': 0
+                'tender-stage-me': 0,
+                'tender-main-con': 0,
+                'contract-award': 0,
+                'identified': 0,
+                'on-hold': 0,
+                'lost': 0
             };
 
             deals.forEach(deal => {
@@ -1067,7 +1088,7 @@
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     plugins: {
-                        title: { display: true, text: 'Deal Size Distribution (Active & Won Deals)', font: { size: 16, weight: 'bold' }, color: '#333' },
+                        title: { display: true, text: 'Deal Size Distribution (Active & Identified Deals)', font: { size: 16, weight: 'bold' }, color: '#333' },
                         legend: { display: false },
                         tooltip: { callbacks: { label: function(context) { return `Deals: ${context.parsed.y}`; } } }
                     },
@@ -1080,14 +1101,14 @@
             charts.winRateChart = new Chart(winRateCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Closed Won', 'Closed Lost', 'In Progress'],
+                    labels: ['Identified', 'On Hold', 'Lost', 'In Progress'], // Adjusted labels
                     datasets: [{
-                        data: [won, lost, inProgress],
+                        data: [won, inProgress.onHold, lost, inProgress.other], // Adjusted data order
                         backgroundColor: [
-                            'rgba(34, 197, 94, 0.8)', 'rgba(239, 68, 68, 0.8)', 'rgba(59, 130, 246, 0.8)'
+                            'rgba(34, 197, 94, 0.8)', 'rgba(148, 163, 184, 0.8)', 'rgba(239, 68, 68, 0.8)', 'rgba(59, 130, 246, 0.8)'
                         ],
                         borderColor: [
-                            'rgba(34, 197, 94, 1)', 'rgba(239, 68, 68, 1)', 'rgba(59, 130, 246, 1)'
+                            'rgba(34, 197, 94, 1)', 'rgba(148, 163, 184, 1)', 'rgba(239, 68, 68, 1)', 'rgba(59, 130, 246, 1)'
                         ],
                         borderWidth: 1
                     }]
@@ -1095,7 +1116,7 @@
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     plugins: {
-                        title: { display: true, text: 'Win Rate & Pipeline Status', font: { size: 16, weight: 'bold' }, color: '#333' },
+                        title: { display: true, text: 'Identified Rate & Pipeline Status', font: { size: 16, weight: 'bold' }, color: '#333' },
                         legend: { position: 'right', labels: { font: { size: 12 } } },
                         tooltip: { callbacks: { label: function(context) { let label = context.label || ''; if (label) { label += ': '; } if (context.parsed !== null) { label += context.parsed; } return label; } } }
                     }
@@ -1138,7 +1159,7 @@
         function calculateDealSizeDistribution() {
             const distribution = [0, 0, 0, 0, 0];
             deals.forEach(deal => {
-                if (deal.stage !== 'closed-lost') {
+                if (deal.stage !== 'lost') {
                     if (deal.value < 1000000) { distribution[0]++; } // < IDR 1 Jt
                     else if (deal.value >= 1000000 && deal.value < 5000000) { distribution[1]++; } // IDR 1 Jt-5 Jt
                     else if (deal.value >= 5000000 && deal.value < 10000000) { distribution[2]++; } // IDR 5 Jt-10 Jt
@@ -1150,10 +1171,11 @@
         }
 
         function calculateWinRate() {
-            let closedWon = deals.filter(d => d.stage === 'closed-won').length;
-            let closedLost = deals.filter(d => d.stage === 'closed-lost').length;
-            let inProgress = deals.filter(d => d.stage !== 'closed-won' && d.stage !== 'closed-lost').length;
-            return { won: closedWon, lost: closedLost, inProgress: inProgress };
+            let identified = deals.filter(d => d.stage === 'identified').length;
+            let lost = deals.filter(d => d.stage === 'lost').length;
+            let onHold = deals.filter(d => d.stage === 'on-hold').length;
+            let otherInProgress = deals.filter(d => d.stage !== 'identified' && d.stage !== 'lost' && d.stage !== 'on-hold').length;
+            return { won: identified, lost: lost, inProgress: { onHold: onHold, other: otherInProgress } };
         }
 
         function calculatePipelineValueTrend() {
@@ -1163,7 +1185,9 @@
                 const monthYearKey = `${deal.created.getFullYear()}-${(deal.created.getMonth() + 1).toString().padStart(2, '0')}`;
                 allDates.add(monthYearKey);
                 if (!monthlyValues[monthYearKey]) { monthlyValues[monthYearKey] = 0; }
-                if (deal.stage !== 'closed-lost') { monthlyValues[monthYearKey] += deal.value; }
+                if (deal.stage !== 'lost') {
+                    monthlyValues[monthYearKey] += deal.value;
+                }
             });
             const sortedMonthKeys = Array.from(allDates).sort();
             const labels = sortedMonthKeys.map(key => {
