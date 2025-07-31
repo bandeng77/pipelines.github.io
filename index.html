@@ -23,6 +23,7 @@
         }
         .pipeline-stage {
             min-height: 480px; /* Increased min-height for better drag-drop */
+            max-height: 600px; /* Added max-height to enable scroll */
             transition: all 0.3s ease;
             border-radius: 0.75rem;
             overflow: hidden;
@@ -56,9 +57,10 @@
         .pipeline-stage-content {
             flex-grow: 1;
             padding: 1rem;
-            overflow-y: auto;
+            overflow-y: auto; /* This enables vertical scrolling */
             -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
             min-height: 100px; /* Ensure enough space for dropping */
+            height: 100%; /* Ensure content fills available height for scroll to work */
         }
         .deal-card {
             transition: transform 0.2s, box-shadow 0.2s;
@@ -186,6 +188,19 @@
             color: #6b7280; /* gray-500 */
             margin-top: 0.25rem;
         }
+
+        /* Custom styles for smaller icons */
+        .deal-card .text-xs i { /* Target ikon di dalam span prioritas */
+            font-size: 0.75rem; /* Sesuaikan ukuran ikon agar sama dengan teks atau sedikit lebih besar */
+        }
+        .deal-card .flex.space-x-2 button i {
+            font-size: 0.9rem; /* Mengurangi ukuran ikon edit/delete */
+            vertical-align: middle; /* Membantu penataan vertikal */
+        }
+        .deal-card .flex.space-x-2 button {
+            padding: 0.25rem; /* Mengurangi padding tombol edit/delete */
+            font-size: 0.875rem; /* Mengurangi ukuran font tombol edit/delete */
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -312,6 +327,14 @@
                 </div>
                 <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
                     <canvas id="winRateChart"></canvas>
+                </div>
+                <!-- NEW CHART: Deals by Sales Person -->
+                <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                    <canvas id="dealsBySalesChart"></canvas>
+                </div>
+                <!-- NEW CHART: Deals by Product/Package -->
+                <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                    <canvas id="dealsByProductPackageChart"></canvas>
                 </div>
             </div>
             <div class="mt-8 bg-gray-50 p-4 rounded-lg shadow-inner">
@@ -1134,6 +1157,58 @@
         }
 
         // --- Chart Functions ---
+        // Helper function to generate random colors for charts
+        function generateRandomColors(num) {
+            const colors = [];
+            for (let i = 0; i < num; i++) {
+                const r = Math.floor(Math.random() * 200);
+                const g = Math.floor(Math.random() * 200);
+                const b = Math.floor(Math.random() * 200);
+                colors.push(`rgba(${r}, ${g}, ${b}, 0.8)`);
+            }
+            return colors;
+        }
+
+        // NEW FUNCTION: Calculate Deals by Sales Person
+        function calculateDealsBySalesPerson() {
+            const salesData = {};
+            deals.forEach(deal => {
+                if (deal.stage !== 'lost' && deal.salesName) { // Only active deals with a sales person
+                    salesData[deal.salesName] = (salesData[deal.salesName] || 0) + 1;
+                }
+            });
+
+            const labels = Object.keys(salesData);
+            const data = Object.values(salesData);
+            const colors = generateRandomColors(labels.length); // Generate colors dynamically
+
+            return { salesLabels: labels, salesData: data, salesColors: colors };
+        }
+
+        // NEW FUNCTION: Calculate Deals by Product/Package
+        function calculateDealsByProductPackage() {
+            const productPackageData = {};
+            deals.forEach(deal => {
+                if (deal.stage !== 'lost') { // Only active deals
+                    let key = 'N/A';
+                    if (deal.product && deal.package) {
+                        key = `${deal.product} (${deal.package})`;
+                    } else if (deal.product) {
+                        key = deal.product;
+                    } else if (deal.package) {
+                        key = deal.package;
+                    }
+                    productPackageData[key] = (productPackageData[key] || 0) + 1;
+                }
+            });
+
+            const labels = Object.keys(productPackageData);
+            const data = Object.values(productPackageData);
+            const colors = generateRandomColors(labels.length); // Generate colors dynamically
+
+            return { productPackageLabels: labels, productPackageData: data, productPackageColors: colors };
+        }
+
         function updateCharts() {
             // Destroy existing chart instances before creating new ones
             for (const chartId in charts) {
@@ -1143,6 +1218,7 @@
             }
             charts = {}; // Clear the charts object
 
+            // Deal Size Distribution Chart
             const dealSizeCtx = document.getElementById('dealSizeChart').getContext('2d');
             charts.dealSizeChart = new Chart(dealSizeCtx, {
                 type: 'bar',
@@ -1200,6 +1276,59 @@
                 }
             });
 
+            // NEW CHART: Deals by Sales Person
+            const dealsBySalesCtx = document.getElementById('dealsBySalesChart').getContext('2d');
+            const { salesLabels, salesData, salesColors } = calculateDealsBySalesPerson();
+            charts.dealsBySalesChart = new Chart(dealsBySalesCtx, {
+                type: 'bar',
+                data: {
+                    labels: salesLabels,
+                    datasets: [{
+                        label: 'Number of Deals',
+                        data: salesData,
+                        backgroundColor: salesColors,
+                        borderColor: salesColors.map(color => color.replace('0.8', '1')),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: 'Deals by Sales Person (Active Deals)', font: { size: 16, weight: 'bold' }, color: '#333' },
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: function(context) { return `Deals: ${context.parsed.y}`; } } }
+                    },
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'Number of Deals' }, ticks: { precision: 0 } }, x: { title: { display: true, text: 'Sales Person' } } }
+                }
+            });
+
+            // NEW CHART: Deals by Product/Package
+            const dealsByProductPackageCtx = document.getElementById('dealsByProductPackageChart').getContext('2d');
+            const { productPackageLabels, productPackageData, productPackageColors } = calculateDealsByProductPackage();
+            charts.dealsByProductPackageChart = new Chart(dealsByProductPackageCtx, {
+                type: 'pie', // Pie chart for distribution
+                data: {
+                    labels: productPackageLabels,
+                    datasets: [{
+                        label: 'Number of Deals',
+                        data: productPackageData,
+                        backgroundColor: productPackageColors,
+                        borderColor: productPackageColors.map(color => color.replace('0.8', '1')),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: 'Deals by Product/Package (Active Deals)', font: { size: 16, weight: 'bold' }, color: '#333' },
+                        legend: { position: 'right', labels: { font: { size: 12 } } },
+                        tooltip: { callbacks: { label: function(context) { let label = context.label || ''; if (label) { label += ': '; } if (context.parsed !== null) { label += context.parsed; } return label; } } }
+                    }
+                }
+            });
+
+
+            // Pipeline Value Trend Over Time Chart
             const pipelineValueCtx = document.getElementById('pipelineValueChart').getContext('2d');
             const { labels, data } = calculatePipelineValueTrend();
             charts.pipelineValueChart = new Chart(pipelineValueCtx, {
