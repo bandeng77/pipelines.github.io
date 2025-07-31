@@ -317,10 +317,9 @@
                     <!-- Column 1 -->
                     <div>
                         <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="dealName">Project Name <span class="text-red-500">*</span></label>
+                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="dealName">Deal Name <span class="text-red-500">*</span></label>
                             <input type="text" id="dealName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
                         </div>
-                        <!-- Company Name Removed -->
                         <div class="mb-4">
                             <label class="block text-gray-700 text-sm font-semibold mb-2" for="salesName">Sales Name</label>
                             <select id="salesName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
@@ -433,6 +432,14 @@
             <h2 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900" id="dealDetailTitle">Deal Details</h2>
             <div class="space-y-4 text-sm">
                 <div>
+                    <p class="text-gray-700 font-semibold">Sales Name:</p>
+                    <p id="detailSalesName" class="text-gray-900"></p>
+                </div>
+                <div>
+                    <p class="text-gray-700 font-semibold">Value (IDR):</p>
+                    <p id="detailValue" class="text-gray-900"></p>
+                </div>
+                <div>
                     <p class="text-gray-700 font-semibold">Package:</p>
                     <p id="detailPackage" class="text-gray-900"></p>
                 </div>
@@ -459,6 +466,10 @@
                 <div>
                     <p class="text-gray-700 font-semibold">PIC:</p>
                     <p id="detailPIC" class="text-gray-900"></p>
+                </div>
+                <div>
+                    <p class="text-gray-700 font-semibold">Created Date:</p>
+                    <p id="detailCreatedDate" class="text-gray-900"></p>
                 </div>
             </div>
             <div class="flex justify-end space-x-3 mt-6">
@@ -629,7 +640,6 @@
                 document.getElementById('modalTitle').innerText = 'Edit Deal';
                 document.getElementById('dealId').value = deal.id;
                 document.getElementById('dealName').value = deal.name;
-                // Company Name Removed
                 document.getElementById('salesName').value = deal.salesName || '';
                 document.getElementById('value').value = deal.value;
                 document.getElementById('package').value = deal.package || '';
@@ -660,6 +670,8 @@
 
         function openDealDetailModal(deal) {
             document.getElementById('dealDetailTitle').innerText = `Details for ${deal.name}`;
+            document.getElementById('detailSalesName').innerText = deal.salesName || 'N/A';
+            document.getElementById('detailValue').innerText = `IDR ${deal.value.toLocaleString()}`;
             document.getElementById('detailPackage').innerText = deal.package || 'N/A';
             document.getElementById('detailProduct').innerText = deal.product || 'N/A';
             document.getElementById('detailFacility').innerText = deal.facility || 'N/A';
@@ -667,6 +679,7 @@
             document.getElementById('detailConsultant').innerText = deal.consultant || 'N/A';
             document.getElementById('detailContractor').innerText = deal.contractor || 'N/A';
             document.getElementById('detailPIC').innerText = deal.pic || 'N/A';
+            document.getElementById('detailCreatedDate').innerText = deal.created ? deal.created.toLocaleDateString() : 'N/A';
             openModal('dealDetailModal');
         }
 
@@ -702,7 +715,6 @@
         async function saveDeal() {
             const dealId = document.getElementById('dealId').value;
             const dealName = document.getElementById('dealName').value;
-            // Company Name Removed
             const salesName = document.getElementById('salesName').value;
             const value = parseFloat(document.getElementById('value').value) || 0;
             const package = document.getElementById('package').value;
@@ -717,7 +729,6 @@
 
             const dealData = {
                 name: dealName,
-                // company: companyName, // Company Name Removed
                 salesName: salesName,
                 value: value,
                 package: package,
@@ -802,7 +813,7 @@
 
             deals.forEach(deal => {
                 const matchesSearch = (deal.name.toLowerCase().includes(searchTerm) ||
-                                     (deal.salesName && deal.salesName.toLowerCase().includes(searchTerm))); // Search by salesName, company removed
+                                     (deal.salesName && deal.salesName.toLowerCase().includes(searchTerm)));
                 const matchesStage = (filterStage === 'all' || deal.stage === filterStage);
                 const matchesPriority = (filterPriority === 'all' || deal.priority === filterPriority);
 
@@ -847,47 +858,17 @@
                 priorityColor = 'bg-blue-100 text-blue-800';
             }
 
-            // Calculate progress based on stage order
-            const currentStageIndex = STAGE_ORDER.indexOf(deal.stage);
-            const activeStages = STAGE_ORDER.slice(0, STAGE_ORDER.indexOf('closed-won'));
-            const totalActiveStages = activeStages.length;
-            let progress = 0;
-            if (currentStageIndex >= 0 && currentStageIndex < totalActiveStages) {
-                progress = ((currentStageIndex + 1) / totalActiveStages) * 100;
-            } else if (deal.stage === 'closed-won') {
-                progress = 100;
-            }
-
             dealCard.innerHTML = `
                 <div class="flex justify-between items-start mb-2">
                     <h4 class="font-semibold text-base text-gray-900 cursor-pointer" onclick="openDealDetailModal(deals.find(d => d.id === '${deal.id}'))">${deal.name}</h4>
                 </div>
-                <p class="text-xs text-gray-350 flex items-center"><i class="fas fa-user-tie mr-2 text-gray-400"></i>${deal.salesName || 'N/A'}</p>
-                <p class="text-xs text-gray-350 flex items-center"><i class="fas fa-box-open mr-2 text-gray-400"></i>${deal.package || 'N/A'}</p>
-                <p class="text-xs text-gray-350 flex items-center"><i class="fas fa-industry mr-2 text-gray-400"></i>${deal.facility || 'N/A'}</p>
-                <p class="text-xs text-gray-350 flex items-center"><i class="fas fa-box mr-2 text-gray-400"></i>${deal.product || 'N/A'}</p>
+                <p class="text-xs text-gray-500 flex items-center"><i class="fas fa-user-tie mr-2 text-gray-400"></i>${deal.salesName || 'N/A'}</p>
                 
-                <div class="flex justify-between items-center mt-3">
+                <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
                     <span class="text-xs font-medium ${priorityColor} px-2 py-1 rounded-full flex items-center">
                         ${priorityIcon} <span class="ml-1">${deal.priority.charAt(0).toUpperCase() + deal.priority.slice(1)}</span>
                     </span>
-                    <span class="text-xs text-gray-400">${deal.created.toLocaleDateString()}</span>
-                </div>
-
-                ${deal.stage !== 'closed-won' && deal.stage !== 'closed-lost' ? `
-                <div class="mt-3">
-                    <div class="w-full bg-gray-200 rounded-full h-2.5">
-                        <div class="bg-blue-500 h-2.5 rounded-full" style="width: ${progress}%"></div>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1 text-right">${Math.round(progress)}% Progress</p>
-                </div>
-                ` : ''}
-
-                <div class="mt-3 pt-3 border-t border-gray-100">
-                    <div class="flex justify-end mb-2">
-                        <span class="text-xs font-bold ${valueColor}">IDR ${deal.value.toLocaleString()}</span>
-                    </div>
-                    <div class="flex justify-end space-x-2">
+                    <div class="flex space-x-2">
                         <button onclick="openDealModal(deals.find(d => d.id === '${deal.id}'))" class="text-blue-500 hover:text-blue-700 font-medium flex items-center text-base"><i class="fas fa-edit"></i></button>
                         <button onclick="confirmDeleteDeal('${deal.id}')" class="text-red-500 hover:text-red-700 font-medium flex items-center text-base"><i class="fas fa-trash-alt"></i></button>
                     </div>
