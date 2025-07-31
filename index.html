@@ -566,7 +566,7 @@
 
         const STAGE_NAMES = {
             'prospect': 'Prospect',
-            'tender-stage-me': 'Tender Stage M&E',
+            'tender-stage-me': 'Tender Stage M&E', // Kunci ini harus konsisten
             'tender-main-con': 'Tender Main Con',
             'contract-award': 'Contract Award',
             'identified': 'Identified',
@@ -739,9 +739,9 @@
             for (const chartId in charts) {
                 if (charts[chartId]) {
                     charts[chartId].destroy();
-                    delete charts[chartId]; // Remove reference
                 }
             }
+            charts = {}; // Clear the charts object
         }
         // --- END MODIFIED FUNCTIONS ---
 
@@ -857,6 +857,13 @@
                 const matchesPriority = (filterPriority === 'all' || deal.priority === filterPriority);
 
                 if (matchesSearch && matchesStage && matchesPriority) {
+                    // Tambahkan console.log ini untuk debugging
+                    console.log("Attempting to render deal:", deal.name, "with stage:", deal.stage);
+                    const targetStageElement = document.getElementById(`${deal.stage}-stage`);
+                    if (!targetStageElement) {
+                        console.error(`ERROR: Target stage element not found for deal "${deal.name}". Stage value: "${deal.stage}". Please check HTML IDs and deal data.`);
+                        return; // Lewati deal ini jika elemen stage tidak ditemukan
+                    }
                     renderDeal(deal);
                 }
             });
@@ -916,6 +923,7 @@
                 </div>
             `;
 
+            // Baris ini adalah penyebab error sebelumnya
             document.getElementById(`${deal.stage}-stage`).appendChild(dealCard);
         }
 
@@ -973,10 +981,14 @@
                             console.log('Sortable onEnd triggered!'); // Debugging
                             const dealId = evt.item.dataset.id;
                             const oldStage = evt.from.id.replace('-stage', '');
-                            const newStage = evt.to.id.replace('-stage', '');
+                            // Perbaikan di sini: Pastikan newStage sesuai dengan kunci STAGE_NAMES
+                            // evt.to.id akan menjadi 'tender-stage-me-stage'
+                            const newStage = evt.to.id.replace('-stage', ''); 
+                            
+                            console.log("evt.to.id (raw):", evt.to.id); // Tambahkan ini untuk verifikasi
                             console.log(`Deal ID: ${dealId}, Old Stage: ${oldStage}, New Stage: ${newStage}`); // Debugging log
 
-                            // Only update if the stage actually changed
+                            // Hanya update jika stage sebenarnya berubah
                             if (oldStage !== newStage) {
                                 try {
                                     // Update deal in Firebase
@@ -986,8 +998,11 @@
                                     // Find the deal in our local array to get its name for toast/activity
                                     const movedDeal = deals.find(d => d.id === dealId);
                                     if (movedDeal) {
-                                        showToast(`Deal "${movedDeal.name}" moved to ${STAGE_NAMES[newStage]}!`);
-                                        addActivityToFirebase(`Moved ${movedDeal.name} from ${STAGE_NAMES[oldStage]} to ${STAGE_NAMES[newStage]}`);
+                                        // Pastikan STAGE_NAMES[newStage] tidak undefined
+                                        const newStageName = STAGE_NAMES[newStage] || newStage; // Fallback jika tidak ditemukan
+                                        const oldStageName = STAGE_NAMES[oldStage] || oldStage; // Fallback jika tidak ditemukan
+                                        showToast(`Deal "${movedDeal.name}" moved to ${newStageName}!`);
+                                        addActivityToFirebase(`Moved ${movedDeal.name} from ${oldStageName} to ${newStageName}`);
                                     }
 
                                     // Reload all deals from Firebase to ensure UI is consistent with DB
