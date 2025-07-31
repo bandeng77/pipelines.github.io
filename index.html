@@ -579,6 +579,7 @@
 
         // --- Firebase Data Loading ---
         document.addEventListener('DOMContentLoaded', function() {
+            console.log("DOM Content Loaded. Starting data loading...");
             loadDealsFromFirebase(); // Start loading deals
             loadActivitiesFromFirebase(); // Start loading activities
 
@@ -590,7 +591,6 @@
 
         async function loadDealsFromFirebase() {
             try {
-                // Fetch deals, ordered by creation date (or any other relevant field)
                 const snapshot = await dealsCollection.orderBy('created', 'asc').get();
                 deals = snapshot.docs.map(doc => {
                     const data = doc.data();
@@ -602,7 +602,7 @@
                         projectDate: data.projectDate ? data.projectDate.toDate() : null // Tambahkan ini
                     };
                 });
-                console.log("Deals loaded from Firebase:", deals);
+                console.log("Deals loaded from Firebase:", deals); // Debugging log
                 renderAllDeals(); // Render after loading
                 updatePipelineValues(); // Update values after loading
                 initSortable(); // Re-initialize Sortable after DOM is updated
@@ -614,7 +614,6 @@
 
         async function loadActivitiesFromFirebase() {
             try {
-                // Fetch latest 20 activities, ordered by date descending
                 const snapshot = await activitiesCollection.orderBy('date', 'desc').limit(20).get();
                 activities = snapshot.docs.map(doc => {
                     const data = doc.data();
@@ -625,7 +624,7 @@
                         date: data.date ? data.date.toDate() : new Date() 
                     };
                 });
-                console.log("Activities loaded from Firebase:", activities);
+                console.log("Activities loaded from Firebase:", activities); // Debugging log
                 updateActivityBadge(); // Update badge after loading
             } catch (error) {
                 console.error("Error loading activities from Firebase:", error);
@@ -728,78 +727,78 @@
             closeModal('deleteModal');
         }
 
+        // --- MODIFIED showStats() and hideStats() FUNCTIONS ---
         function showStats() {
             document.getElementById('stats-section').classList.remove('hidden');
-            updateCharts();
+            updateCharts(); // Ensure charts are updated with the latest data
         }
 
         function hideStats() {
             document.getElementById('stats-section').classList.add('hidden');
+            // Destroy existing chart instances to free up memory and prevent rendering issues
+            for (const chartId in charts) {
+                if (charts[chartId]) {
+                    charts[chartId].destroy();
+                    delete charts[chartId]; // Remove reference
+                }
+            }
         }
+        // --- END MODIFIED FUNCTIONS ---
 
         // --- Deal CRUD Operations (Firebase Integrated) ---
-async function saveDeal() {
-    const dealId = document.getElementById('dealId').value;
-    const dealName = document.getElementById('dealName').value;
-    const salesName = document.getElementById('salesName').value;
-    const value = parseFloat(document.getElementById('value').value) || 0;
-    const packageVal = document.getElementById('package').value;
-    const product = document.getElementById('product').value;
-    const facility = document.getElementById('facility').value;
-    const discount = document.getElementById('discount').value;
-    const consultant = document.getElementById('consultant').value;
-    const contractor = document.getElementById('contractor').value;
-    const pic = document.getElementById('pic').value;
-    const stage = document.getElementById('stage').value;
-    const priority = document.getElementById('priority').value;
-    const projectDate = document.getElementById('projectDate').value;
+        async function saveDeal() {
+            const dealId = document.getElementById('dealId').value;
+            const dealName = document.getElementById('dealName').value;
+            const salesName = document.getElementById('salesName').value;
+            const value = parseFloat(document.getElementById('value').value) || 0;
+            const package = document.getElementById('package').value;
+            const product = document.getElementById('product').value;
+            const facility = document.getElementById('facility').value;
+            const discount = document.getElementById('discount').value;
+            const consultant = document.getElementById('consultant').value;
+            const contractor = document.getElementById('contractor').value;
+            const pic = document.getElementById('pic').value;
+            const stage = document.getElementById('stage').value;
+            const priority = document.getElementById('priority').value;
+            const projectDate = document.getElementById('projectDate').value; // Tambahkan ini
 
-    const dealData = {
-        name: dealName,
-        salesName: salesName,
-        value: value,
-        package: packageVal,
-        product: product,
-        facility: facility,
-        discount: discount,
-        consultant: consultant,
-        contractor: contractor,
-        pic: pic,
-        stage: stage,
-        priority: priority,
-        projectDate: projectDate ? new Date(projectDate) : null,
-    };
+            const dealData = {
+                name: dealName,
+                salesName: salesName,
+                value: value,
+                package: package,
+                product: product,
+                facility: facility,
+                discount: discount,
+                consultant: consultant,
+                contractor: contractor,
+                pic: pic,
+                stage: stage,
+                priority: priority,
+                projectDate: projectDate ? new Date(projectDate) : null, // Tambahkan ini, konversi ke Date object
+            };
 
-    try {
-        if (dealId) {
-            // Update existing deal
-            const oldDeal = deals.find(d => d.id === dealId);
-            await dealsCollection.doc(dealId).update(dealData);
-            showToast(`Deal "${dealName}" updated!`);
-            addActivityToFirebase(`Edited deal: ${dealName} (from ${STAGE_NAMES[oldDeal.stage]} to ${STAGE_NAMES[stage]})`);
-        } else {
-            // Add new deal
-            dealData.created = firebase.firestore.FieldValue.serverTimestamp();
-            const docRef = await dealsCollection.add(dealData);
-            showToast(`New deal "${dealName}" added!`);
-            addActivityToFirebase(`Added new deal: ${dealName} in ${STAGE_NAMES[stage]} stage`);
-
-            // Tambahkan ke array lokal agar bisa langsung di-render dan drag & drop
-            dealData.id = docRef.id;
-            dealData.created = new Date(); // sementara sebelum server timestamp kembali
-            deals.push(dealData);
-
-            renderAllDeals();
-            updatePipelineValues();
-            initSortable();
+            try {
+                if (dealId) {
+                    const oldDeal = deals.find(d => d.id == dealId);
+                    await dealsCollection.doc(dealId).update(dealData);
+                    console.log(`Deal "${dealName}" updated in Firestore.`); // Debugging log
+                    showToast(`Deal "${dealName}" updated!`);
+                    addActivityToFirebase(`Edited deal: ${dealName} (from ${STAGE_NAMES[oldDeal.stage]} to ${STAGE_NAMES[stage]})`);
+                } else {
+                    dealData.created = firebase.firestore.FieldValue.serverTimestamp();
+                    await dealsCollection.add(dealData);
+                    console.log(`New deal "${dealName}" added to Firestore.`); // Debugging log
+                    showToast(`New deal "${dealName}" added!`);
+                    addActivityToFirebase(`Added new deal: ${dealName} in ${STAGE_NAMES[stage]} stage`);
+                }
+                await loadDealsFromFirebase(); // Reload all deals to update UI
+                closeDealModal();
+            } catch (error) {
+                console.error("Error saving deal to Firebase:", error);
+                showToast("Error saving deal. Please try again.", 5000);
+            }
         }
-
-        closeDealModal();
-    } catch (error) {
-        console.error("Error saving deal to Firebase:", error);
-        showToast("Error saving deal. Please try again.", 5000);
-    }
-}
 
         async function confirmDeleteDeal(dealId) {
             const deal = deals.find(d => d.id === dealId);
@@ -814,6 +813,7 @@ async function saveDeal() {
             try {
                 const dealToDelete = deals.find(d => d.id === dealId);
                 await dealsCollection.doc(dealId).delete();
+                console.log(`Deal "${dealToDelete.name}" deleted from Firestore.`); // Debugging log
                 showToast(`Deal "${dealToDelete.name}" deleted!`);
                 addActivityToFirebase(`Deleted deal: ${dealToDelete.name}`);
                 await loadDealsFromFirebase(); // Reload all deals
@@ -974,24 +974,27 @@ async function saveDeal() {
                             const dealId = evt.item.dataset.id;
                             const oldStage = evt.from.id.replace('-stage', '');
                             const newStage = evt.to.id.replace('-stage', '');
+                            console.log(`Deal ID: ${dealId}, Old Stage: ${oldStage}, New Stage: ${newStage}`); // Debugging log
 
                             // Only update if the stage actually changed
                             if (oldStage !== newStage) {
                                 try {
                                     // Update deal in Firebase
                                     await dealsCollection.doc(dealId).update({ stage: newStage });
+                                    console.log(`Firestore update successful for deal ${dealId} to stage ${newStage}.`); // Debugging log
                                     
                                     // Find the deal in our local array to get its name for toast/activity
                                     const movedDeal = deals.find(d => d.id === dealId);
                                     if (movedDeal) {
                                         showToast(`Deal "${movedDeal.name}" moved to ${STAGE_NAMES[newStage]}!`);
-                                        addActivityToFirebase(`Moved ${movedDeal.name} from ${STAGE_NAMES[oldDeal]} to ${STAGE_NAMES[newStage]}`);
+                                        addActivityToFirebase(`Moved ${movedDeal.name} from ${STAGE_NAMES[oldStage]} to ${STAGE_NAMES[newStage]}`);
                                     }
 
                                     // Reload all deals from Firebase to ensure UI is consistent with DB
                                     await loadDealsFromFirebase(); 
+                                    // Update charts if stats are currently visible
                                     if (!document.getElementById('stats-section').classList.contains('hidden')) {
-                                        updateCharts(); // Update charts if stats are visible
+                                        updateCharts(); 
                                     }
                                 } catch (error) {
                                     console.error("Error updating deal stage in Firebase:", error);
@@ -1000,10 +1003,6 @@ async function saveDeal() {
                                     await loadDealsFromFirebase(); 
                                 }
                             } else {
-                                // If deal was dropped back into the same stage, just re-render to ensure order is saved
-                                // Sortable.js automatically updates the DOM order, but we need to persist it if order matters
-                                // For simplicity, we're not persisting order within a stage in this example.
-                                // If you need to persist order, you'd update a 'position' field in Firebase here.
                                 console.log("Deal dropped in the same stage. No Firebase update needed for stage change.");
                             }
                         }
@@ -1019,6 +1018,7 @@ async function saveDeal() {
                     text: text,
                     date: firebase.firestore.FieldValue.serverTimestamp()
                 });
+                console.log(`Activity added to Firestore: "${text}"`); // Debugging log
                 await loadActivitiesFromFirebase(); // Reload activities to update the feed and badge
             } catch (error) {
                 console.error("Error adding activity to Firebase:", error);
@@ -1080,11 +1080,13 @@ async function saveDeal() {
 
         // --- Chart Functions ---
         function updateCharts() {
+            // Destroy existing chart instances before creating new ones
             for (const chartId in charts) {
                 if (charts[chartId]) {
                     charts[chartId].destroy();
                 }
             }
+            charts = {}; // Clear the charts object
 
             const dealSizeCtx = document.getElementById('dealSizeChart').getContext('2d');
             charts.dealSizeChart = new Chart(dealSizeCtx, {
