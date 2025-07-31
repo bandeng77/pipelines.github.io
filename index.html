@@ -93,7 +93,7 @@
         }
 
         .stage-prospect { border-left: 5px solid #3B82F6; } /* Blue */
-        .stage-tender-me-stage { border-left: 5px solid #10B981; } /* Green */
+        .stage-tender-stage-me { border-left: 5px solid #10B981; } /* Green */
         .stage-tender-main-con { border-left: 5px solid #F59E0B; } /* Amber */
         .stage-contract-award { border-left: 5px solid #EC4899; } /* Pink */
         .stage-identified { border-left: 5px solid #22C55E; } /* Emerald Green */
@@ -215,7 +215,7 @@
                 <select id="filterStage" onchange="filterDeals()" class="w-full sm:w-1/4 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                     <option value="all">All Stages</option>
                     <option value="prospect">Prospect</option>
-                    <option value="tender-me-stage">Tender Stage M&E</option>
+                    <option value="tender-stage-me">Tender Stage M&E</option>
                     <option value="tender-main-con">Tender Main Con</option>
                     <option value="contract-award">Contract Award</option>
                     <option value="identified">Identified</option>
@@ -242,12 +242,12 @@
                     <!-- Deals and empty message will be rendered here -->
                 </div>
             </div>
-            <div class="pipeline-stage stage-tender-me-stage">
+            <div class="pipeline-stage stage-tender-stage-me">
                 <div class="pipeline-stage-header">
-                    <h3>Tender Stage M&E</h3> <!-- MODIFIED: Changed display name here -->
-                    <span id="tender-me-stage-value" class="text-green-600">IDR 0</span>
+                    <h3>Tender ME</h3> <!-- MODIFIED: Changed display name here -->
+                    <span id="tender-stage-me-value" class="text-green-600">IDR 0</span>
                 </div>
-                <div id="tender-me-stage-stage" class="pipeline-stage-content space-y-4">
+                <div id="tender-stage-me-stage" class="pipeline-stage-content space-y-4">
                     <!-- Deals and empty message will be rendered here -->
                 </div>
             </div>
@@ -347,9 +347,18 @@
                                 <option value="Engineering">Engineering</option>
                             </select>
                         </div>
+                        <!-- BEFORE DISCOUNT, DISCOUNT, VALUE FIELDS -->
                         <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="value">Value (IDR)</label>
-                            <input type="number" id="value" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0">
+                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="beforeDiscount">Before Discount (IDR)</label>
+                            <input type="number" id="beforeDiscount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" oninput="calculateValue()">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="discount">Discount (%)</label>
+                            <input type="number" id="discount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" max="100" oninput="calculateValue()">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="value">Value (IDR) <span class="text-red-500">*</span></label>
+                            <input type="number" id="value" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" readonly required>
                         </div>
                     </div>
                     <!-- Column 2 -->
@@ -388,10 +397,6 @@
                                 <option value="Other">Other</option>
                             </select>
                         </div>
-                        <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="discount">Discount</label>
-                            <input type="text" id="discount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                        </div>
                     </div>
                     <!-- Column 3 -->
                     <div>
@@ -415,7 +420,7 @@
                             <label class="block text-gray-700 text-sm font-semibold mb-2" for="stage">Stage <span class="text-red-500">*</span></label>
                             <select id="stage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
                                 <option value="prospect">Prospect</option>
-                                <option value="tender-me-stage">Tender Stage M&E</option>
+                                <option value="tender-stage-me">Tender Stage M&E</option>
                                 <option value="tender-main-con">Tender Main Con</option>
                                 <option value="contract-award">Contract Award</option>
                                 <option value="identified">Identified</option>
@@ -455,6 +460,14 @@
                     <p id="detailSalesName" class="text-gray-900"></p>
                 </div>
                 <div>
+                    <p class="text-gray-700 font-semibold">Before Discount (IDR):</p>
+                    <p id="detailBeforeDiscount" class="text-gray-900"></p>
+                </div>
+                <div>
+                    <p class="text-gray-700 font-semibold">Discount:</p>
+                    <p id="detailDiscount" class="text-gray-900"></p>
+                </div>
+                <div>
                     <p class="text-gray-700 font-semibold">Value (IDR):</p>
                     <p id="detailValue" class="text-gray-900"></p>
                 </div>
@@ -469,10 +482,6 @@
                 <div>
                     <p class="text-gray-700 font-semibold">Facility:</p>
                     <p id="detailFacility" class="text-gray-900"></p>
-                </div>
-                <div>
-                    <p class="text-gray-700 font-semibold">Discount:</p>
-                    <p id="detailDiscount" class="text-gray-900"></p>
                 </div>
                 <div>
                     <p class="text-gray-700 font-semibold">Consultant:</p>
@@ -566,7 +575,7 @@
 
         const STAGE_NAMES = {
             'prospect': 'Prospect',
-            'tender-me-stage': 'Tender Stage M&E', // Kunci ini harus konsisten
+            'tender-stage-me': 'Tender Stage M&E', // Kunci ini harus konsisten
             'tender-main-con': 'Tender Main Con',
             'contract-award': 'Contract Award',
             'identified': 'Identified',
@@ -575,7 +584,7 @@
         };
 
         // Updated STAGE_ORDER to place 'on-hold' before 'lost'
-        const STAGE_ORDER = ['prospect', 'tender-me-stage', 'tender-main-con', 'contract-award', 'identified', 'on-hold', 'lost'];
+        const STAGE_ORDER = ['prospect', 'tender-stage-me', 'tender-main-con', 'contract-award', 'identified', 'on-hold', 'lost'];
 
         // --- Firebase Data Loading ---
         document.addEventListener('DOMContentLoaded', function() {
@@ -595,17 +604,20 @@
                 deals = snapshot.docs.map(doc => {
                     const data = doc.data();
                     return {
-                        id: doc.id, // Use Firestore document ID as deal ID
+                        id: doc.id,
                         ...data,
-                        // Convert Firebase Timestamp to Date object if it exists
+                        // Pastikan beforeDiscount dan discount memiliki nilai default jika tidak ada di Firebase
+                        beforeDiscount: data.beforeDiscount !== undefined ? data.beforeDiscount : 0,
+                        discount: data.discount !== undefined ? data.discount : 0,
+                        value: data.value !== undefined ? data.value : 0, // Pastikan value juga ada
                         created: data.created ? data.created.toDate() : new Date(),
-                        projectDate: data.projectDate ? data.projectDate.toDate() : null // Tambahkan ini
+                        projectDate: data.projectDate ? data.projectDate.toDate() : null
                     };
                 });
-                console.log("Deals loaded from Firebase:", deals); // Debugging log
-                renderAllDeals(); // Render after loading
-                updatePipelineValues(); // Update values after loading
-                initSortable(); // Re-initialize Sortable after DOM is updated
+                console.log("Deals loaded from Firebase:", deals);
+                renderAllDeals();
+                updatePipelineValues();
+                initSortable();
             } catch (error) {
                 console.error("Error loading deals from Firebase:", error);
                 showToast("Error loading deals. Please try again.", 5000);
@@ -655,6 +667,24 @@
             }, 300);
         }
 
+        // Fungsi untuk menghitung Value berdasarkan Before Discount dan Discount
+        function calculateValue() {
+            const beforeDiscountInput = document.getElementById('beforeDiscount');
+            const discountInput = document.getElementById('discount');
+            const valueInput = document.getElementById('value');
+
+            const beforeDiscount = parseFloat(beforeDiscountInput.value) || 0;
+            let discount = parseFloat(discountInput.value) || 0;
+
+            // Pastikan diskon tidak negatif atau lebih dari 100%
+            if (discount < 0) discount = 0;
+            if (discount > 100) discount = 100;
+            discountInput.value = discount; // Update input field if value was out of range
+
+            const calculatedValue = beforeDiscount * (1 - (discount / 100));
+            valueInput.value = calculatedValue.toFixed(2); // Tampilkan 2 angka di belakang koma
+        }
+
         function openDealModal(deal = null) {
             openModal('dealModal');
             if (deal) {
@@ -662,18 +692,18 @@
                 document.getElementById('dealId').value = deal.id;
                 document.getElementById('dealName').value = deal.name;
                 document.getElementById('salesName').value = deal.salesName || '';
-                document.getElementById('value').value = deal.value;
-                document.getElementById('package').value = deal.package || '';
-                document.getElementById('product').value = deal.product || '';
-                document.getElementById('facility').value = deal.facility || '';
-                document.getElementById('discount').value = deal.discount || '';
+                document.getElementById('beforeDiscount').value = deal.beforeDiscount || 0; // Isi beforeDiscount
+                document.getElementById('discount').value = deal.discount || 0; // Isi discount
+                // value akan dihitung otomatis, jadi tidak perlu diisi langsung dari deal.value
                 document.getElementById('consultant').value = deal.consultant || '';
                 document.getElementById('contractor').value = deal.contractor || '';
                 document.getElementById('pic').value = deal.pic || '';
                 document.getElementById('stage').value = deal.stage;
                 document.getElementById('priority').value = deal.priority || 'cold';
-                // Tambahkan ini untuk memuat projectDate
                 document.getElementById('projectDate').value = deal.projectDate ? new Date(deal.projectDate).toISOString().split('T')[0] : '';
+                
+                // Panggil calculateValue() setelah semua field diisi untuk memperbarui 'value'
+                calculateValue(); 
             } else {
                 document.getElementById('modalTitle').innerText = 'Add New Deal';
                 document.getElementById('dealForm').reset();
@@ -683,7 +713,10 @@
                 document.getElementById('package').value = '';
                 document.getElementById('product').value = '';
                 document.getElementById('facility').value = '';
-                document.getElementById('projectDate').value = ''; // Pastikan kosong saat menambah baru
+                document.getElementById('projectDate').value = '';
+                // Pastikan value direset dan dihitung ulang saat modal baru dibuka
+                document.getElementById('value').value = 0; // Set default value
+                calculateValue(); // Panggil untuk memastikan value terhitung 0
             }
         }
 
@@ -695,15 +728,15 @@
         function openDealDetailModal(deal) {
             document.getElementById('dealDetailTitle').innerText = `Details for ${deal.name}`;
             document.getElementById('detailSalesName').innerText = deal.salesName || 'N/A';
-            document.getElementById('detailValue').innerText = `IDR ${deal.value.toLocaleString()}`;
+            document.getElementById('detailBeforeDiscount').innerText = `IDR ${deal.beforeDiscount ? deal.beforeDiscount.toLocaleString() : '0'}`; // Tampilkan beforeDiscount
+            document.getElementById('detailDiscount').innerText = `${deal.discount ? deal.discount + '%' : '0%'}`; // Tampilkan discount sebagai persentase
+            document.getElementById('detailValue').innerText = `IDR ${deal.value ? deal.value.toLocaleString() : '0'}`; // Pastikan value juga diformat
             document.getElementById('detailPackage').innerText = deal.package || 'N/A';
             document.getElementById('detailProduct').innerText = deal.product || 'N/A';
             document.getElementById('detailFacility').innerText = deal.facility || 'N/A';
-            document.getElementById('detailDiscount').innerText = deal.discount || 'N/A';
             document.getElementById('detailConsultant').innerText = deal.consultant || 'N/A';
             document.getElementById('detailContractor').innerText = deal.contractor || 'N/A';
             document.getElementById('detailPIC').innerText = deal.pic || 'N/A';
-            // Ubah baris ini untuk menampilkan projectDate
             document.getElementById('detailCreatedDate').innerText = deal.projectDate ? deal.projectDate.toLocaleDateString() : 'N/A';
             openModal('dealDetailModal');
         }
@@ -750,49 +783,52 @@
             const dealId = document.getElementById('dealId').value;
             const dealName = document.getElementById('dealName').value;
             const salesName = document.getElementById('salesName').value;
-            const value = parseFloat(document.getElementById('value').value) || 0;
+            const beforeDiscount = parseFloat(document.getElementById('beforeDiscount').value) || 0; // Ambil beforeDiscount
+            const discount = parseFloat(document.getElementById('discount').value) || 0; // Ambil discount sebagai angka
+            const value = parseFloat(document.getElementById('value').value) || 0; // Ambil value yang sudah dihitung
+
             const package = document.getElementById('package').value;
             const product = document.getElementById('product').value;
             const facility = document.getElementById('facility').value;
-            const discount = document.getElementById('discount').value;
             const consultant = document.getElementById('consultant').value;
             const contractor = document.getElementById('contractor').value;
             const pic = document.getElementById('pic').value;
             const stage = document.getElementById('stage').value;
             const priority = document.getElementById('priority').value;
-            const projectDate = document.getElementById('projectDate').value; // Tambahkan ini
+            const projectDate = document.getElementById('projectDate').value;
 
             const dealData = {
                 name: dealName,
                 salesName: salesName,
-                value: value,
+                beforeDiscount: beforeDiscount, // Simpan beforeDiscount
+                discount: discount, // Simpan discount sebagai angka
+                value: value, // Simpan value yang sudah dihitung
                 package: package,
                 product: product,
                 facility: facility,
-                discount: discount,
                 consultant: consultant,
                 contractor: contractor,
                 pic: pic,
                 stage: stage,
                 priority: priority,
-                projectDate: projectDate ? new Date(projectDate) : null, // Tambahkan ini, konversi ke Date object
+                projectDate: projectDate ? new Date(projectDate) : null,
             };
 
             try {
                 if (dealId) {
                     const oldDeal = deals.find(d => d.id == dealId);
                     await dealsCollection.doc(dealId).update(dealData);
-                    console.log(`Deal "${dealName}" updated in Firestore.`); // Debugging log
+                    console.log(`Deal "${dealName}" updated in Firestore.`);
                     showToast(`Deal "${dealName}" updated!`);
                     addActivityToFirebase(`Edited deal: ${dealName} (from ${STAGE_NAMES[oldDeal.stage]} to ${STAGE_NAMES[stage]})`);
                 } else {
                     dealData.created = firebase.firestore.FieldValue.serverTimestamp();
                     await dealsCollection.add(dealData);
-                    console.log(`New deal "${dealName}" added to Firestore.`); // Debugging log
+                    console.log(`New deal "${dealName}" added to Firestore.`);
                     showToast(`New deal "${dealName}" added!`);
                     addActivityToFirebase(`Added new deal: ${dealName} in ${STAGE_NAMES[stage]} stage`);
                 }
-                await loadDealsFromFirebase(); // Reload all deals to update UI
+                await loadDealsFromFirebase();
                 closeDealModal();
             } catch (error) {
                 console.error("Error saving deal to Firebase:", error);
@@ -813,10 +849,10 @@
             try {
                 const dealToDelete = deals.find(d => d.id === dealId);
                 await dealsCollection.doc(dealId).delete();
-                console.log(`Deal "${dealToDelete.name}" deleted from Firestore.`); // Debugging log
+                console.log(`Deal "${dealToDelete.name}" deleted from Firestore.`);
                 showToast(`Deal "${dealToDelete.name}" deleted!`);
                 addActivityToFirebase(`Deleted deal: ${dealToDelete.name}`);
-                await loadDealsFromFirebase(); // Reload all deals
+                await loadDealsFromFirebase();
                 closeDeleteModal();
             } catch (error) {
                 console.error("Error deleting deal from Firebase:", error);
@@ -934,7 +970,7 @@
         function updatePipelineValues() {
             const stageValues = {
                 'prospect': 0,
-                'tender-me-stage': 0,
+                'tender-stage-me': 0,
                 'tender-main-con': 0,
                 'contract-award': 0,
                 'identified': 0,
@@ -985,7 +1021,7 @@
                             // --- PENTING: Debugging evt.to.id ---
                             console.log("evt.to.id (raw):", evt.to.id); 
                             // Pastikan ID HTML Anda konsisten dengan STAGE_NAMES
-                            // Jika evt.to.id adalah 'tender-me-stage-stage', maka newStage akan menjadi 'tender-me-stage'
+                            // Jika evt.to.id adalah 'tender-stage-me-stage', maka newStage akan menjadi 'tender-stage-me'
                             // Jika evt.to.id adalah 'tender-me-stage-stage', maka ada kesalahan di HTML Anda.
                             const newStage = evt.to.id.replace('-stage', ''); 
                             // --- END PENTING ---
