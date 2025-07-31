@@ -45,16 +45,8 @@
             font-weight: 700; /* font-bold */
             color: #1f2937; /* gray-800 */
             flex-shrink: 0; /* Prevent title from shrinking */
-            /* white-space: normal; */ /* REMOVED: No longer needed here */
-            display: flex; /* ADDED: To allow flex column for spans */
-            flex-direction: column; /* ADDED: To stack spans vertically */
-            line-height: 1.2; /* Adjust line height for better spacing */
         }
-        .pipeline-stage-header h3 span { /* ADDED: Style for spans inside h3 */
-            display: block; /* Force each span to a new line */
-            white-space: nowrap; /* Prevent wrapping within each span */
-        }
-        .pipeline-stage-header span { /* This targets the value span, not the h3 spans */
+        .pipeline-stage-header span {
             font-size: 0.875rem; /* text-sm */
             font-weight: 600; /* font-semibold */
             white-space: nowrap; /* Prevent value from wrapping */
@@ -99,15 +91,12 @@
             opacity: 0.9;
         }
 
-        /* Updated stage colors for new names */
         .stage-prospect { border-left: 5px solid #3B82F6; } /* Blue */
-        .stage-tender-main-con { border-left: 5px solid #10B981; } /* Green */
-        .stage-tender-stage-m-e { border-left: 5px solid #F59E0B; } /* Amber */
-        .stage-contract-award { border-left: 5px solid #EC4899; } /* Pink */
-        .stage-identified { border-left: 5px solid #22C55E; } /* Emerald Green */
-        .stage-lost { border-left: 5px solid #EF4444; } /* Red */
-        .stage-on-hold { border-left: 5px solid #6B7280; } /* Gray */
-
+        .stage-qualification { border-left: 5px solid #10B981; } /* Green */
+        .stage-proposal { border-left: 5px solid #F59E0B; } /* Amber */
+        .stage-negotiation { border-left: 5px solid #EC4899; } /* Pink */
+        .stage-closed-won { border-left: 5px solid #22C55E; } /* Emerald Green */
+        .stage-closed-lost { border-left: 5px solid #EF4444; } /* Red */
 
         /* Custom scrollbar */
         .pipeline-stage-content::-webkit-scrollbar {
@@ -223,12 +212,11 @@
                 <select id="filterStage" onchange="filterDeals()" class="w-full sm:w-1/4 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                     <option value="all">All Stages</option>
                     <option value="prospect">Prospect</option>
-                    <option value="tender-main-con">Tender Main Con</option>
-                    <option value="tender-stage-m-e">Tender Stage M & E</option>
-                    <option value="contract-award">Contract Award</option>
-                    <option value="identified">Identified</option>
-                    <option value="lost">Lost</option>
-                    <option value="on-hold">On Hold</option>
+                    <option value="qualification">Qualification</option>
+                    <option value="proposal">Proposal</option>
+                    <option value="negotiation">Negotiation</option>
+                    <option value="closed-won">Closed Won</option>
+                    <option value="closed-lost">Closed Lost</option>
                 </select>
                 <select id="filterPriority" onchange="filterDeals()" class="w-full sm:w-1/4 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                     <option value="all">All Priorities</option>
@@ -250,59 +238,48 @@
                     <!-- Deals and empty message will be rendered here -->
                 </div>
             </div>
-            <div class="pipeline-stage stage-tender-main-con">
+            <div class="pipeline-stage stage-qualification">
                 <div class="pipeline-stage-header">
-                    <!-- MODIFIED: Split into two spans for separate lines -->
-                    <h3><span>Tender</span><span>Main Con</span></h3>
-                    <span id="tender-main-con-value" class="text-green-600">IDR 0</span>
+                    <h3>Qualification</h3>
+                    <span id="qualification-value" class="text-green-600">IDR 0</span>
                 </div>
-                <div id="tender-main-con-stage" class="pipeline-stage-content space-y-4">
+                <div id="qualification-stage" class="pipeline-stage-content space-y-4">
                     <!-- Deals and empty message will be rendered here -->
                 </div>
             </div>
-            <div class="pipeline-stage stage-tender-stage-m-e">
+            <div class="pipeline-stage stage-proposal">
                 <div class="pipeline-stage-header">
-                    <!-- MODIFIED: Split into two spans for separate lines -->
-                    <h3><span>Tender</span><span>Stage M & E</span></h3>
-                    <span id="tender-stage-m-e-value" class="text-amber-600">IDR 0</span>
+                    <h3>Proposal</h3>
+                    <span id="proposal-value" class="text-amber-600">IDR 0</span>
                 </div>
-                <div id="tender-stage-m-e-stage" class="pipeline-stage-content space-y-4">
+                <div id="proposal-stage" class="pipeline-stage-content space-y-4">
                     <!-- Deals and empty message will be rendered here -->
                 </div>
             </div>
-            <div class="pipeline-stage stage-contract-award">
+            <div class="pipeline-stage stage-negotiation">
                 <div class="pipeline-stage-header">
-                    <h3>Contract Award</h3>
-                    <span id="contract-award-value" class="text-pink-600">IDR 0</span>
+                    <h3>Negotiation</h3>
+                    <span id="negotiation-value" class="text-pink-600">IDR 0</span>
                 </div>
-                <div id="contract-award-stage" class="pipeline-stage-content space-y-4">
+                <div id="negotiation-stage" class="pipeline-stage-content space-y-4">
                     <!-- Deals and empty message will be rendered here -->
                 </div>
             </div>
-            <div class="pipeline-stage stage-identified">
+            <div class="pipeline-stage stage-closed-won">
                 <div class="pipeline-stage-header">
-                    <h3>Identified</h3>
-                    <span id="identified-value" class="text-emerald-600">IDR 0</span>
+                    <h3>Closed Won</h3>
+                    <span id="closed-won-value" class="text-emerald-600">IDR 0</span>
                 </div>
-                <div id="identified-stage" class="pipeline-stage-content space-y-4">
+                <div id="closed-won-stage" class="pipeline-stage-content space-y-4">
                     <!-- Deals and empty message will be rendered here -->
                 </div>
             </div>
-            <div class="pipeline-stage stage-lost">
+            <div class="pipeline-stage stage-closed-lost">
                 <div class="pipeline-stage-header">
-                    <h3>Lost</h3>
-                    <span id="lost-value" class="text-red-600">IDR 0</span>
+                    <h3>Closed Lost</h3>
+                    <span id="closed-lost-value" class="text-red-600">IDR 0</span>
                 </div>
-                <div id="lost-stage" class="pipeline-stage-content space-y-4">
-                    <!-- Deals and empty message will be rendered here -->
-                </div>
-            </div>
-            <div class="pipeline-stage stage-on-hold">
-                <div class="pipeline-stage-header">
-                    <h3>On Hold</h3>
-                    <span id="on-hold-value" class="text-gray-600">IDR 0</span>
-                </div>
-                <div id="on-hold-stage" class="pipeline-stage-content space-y-4">
+                <div id="closed-lost-stage" class="pipeline-stage-content space-y-4">
                     <!-- Deals and empty message will be rendered here -->
                 </div>
             </div>
@@ -421,12 +398,11 @@
                             <label class="block text-gray-700 text-sm font-semibold mb-2" for="stage">Stage <span class="text-red-500">*</span></label>
                             <select id="stage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
                                 <option value="prospect">Prospect</option>
-                                <option value="tender-main-con">Tender Main Con</option>
-                                <option value="tender-stage-m-e">Tender Stage M & E</option>
-                                <option value="contract-award">Contract Award</option>
-                                <option value="identified">Identified</option>
-                                <option value="lost">Lost</option>
-                                <option value="on-hold">On Hold</option>
+                                <option value="qualification">Qualification</option>
+                                <option value="proposal">Proposal</option>
+                                <option value="negotiation">Negotiation</option>
+                                <option value="closed-won">Closed Won</option>
+                                <option value="closed-lost">Closed Lost</option>
                             </select>
                         </div>
                         <div class="mb-6">
@@ -570,18 +546,16 @@
         let activities = []; // Local array to hold activities fetched from Firebase
         let charts = {}; // To store chart instances
 
-        // Updated STAGE_NAMES and STAGE_ORDER
         const STAGE_NAMES = {
             'prospect': 'Prospect',
-            'tender-main-con': 'Tender Main Con', // Reverted to original as HTML handles splitting
-            'tender-stage-m-e': 'Tender Stage M & E', // Reverted to original as HTML handles splitting
-            'contract-award': 'Contract Award',
-            'identified': 'Identified',
-            'lost': 'Lost',
-            'on-hold': 'On Hold'
+            'qualification': 'Qualification',
+            'proposal': 'Proposal',
+            'negotiation': 'Negotiation',
+            'closed-won': 'Closed Won',
+            'closed-lost': 'Closed Lost'
         };
 
-        const STAGE_ORDER = ['prospect', 'tender-main-con', 'tender-stage-m-e', 'contract-award', 'identified', 'lost', 'on-hold'];
+        const STAGE_ORDER = ['prospect', 'qualification', 'proposal', 'negotiation', 'closed-won', 'closed-lost'];
 
         // --- Firebase Data Loading ---
         document.addEventListener('DOMContentLoaded', function() {
@@ -775,14 +749,12 @@
                     const oldDeal = deals.find(d => d.id == dealId);
                     await dealsCollection.doc(dealId).update(dealData);
                     showToast(`Deal "${dealName}" updated!`);
-                    // Use STAGE_NAMES for activity log, even if HTML handles display
                     addActivityToFirebase(`Edited deal: ${dealName} (from ${STAGE_NAMES[oldDeal.stage]} to ${STAGE_NAMES[stage]})`);
                 } else {
                     // Add new deal to Firestore
                     dealData.created = firebase.firestore.FieldValue.serverTimestamp();
                     await dealsCollection.add(dealData);
                     showToast(`New deal "${dealName}" added!`);
-                    // Use STAGE_NAMES for activity log, even if HTML handles display
                     addActivityToFirebase(`Added new deal: ${dealName} in ${STAGE_NAMES[stage]} stage`);
                 }
                 await loadDealsFromFirebase(); // Reload all deals to update UI
@@ -825,13 +797,12 @@
 
                 const emptyMessage = document.createElement('div');
                 emptyMessage.className = 'empty-stage-message text-center text-gray-400 p-4 text-sm'; /* Adjusted font size */
-                
-                // Logic for empty message icons - MODIFIED
-                if (stageId === 'lost') {
-                    emptyMessage.innerHTML = '<i class="fas fa-times-circle text-3xl mb-2 text-red-400"></i><p>No lost deals yet.</p>';
+                if (stageId === 'closed-won') {
+                    emptyMessage.innerHTML = '<i class="fas fa-trophy text-3xl mb-2 text-yellow-500"></i><p>Great job! No won deals yet.</p>'; /* Adjusted icon size */
+                } else if (stageId === 'closed-lost') {
+                    emptyMessage.innerHTML = '<i class="fas fa-times-circle text-3xl mb-2 text-red-400"></i><p>No lost deals yet.</p>'; /* Adjusted icon size */
                 } else {
-                    // Use the same icon as Prospect for all other stages
-                    emptyMessage.innerHTML = '<i class="fas fa-box-open text-3xl mb-2"></i><p>No deals here yet.</p>';
+                    emptyMessage.innerHTML = '<i class="fas fa-box-open text-3xl mb-2"></i><p>No deals here yet.</p>'; /* Adjusted icon size */
                 }
                 stageElement.appendChild(emptyMessage);
             });
@@ -872,11 +843,8 @@
             dealCard.dataset.priority = deal.priority;
 
             let valueColor = 'text-blue-600';
-            // Update value color logic for new stages
-            if (deal.stage === 'identified' || deal.stage === 'contract-award') valueColor = 'text-emerald-600';
-            if (deal.stage === 'lost') valueColor = 'text-red-600';
-            if (deal.stage === 'on-hold') valueColor = 'text-gray-600';
-
+            if (deal.stage === 'closed-won') valueColor = 'text-emerald-600';
+            if (deal.stage === 'closed-lost') valueColor = 'text-red-600';
 
             let priorityIcon = '';
             let priorityColor = '';
@@ -918,12 +886,11 @@
         function updatePipelineValues() {
             const stageValues = {
                 'prospect': 0,
-                'tender-main-con': 0,
-                'tender-stage-m-e': 0,
-                'contract-award': 0,
-                'identified': 0,
-                'lost': 0,
-                'on-hold': 0
+                'qualification': 0,
+                'proposal': 0,
+                'negotiation': 0,
+                'closed-won': 0,
+                'closed-lost': 0
             };
 
             deals.forEach(deal => {
@@ -976,9 +943,8 @@
                                     // Find the deal in our local array to get its name for toast/activity
                                     const movedDeal = deals.find(d => d.id === dealId);
                                     if (movedDeal) {
-                                        // Use STAGE_NAMES for activity log, even if HTML handles display
-                                        addActivityToFirebase(`Moved ${movedDeal.name} from ${STAGE_NAMES[oldStage]} to ${STAGE_NAMES[newStage]}`);
                                         showToast(`Deal "${movedDeal.name}" moved to ${STAGE_NAMES[newStage]}!`);
+                                        addActivityToFirebase(`Moved ${movedDeal.name} from ${STAGE_NAMES[oldStage]} to ${STAGE_NAMES[newStage]}`);
                                     }
 
                                     // Reload all deals from Firebase to ensure UI is consistent with DB
@@ -1114,7 +1080,7 @@
             charts.winRateChart = new Chart(winRateCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Contract Award', 'Lost', 'In Progress'], // Updated labels
+                    labels: ['Closed Won', 'Closed Lost', 'In Progress'],
                     datasets: [{
                         data: [won, lost, inProgress],
                         backgroundColor: [
@@ -1172,7 +1138,7 @@
         function calculateDealSizeDistribution() {
             const distribution = [0, 0, 0, 0, 0];
             deals.forEach(deal => {
-                if (deal.stage !== 'lost') { // Updated from 'closed-lost'
+                if (deal.stage !== 'closed-lost') {
                     if (deal.value < 1000000) { distribution[0]++; } // < IDR 1 Jt
                     else if (deal.value >= 1000000 && deal.value < 5000000) { distribution[1]++; } // IDR 1 Jt-5 Jt
                     else if (deal.value >= 5000000 && deal.value < 10000000) { distribution[2]++; } // IDR 5 Jt-10 Jt
@@ -1184,10 +1150,10 @@
         }
 
         function calculateWinRate() {
-            let won = deals.filter(d => d.stage === 'contract-award').length; // Changed from 'closed-won'
-            let lost = deals.filter(d => d.stage === 'lost').length; // Changed from 'closed-lost'
-            let inProgress = deals.filter(d => d.stage !== 'contract-award' && d.stage !== 'lost').length; // Updated logic
-            return { won: won, lost: lost, inProgress: inProgress };
+            let closedWon = deals.filter(d => d.stage === 'closed-won').length;
+            let closedLost = deals.filter(d => d.stage === 'closed-lost').length;
+            let inProgress = deals.filter(d => d.stage !== 'closed-won' && d.stage !== 'closed-lost').length;
+            return { won: closedWon, lost: closedLost, inProgress: inProgress };
         }
 
         function calculatePipelineValueTrend() {
@@ -1197,9 +1163,7 @@
                 const monthYearKey = `${deal.created.getFullYear()}-${(deal.created.getMonth() + 1).toString().padStart(2, '0')}`;
                 allDates.add(monthYearKey);
                 if (!monthlyValues[monthYearKey]) { monthlyValues[monthYearKey] = 0; }
-                if (deal.stage !== 'lost') { // Updated from 'closed-lost'
-                    monthlyValues[monthYearKey] += deal.value;
-                }
+                if (deal.stage !== 'closed-lost') { monthlyValues[monthYearKey] += deal.value; }
             });
             const sortedMonthKeys = Array.from(allDates).sort();
             const labels = sortedMonthKeys.map(key => {
