@@ -738,59 +738,68 @@
         }
 
         // --- Deal CRUD Operations (Firebase Integrated) ---
-        async function saveDeal() {
-            const dealId = document.getElementById('dealId').value;
-            const dealName = document.getElementById('dealName').value;
-            const salesName = document.getElementById('salesName').value;
-            const value = parseFloat(document.getElementById('value').value) || 0;
-            const package = document.getElementById('package').value;
-            const product = document.getElementById('product').value;
-            const facility = document.getElementById('facility').value;
-            const discount = document.getElementById('discount').value;
-            const consultant = document.getElementById('consultant').value;
-            const contractor = document.getElementById('contractor').value;
-            const pic = document.getElementById('pic').value;
-            const stage = document.getElementById('stage').value;
-            const priority = document.getElementById('priority').value;
-            const projectDate = document.getElementById('projectDate').value; // Tambahkan ini
+async function saveDeal() {
+    const dealId = document.getElementById('dealId').value;
+    const dealName = document.getElementById('dealName').value;
+    const salesName = document.getElementById('salesName').value;
+    const value = parseFloat(document.getElementById('value').value) || 0;
+    const packageVal = document.getElementById('package').value;
+    const product = document.getElementById('product').value;
+    const facility = document.getElementById('facility').value;
+    const discount = document.getElementById('discount').value;
+    const consultant = document.getElementById('consultant').value;
+    const contractor = document.getElementById('contractor').value;
+    const pic = document.getElementById('pic').value;
+    const stage = document.getElementById('stage').value;
+    const priority = document.getElementById('priority').value;
+    const projectDate = document.getElementById('projectDate').value;
 
-            const dealData = {
-                name: dealName,
-                salesName: salesName,
-                value: value,
-                package: package,
-                product: product,
-                facility: facility,
-                discount: discount,
-                consultant: consultant,
-                contractor: contractor,
-                pic: pic,
-                stage: stage,
-                priority: priority,
-                projectDate: projectDate ? new Date(projectDate) : null, // Tambahkan ini, konversi ke Date object
-            };
+    const dealData = {
+        name: dealName,
+        salesName: salesName,
+        value: value,
+        package: packageVal,
+        product: product,
+        facility: facility,
+        discount: discount,
+        consultant: consultant,
+        contractor: contractor,
+        pic: pic,
+        stage: stage,
+        priority: priority,
+        projectDate: projectDate ? new Date(projectDate) : null,
+    };
 
-            try {
-                if (dealId) {
-                    // Update existing deal in Firestore
-                    const oldDeal = deals.find(d => d.id == dealId);
-                    await dealsCollection.doc(dealId).update(dealData);
-                    showToast(`Deal "${dealName}" updated!`);
-                    addActivityToFirebase(`Edited deal: ${dealName} (from ${STAGE_NAMES[oldDeal.stage]} to ${STAGE_NAMES[stage]})`);
-                } else {
-                    // Add new deal to Firestore
-                    dealData.created = firebase.firestore.FieldValue.serverTimestamp();
-                    await dealsCollection.add(dealData);
-                    showToast(`New deal "${dealName}" added!`);
-                    addActivityToFirebase(`Added new deal: ${dealName} in ${STAGE_NAMES[stage]} stage`);
-                }
-                await loadDealsFromFirebase(); // Reload all deals to update UI
-                closeDealModal();
-            } catch (error) {
-                console.error("Error saving deal to Firebase:", error);
-                showToast("Error saving deal. Please try again.", 5000);
-            }
+    try {
+        if (dealId) {
+            // Update existing deal
+            const oldDeal = deals.find(d => d.id === dealId);
+            await dealsCollection.doc(dealId).update(dealData);
+            showToast(`Deal "${dealName}" updated!`);
+            addActivityToFirebase(`Edited deal: ${dealName} (from ${STAGE_NAMES[oldDeal.stage]} to ${STAGE_NAMES[stage]})`);
+        } else {
+            // Add new deal
+            dealData.created = firebase.firestore.FieldValue.serverTimestamp();
+            const docRef = await dealsCollection.add(dealData);
+            showToast(`New deal "${dealName}" added!`);
+            addActivityToFirebase(`Added new deal: ${dealName} in ${STAGE_NAMES[stage]} stage`);
+
+            // Tambahkan ke array lokal agar bisa langsung di-render dan drag & drop
+            dealData.id = docRef.id;
+            dealData.created = new Date(); // sementara sebelum server timestamp kembali
+            deals.push(dealData);
+
+            renderAllDeals();
+            updatePipelineValues();
+            initSortable();
         }
+
+        closeDealModal();
+    } catch (error) {
+        console.error("Error saving deal to Firebase:", error);
+        showToast("Error saving deal. Please try again.", 5000);
+    }
+}
 
         async function confirmDeleteDeal(dealId) {
             const deal = deals.find(d => d.id === dealId);
