@@ -93,7 +93,7 @@
         }
 
         .stage-prospect { border-left: 5px solid #3B82F6; } /* Blue */
-        .stage-tender-stage-me { border-left: 5px solid #10B981; } /* Green */
+        .stage-tender-me-stage { border-left: 5px solid #10B981; } /* Green */
         .stage-tender-main-con { border-left: 5px solid #F59E0B; } /* Amber */
         .stage-contract-award { border-left: 5px solid #EC4899; } /* Pink */
         .stage-identified { border-left: 5px solid #22C55E; } /* Emerald Green */
@@ -215,7 +215,7 @@
                 <select id="filterStage" onchange="filterDeals()" class="w-full sm:w-1/4 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                     <option value="all">All Stages</option>
                     <option value="prospect">Prospect</option>
-                    <option value="tender-stage-me">Tender Stage M&E</option>
+                    <option value="tender-me-stage">Tender Stage M&E</option>
                     <option value="tender-main-con">Tender Main Con</option>
                     <option value="contract-award">Contract Award</option>
                     <option value="identified">Identified</option>
@@ -242,12 +242,12 @@
                     <!-- Deals and empty message will be rendered here -->
                 </div>
             </div>
-            <div class="pipeline-stage stage-tender-stage-me">
+            <div class="pipeline-stage stage-tender-me-stage">
                 <div class="pipeline-stage-header">
                     <h3>Tender Stage M&E</h3> <!-- MODIFIED: Changed display name here -->
-                    <span id="tender-stage-me-value" class="text-green-600">IDR 0</span>
+                    <span id="tender-me-stage-value" class="text-green-600">IDR 0</span>
                 </div>
-                <div id="tender-stage-me-stage" class="pipeline-stage-content space-y-4">
+                <div id="tender-me-stage-stage" class="pipeline-stage-content space-y-4">
                     <!-- Deals and empty message will be rendered here -->
                 </div>
             </div>
@@ -415,7 +415,7 @@
                             <label class="block text-gray-700 text-sm font-semibold mb-2" for="stage">Stage <span class="text-red-500">*</span></label>
                             <select id="stage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
                                 <option value="prospect">Prospect</option>
-                                <option value="tender-stage-me">Tender Stage M&E</option>
+                                <option value="tender-me-stage">Tender Stage M&E</option>
                                 <option value="tender-main-con">Tender Main Con</option>
                                 <option value="contract-award">Contract Award</option>
                                 <option value="identified">Identified</option>
@@ -566,7 +566,7 @@
 
         const STAGE_NAMES = {
             'prospect': 'Prospect',
-            'tender-stage-me': 'Tender Stage M&E', // Kunci ini harus konsisten
+            'tender-me-stage': 'Tender Stage M&E', // Kunci ini harus konsisten
             'tender-main-con': 'Tender Main Con',
             'contract-award': 'Contract Award',
             'identified': 'Identified',
@@ -575,7 +575,7 @@
         };
 
         // Updated STAGE_ORDER to place 'on-hold' before 'lost'
-        const STAGE_ORDER = ['prospect', 'tender-stage-me', 'tender-main-con', 'contract-award', 'identified', 'on-hold', 'lost'];
+        const STAGE_ORDER = ['prospect', 'tender-me-stage', 'tender-main-con', 'contract-award', 'identified', 'on-hold', 'lost'];
 
         // --- Firebase Data Loading ---
         document.addEventListener('DOMContentLoaded', function() {
@@ -934,7 +934,7 @@
         function updatePipelineValues() {
             const stageValues = {
                 'prospect': 0,
-                'tender-stage-me': 0,
+                'tender-me-stage': 0,
                 'tender-main-con': 0,
                 'contract-award': 0,
                 'identified': 0,
@@ -985,7 +985,7 @@
                             // --- PENTING: Debugging evt.to.id ---
                             console.log("evt.to.id (raw):", evt.to.id); 
                             // Pastikan ID HTML Anda konsisten dengan STAGE_NAMES
-                            // Jika evt.to.id adalah 'tender-stage-me-stage', maka newStage akan menjadi 'tender-stage-me'
+                            // Jika evt.to.id adalah 'tender-me-stage-stage', maka newStage akan menjadi 'tender-me-stage'
                             // Jika evt.to.id adalah 'tender-me-stage-stage', maka ada kesalahan di HTML Anda.
                             const newStage = evt.to.id.replace('-stage', ''); 
                             // --- END PENTING ---
