@@ -1331,6 +1331,13 @@
                 const searchTerm = document.getElementById('searchDeals').value.toLowerCase();
                 const priorityFilter = document.getElementById('filterPriority').value;
                 
+                // Jika kolom pencarian kosong dan filter prioritas adalah 'all',
+                // kembalikan ke tampilan default (kosong untuk sales, semua untuk admin)
+                if (searchTerm === '' && priorityFilter === 'all') {
+                    renderAllDeals();
+                    return;
+                }
+
                 // Filter dari SEMUA deals yang sudah dimuat
                 const filteredDeals = deals.filter(deal => {
                     const matchesSearch = 
