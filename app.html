@@ -390,15 +390,24 @@
                         <div>
                             <div class="mb-4">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="consultant">Konsultan</label>
-                                <input type="text" id="consultant" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                <select id="consultant" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih Konsultan atau Ketik Baru</option>
+                                </select>
+                                <input type="text" id="newConsultant" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2 hidden" placeholder="Ketik nama konsultan baru">
                             </div>
                             <div class="mb-4">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="contractor">Kontraktor</label>
-                                <input type="text" id="contractor" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                <select id="contractor" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih Kontraktor atau Ketik Baru</option>
+                                </select>
+                                <input type="text" id="newContractor" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2 hidden" placeholder="Ketik nama kontraktor baru">
                             </div>
                             <div class="mb-4">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="pic">PIC</label>
-                                <input type="text" id="pic" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                <select id="pic" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih PIC atau Ketik Baru</option>
+                                </select>
+                                <input type="text" id="newPic" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2 hidden" placeholder="Ketik nama PIC baru">
                             </div>
                             <div class="mb-4">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="projectDate">Tanggal Proyek</label>
@@ -559,6 +568,11 @@
         let sortableInstances = {};
         let authInitialized = false;
 
+        // Variabel untuk menyimpan daftar unik Konsultan, Kontraktor, PIC
+        let uniqueConsultants = new Set();
+        let uniqueContractors = new Set();
+        let uniquePICs = new Set();
+
         // Daftar email sales yang akan memiliki role 'user'
         const salesEmails = [
             'pamungkas@genetek.co.id',
@@ -629,14 +643,6 @@
             console.log("Loading activities from Firebase...");
             
             let query = activitiesCollection.orderBy("timestamp", "desc").limit(50);
-            
-            // Hapus filter berdasarkan userEmail agar semua aktivitas terlihat oleh semua role
-            // if (currentUserRole !== 'admin') {
-            //     const currentUserEmail = auth.currentUser?.email;
-            //     if (currentUserEmail) {
-            //         query = query.where("userEmail", "==", currentUserEmail);
-            //     }
-            // }
             
             query.get()
                 .then((querySnapshot) => {
@@ -835,8 +841,18 @@
             query.get()
                 .then((querySnapshot) => {
                     deals = []; // Reset array deals
+                    uniqueConsultants.clear();
+                    uniqueContractors.clear();
+                    uniquePICs.clear();
+
                     querySnapshot.forEach((doc) => {
-                        deals.push({ id: doc.id, ...doc.data() });
+                        const dealData = doc.data();
+                        deals.push({ id: doc.id, ...dealData });
+
+                        // Kumpulkan nilai unik untuk dropdown
+                        if (dealData.consultant) uniqueConsultants.add(dealData.consultant);
+                        if (dealData.contractor) uniqueContractors.add(dealData.contractor);
+                        if (dealData.pic) uniquePICs.add(dealData.pic);
                     });
                     console.log("Total deals loaded (for search/admin view):", deals.length);
                     renderAllDeals(); // Panggil renderAllDeals setelah deals dimuat
@@ -925,6 +941,57 @@
             initSortable(); // Inisialisasi ulang SortableJS setelah DOM diperbarui
         }
 
+        // Fungsi untuk mengisi dropdown dengan opsi unik
+        function populateDropdown(selectElementId, newInputElementId, uniqueValues, selectedValue = '') {
+            const selectElement = document.getElementById(selectElementId);
+            const newInputElement = document.getElementById(newInputElementId);
+            selectElement.innerHTML = ''; // Bersihkan opsi yang ada
+
+            // Tambahkan opsi default
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = `Pilih ${selectElement.previousElementSibling.textContent.replace(':', '').replace(' atau Ketik Baru', '')} atau Ketik Baru`;
+            selectElement.appendChild(defaultOption);
+
+            // Tambahkan opsi dari nilai unik
+            const sortedValues = Array.from(uniqueValues).sort();
+            sortedValues.forEach(value => {
+                if (value) { // Pastikan bukan string kosong
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = value;
+                    selectElement.appendChild(option);
+                }
+            });
+
+            // Set nilai yang dipilih
+            if (selectedValue && uniqueValues.has(selectedValue)) {
+                selectElement.value = selectedValue;
+                newInputElement.classList.add('hidden'); // Sembunyikan input baru jika nilai sudah ada
+            } else if (selectedValue) {
+                // Jika nilai yang dipilih tidak ada di daftar unik, pilih opsi kosong dan tampilkan input baru
+                selectElement.value = '';
+                newInputElement.value = selectedValue;
+                newInputElement.classList.remove('hidden');
+            } else {
+                selectElement.value = '';
+                newInputElement.value = '';
+                newInputElement.classList.add('hidden');
+            }
+
+            // Tambahkan event listener untuk menampilkan/menyembunyikan input teks baru
+            selectElement.onchange = function() {
+                if (this.value === '') {
+                    newInputElement.classList.remove('hidden');
+                    newInputElement.focus();
+                } else {
+                    newInputElement.classList.add('hidden');
+                    newInputElement.value = ''; // Kosongkan input teks baru jika opsi dipilih
+                }
+            };
+        }
+
+
         // Fungsi untuk membuka modal deal
         function openDealModal(dealId = null) {
             const dealModal = document.getElementById('dealModal');
@@ -934,6 +1001,11 @@
             dealForm.reset();
             document.getElementById('dealId').value = '';
             document.getElementById('value').value = '';
+
+            // Isi dropdown Konsultan, Kontraktor, PIC
+            populateDropdown('consultant', 'newConsultant', uniqueConsultants);
+            populateDropdown('contractor', 'newContractor', uniqueContractors);
+            populateDropdown('pic', 'newPic', uniquePICs);
 
             if (dealId) {
                 modalTitle.textContent = 'Edit Deal';
@@ -948,9 +1020,12 @@
                     document.getElementById('package').value = deal.package || '';
                     document.getElementById('product').value = deal.product || '';
                     document.getElementById('facility').value = deal.facility || '';
-                    document.getElementById('consultant').value = deal.consultant || '';
-                    document.getElementById('contractor').value = deal.contractor || '';
-                    document.getElementById('pic').value = deal.pic || '';
+                    
+                    // Set nilai untuk dropdown Konsultan, Kontraktor, PIC
+                    populateDropdown('consultant', 'newConsultant', uniqueConsultants, deal.consultant);
+                    populateDropdown('contractor', 'newContractor', uniqueContractors, deal.contractor);
+                    populateDropdown('pic', 'newPic', uniquePICs, deal.pic);
+
                     document.getElementById('projectDate').value = deal.projectDate ? deal.projectDate.toDate().toISOString().split('T')[0] : '';
                     document.getElementById('stage').value = deal.stage || DEFAULT_STAGE;
                     document.getElementById('priority').value = deal.priority || 'cold';
@@ -1004,9 +1079,23 @@
             const packageType = document.getElementById('package').value;
             const product = document.getElementById('product').value;
             const facility = document.getElementById('facility').value;
-            const consultant = document.getElementById('consultant').value;
-            const contractor = document.getElementById('contractor').value;
-            const pic = document.getElementById('pic').value;
+            
+            // Ambil nilai dari dropdown atau input teks baru
+            let consultant = document.getElementById('consultant').value;
+            if (consultant === '') { // Jika opsi "Ketik Baru" dipilih
+                consultant = document.getElementById('newConsultant').value;
+            }
+
+            let contractor = document.getElementById('contractor').value;
+            if (contractor === '') { // Jika opsi "Ketik Baru" dipilih
+                contractor = document.getElementById('newContractor').value;
+            }
+
+            let pic = document.getElementById('pic').value;
+            if (pic === '') { // Jika opsi "Ketik Baru" dipilih
+                pic = document.getElementById('newPic').value;
+            }
+
             const projectDate = document.getElementById('projectDate').value;
             const stage = document.getElementById('stage').value;
             const priority = document.getElementById('priority').value;
