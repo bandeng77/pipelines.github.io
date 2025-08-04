@@ -56,6 +56,11 @@
             -webkit-overflow-scrolling: touch;
             min-height: 100px;
             height: 100%;
+            /* Perubahan baru: Menggunakan flexbox untuk tata letak horizontal */
+            display: flex;
+            flex-wrap: wrap; /* Memungkinkan item untuk membungkus ke baris berikutnya */
+            gap: 1rem; /* Menambahkan jarak antar deal card */
+            align-content: flex-start; /* Memastikan baris baru dimulai dari atas */
         }
         .deal-card {
             transition: transform 0.2s, box-shadow 0.2s;
@@ -64,10 +69,14 @@
             background-color: #ffffff;
             border: 1px solid #e2e8f0;
             border-radius: 0.5rem;
-            padding: 0.75rem; /* Mengurangi padding */
-            margin-bottom: 0.5rem; /* Mengurangi margin bawah */
+            padding: 0.75rem;
+            margin-bottom: 0; /* Hapus margin-bottom karena sudah ada gap di parent */
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-            font-size: 0.875rem; /* Ukuran font dasar untuk deal card */
+            font-size: 0.875rem;
+            /* Perubahan baru: Menetapkan lebar kartu */
+            width: calc(33.333% - 0.666rem); /* Contoh: 3 kartu per baris dengan gap 1rem */
+            min-width: 250px; /* Lebar minimum agar tidak terlalu kecil */
+            box-sizing: border-box; /* Penting untuk perhitungan lebar dengan padding */
         }
         .deal-card:hover {
             transform: translateY(-3px);
@@ -170,43 +179,56 @@
         
         /* Penyesuaian CSS untuk deal card yang lebih ringkas */
         .deal-card h3 {
-            font-size: 0.95rem; /* Sedikit lebih kecil dari 1rem */
+            font-size: 0.95rem;
             font-weight: 700;
             color: #1f2937;
-            white-space: nowrap; /* Mencegah nama deal wrap jika terlalu panjang */
-            overflow: hidden; /* Sembunyikan overflow */
-            text-overflow: ellipsis; /* Tambahkan elipsis jika terpotong */
-            max-width: calc(100% - 60px); /* Beri ruang untuk priority badge */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: calc(100% - 60px);
         }
 
-        .priority-badge { /* Kelas baru untuk badge prioritas */
-            font-size: 0.65rem; /* Lebih kecil */
-            padding: 0.15rem 0.4rem; /* Mengurangi padding */
-            line-height: 1; /* Memastikan tinggi baris konsisten */
+        .priority-badge {
+            font-size: 0.65rem;
+            padding: 0.15rem 0.4rem;
+            line-height: 1;
         }
 
         .deal-details p {
-            font-size: 0.75rem; /* Lebih kecil */
-            margin-top: 0.15rem; /* Mengurangi margin atas */
+            font-size: 0.75rem;
+            margin-top: 0.15rem;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
         .deal-details p i {
-            font-size: 0.7rem; /* Lebih kecil */
+            font-size: 0.7rem;
         }
 
         .deal-actions button {
-            padding: 0.1rem 0.25rem; /* Mengurangi padding tombol */
-            font-size: 0.7rem; /* Lebih kecil */
+            padding: 0.1rem 0.25rem;
+            font-size: 0.7rem;
         }
         .deal-actions button i {
-            font-size: 0.7rem; /* Lebih kecil */
+            font-size: 0.7rem;
         }
 
         .deal-footer {
-            margin-top: 0.5rem; /* Mengurangi margin atas */
+            margin-top: 0.5rem;
+        }
+
+        /* Media Queries untuk responsivitas */
+        @media (max-width: 1024px) { /* Untuk tablet dan layar menengah */
+            .deal-card {
+                width: calc(50% - 0.5rem); /* 2 kartu per baris */
+            }
+        }
+
+        @media (max-width: 768px) { /* Untuk mobile dan layar kecil */
+            .deal-card {
+                width: 100%; /* 1 kartu per baris */
+            }
         }
     </style>
 </head>
@@ -256,7 +278,7 @@
                 <div class="pipeline-stage-header">
                     <h3>Pipelines</h3>
                 </div>
-                <div id="pipelines-stage" class="pipeline-stage-content space-y-4">
+                <div id="pipelines-stage" class="pipeline-stage-content">
                     <!-- Deals akan ditampilkan di sini -->
                 </div>
             </div>
@@ -618,7 +640,7 @@
                         }
                         activities.push({ id: doc.id, ...activityData });
                     });
-                    console.log("Activities loaded:", activities.length, activities); // Log untuk debugging
+                    console.log("Activities loaded:", activities.length, activities);
                     updateActivityBadge();
                 })
                 .catch((error) => {
@@ -656,7 +678,7 @@
                 }
                 
                 // Render aktivitas
-                activityFeed.innerHTML = ''; // Bersihkan konten sebelumnya
+                activityFeed.innerHTML = '';
                 
                 if (activities.length === 0) {
                     activityFeed.innerHTML = `
@@ -687,9 +709,8 @@
                     });
                 }
                 
-                activityModal.classList.remove('hidden'); // Pastikan modal terlihat
-                // Tambahkan kelas untuk transisi masuk
-                activityModalContent.classList.remove('modal-content-leave-active'); // Hapus kelas keluar jika ada
+                activityModal.classList.remove('hidden');
+                activityModalContent.classList.remove('modal-content-leave-active');
                 activityModalContent.classList.add('modal-content-enter-active');
                 
                 // Tandai aktivitas sebagai telah dibaca
@@ -724,7 +745,7 @@
 
         // Fungsi untuk menutup modal aktivitas
         function closeActivityModal() {
-            console.log("closeActivityModal() called."); // Tambahkan log ini
+            console.log("closeActivityModal() called.");
             const activityModalContent = document.getElementById('activityModalContent');
             if (!activityModalContent) {
                 console.error("Elemen activityModalContent tidak ditemukan saat menutup modal.");
@@ -738,7 +759,7 @@
                 document.getElementById('activityModal').classList.add('hidden');
                 activityModalContent.classList.remove('modal-content-leave-active');
                 activityModalContent.removeEventListener('transitionend', handler);
-                console.log("Modal aktivitas disembunyikan."); // Tambahkan log ini
+                console.log("Modal aktivitas disembunyikan.");
             }, { once: true });
         }
 
@@ -809,7 +830,7 @@
             if (currentUserRole !== 'admin') {
                 const currentUserEmail = auth.currentUser?.email;
                 if (currentUserEmail) {
-                    query = query.where("createdBy", "==", currentUserEmail); // Menggunakan createdBy
+                    query = query.where("createdBy", "==", currentUserEmail);
                 }
             }
             
@@ -834,11 +855,10 @@
             dealCard.className = 'deal-card';
             dealCard.dataset.id = deal.id;
             
-            // Isi deal card sesuai dengan data deal
             dealCard.innerHTML = `
                 <div class="flex justify-between items-start">
                     <h3 class="font-bold text-gray-800">${deal.dealName || 'No Name'}</h3>
-                    <span class="priority-badge px-2 py-1 rounded-full ${ /* Tambahkan kelas priority-badge */
+                    <span class="priority-badge px-2 py-1 rounded-full ${
                         deal.priority === 'hot' ? 'bg-red-100 text-red-800' : 
                         deal.priority === 'warm' ? 'bg-yellow-100 text-yellow-800' : 
                         'bg-blue-100 text-blue-800'
@@ -846,13 +866,13 @@
                         ${deal.priority || 'cold'}
                     </span>
                 </div>
-                <div class="mt-1 text-sm text-gray-600 deal-details"> <!-- Tambahkan kelas deal-details -->
+                <div class="mt-1 text-sm text-gray-600 deal-details">
                     <p><i class="fas fa-user-tie mr-1"></i> ${deal.salesName || '-'}</p>
                     <p class="font-semibold text-blue-600">Rp ${formatNumber(deal.value) || '0'}</p>
                 </div>
-                <div class="mt-2 flex justify-between items-center deal-footer"> <!-- Tambahkan kelas deal-footer -->
+                <div class="mt-2 flex justify-between items-center deal-footer">
                     <span class="text-xs text-gray-500">${formatDate(deal.createdAt)}</span>
-                    <div class="flex space-x-1 deal-actions"> <!-- Mengurangi space-x dan tambahkan kelas deal-actions -->
+                    <div class="flex space-x-1 deal-actions">
                         <button onclick="openDealDetailModal('${deal.id}')" class="text-blue-600 hover:text-blue-800">
                             <i class="fas fa-eye"></i>
                         </button>
@@ -904,7 +924,7 @@
             // Reset form
             dealForm.reset();
             document.getElementById('dealId').value = '';
-            document.getElementById('value').value = ''; // Clear calculated value
+            document.getElementById('value').value = '';
 
             if (dealId) {
                 modalTitle.textContent = 'Edit Deal';
@@ -928,12 +948,12 @@
                 }
             } else {
                 modalTitle.textContent = 'Tambah Deal Baru';
-                document.getElementById('stage').value = DEFAULT_STAGE; // Set default stage for new deals
-                document.getElementById('priority').value = 'cold'; // Set default priority
+                document.getElementById('stage').value = DEFAULT_STAGE;
+                document.getElementById('priority').value = 'cold';
             }
             
             dealModal.classList.remove('hidden');
-            document.getElementById('dealModalContent').classList.remove('modal-content-leave-active'); // Hapus kelas keluar jika ada
+            document.getElementById('dealModalContent').classList.remove('modal-content-leave-active');
             document.getElementById('dealModalContent').classList.add('modal-content-enter-active');
         }
 
@@ -961,7 +981,7 @@
             if (discount > 0) {
                 calculatedValue = beforeDiscount * (1 - (discount / 100));
             }
-            document.getElementById('value').value = calculatedValue.toFixed(0); // Tampilkan tanpa desimal
+            document.getElementById('value').value = calculatedValue.toFixed(0);
         }
 
         // Fungsi untuk menyimpan atau memperbarui deal
@@ -1007,10 +1027,8 @@
 
             try {
                 if (dealId) {
-                    // Update existing deal
                     await dealsCollection.doc(dealId).update(dealData);
                     showToast("Deal berhasil diperbarui!", 2000);
-                    // Tambahkan aktivitas
                     await activitiesCollection.add({
                         message: `Deal "${dealName}" diperbarui oleh ${auth.currentUser.email}.`,
                         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1018,12 +1036,10 @@
                         read: false
                     });
                 } else {
-                    // Add new deal
                     dealData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-                    dealData.createdBy = auth.currentUser.email; // Simpan email pembuat deal
+                    dealData.createdBy = auth.currentUser.email;
                     await dealsCollection.add(dealData);
                     showToast("Deal baru berhasil ditambahkan!", 2000);
-                    // Tambahkan aktivitas
                     await activitiesCollection.add({
                         message: `Deal baru "${dealName}" ditambahkan oleh ${auth.currentUser.email}.`,
                         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1032,8 +1048,8 @@
                     });
                 }
                 closeDealModal();
-                loadDealsFromFirebase(); // Muat ulang deals untuk menampilkan yang baru/diperbarui
-                loadActivitiesFromFirebase(); // Muat ulang aktivitas
+                loadDealsFromFirebase();
+                loadActivitiesFromFirebase();
             } catch (error) {
                 console.error("Error saving deal:", error);
                 showToast("Gagal menyimpan deal. Silakan coba lagi.", 3000);
@@ -1054,7 +1070,7 @@
             dealToDeleteName = dealName;
             document.getElementById('dealToDeleteName').textContent = dealName;
             document.getElementById('deleteModal').classList.remove('hidden');
-            document.getElementById('deleteModalContent').classList.remove('modal-content-leave-active'); // Hapus kelas keluar jika ada
+            document.getElementById('deleteModalContent').classList.remove('modal-content-leave-active');
             document.getElementById('deleteModalContent').classList.add('modal-content-enter-active');
         }
 
@@ -1080,7 +1096,6 @@
             try {
                 await dealsCollection.doc(dealToDeleteId).delete();
                 showToast(`Deal "${dealToDeleteName}" berhasil dihapus!`, 2000);
-                // Tambahkan aktivitas
                 await activitiesCollection.add({
                     message: `Deal "${dealToDeleteName}" dihapus oleh ${auth.currentUser.email}.`,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1088,8 +1103,8 @@
                     read: false
                 });
                 closeDeleteModal();
-                loadDealsFromFirebase(); // Muat ulang deals setelah penghapusan
-                loadActivitiesFromFirebase(); // Muat ulang aktivitas
+                loadDealsFromFirebase();
+                loadActivitiesFromFirebase();
             } catch (error) {
                 console.error("Error deleting deal:", error);
                 showToast("Gagal menghapus deal. Silakan coba lagi.", 3000);
@@ -1118,7 +1133,7 @@
             document.getElementById('detailCreatedDate').textContent = formatDate(deal.projectDate) || '-';
 
             document.getElementById('dealDetailModal').classList.remove('hidden');
-            document.getElementById('dealDetailModalContent').classList.remove('modal-content-leave-active'); // Hapus kelas keluar jika ada
+            document.getElementById('dealDetailModalContent').classList.remove('modal-content-leave-active');
             document.getElementById('dealDetailModalContent').classList.add('modal-content-enter-active');
         }
 
@@ -1154,7 +1169,7 @@
                     if (currentUserRole !== 'admin') return;
                     
                     const dealId = evt.item.dataset.id;
-                    const newStage = 'main-pipeline'; // Karena hanya ada satu stage yang bisa di-drag ke dalamnya
+                    const newStage = 'main-pipeline';
                     
                     updateDealStage(dealId, newStage);
                 }
@@ -1183,7 +1198,6 @@
             const statsSection = document.getElementById('stats-section');
             if (statsSection) {
                 statsSection.classList.remove('hidden');
-                // Panggil fungsi untuk merender semua chart di sini
                 renderAllCharts();
             }
         }
@@ -1200,14 +1214,6 @@
         function renderAllCharts() {
             console.log("Rendering all charts...");
             // Implementasi chart akan ditambahkan di sini
-            // Anda perlu mengimplementasikan logika pengambilan data dan konfigurasi Chart.js
-            // untuk setiap chart (dealSizeChart, winRateChart, dealsBySalesChart, dealsByProductPackageChart, pipelineValueChart)
-            // Contoh:
-            // renderDealSizeChart();
-            // renderWinRateChart();
-            // renderDealsBySalesChart();
-            // renderDealsByProductPackageChart();
-            // renderPipelineValueChart();
         }
 
         // ==================== FUNGSI PERMISSIONS ====================
@@ -1227,7 +1233,7 @@
                 
                 if (viewStatsBtn) viewStatsBtn.classList.toggle('hidden', !isAdmin);
                 if (activityBtn) activityBtn.classList.toggle('hidden', !isAdmin);
-                if (newDealBtn) newDealBtn.classList.toggle('hidden', false); // Tombol "Deal Baru" selalu terlihat
+                if (newDealBtn) newDealBtn.classList.toggle('hidden', false);
 
                 // Sortable permissions
                 if (sortableInstances['pipelines-stage']) {
@@ -1361,7 +1367,6 @@
 
         // Inisialisasi saat DOM siap
         document.addEventListener('DOMContentLoaded', function() {
-            // Hanya inisialisasi elemen yang tidak tergantung auth
             initSortable();
         });
     </script>
