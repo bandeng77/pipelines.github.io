@@ -511,7 +511,7 @@
         let sortableInstances = {};
         let authInitialized = false;
 
-        // Fungsi untuk menangani perubahan status autentikasi
+    // Fungsi untuk menangani perubahan status autentikasi
         auth.onAuthStateChanged(async (user) => {
             if (authInitialized) return;
             authInitialized = true;
@@ -551,9 +551,12 @@
                     applyUserPermissions();
                     loadDealsFromFirebase();
                     loadActivitiesFromFirebase();
+                    
+                    // Inisialisasi event listeners setelah auth selesai
+                    initEventListeners();
                 } catch (error) {
                     console.error("Error checking user role:", error);
-                    showToast("Gagal memuat data pengguna", 3000);
+                    showToast("Gagal memuat data pengguna. Silakan refresh halaman.", 5000);
                 }
             }
         });
@@ -565,41 +568,84 @@
             
             console.log("Applying permissions for:", currentUserEmail, "Role:", currentUserRole);
             
-            // Tampilkan semua fitur untuk admin
-            if (isAdmin) {
-                document.getElementById('viewStatsBtn').classList.remove('hidden');
-                document.getElementById('activityBtn').classList.remove('hidden');
-                document.getElementById('newDealBtn').classList.remove('hidden');
-            } else {
-                // Sembunyikan fitur admin untuk user biasa
-                document.getElementById('viewStatsBtn').classList.add('hidden');
-                document.getElementById('activityBtn').classList.add('hidden');
-                
-                // Tetap tampilkan tombol new deal untuk semua user
-                document.getElementById('newDealBtn').classList.remove('hidden');
-            }
-
-            // Inisialisasi ulang sortable dengan permission yang benar
+            // Admin features
+            const viewStatsBtn = document.getElementById('viewStatsBtn');
+            const activityBtn = document.getElementById('activityBtn');
+            const newDealBtn = document.getElementById('newDealBtn');
+            
+            if (viewStatsBtn) viewStatsBtn.classList.toggle('hidden', !isAdmin);
+            if (activityBtn) activityBtn.classList.toggle('hidden', !isAdmin);
+            if (newDealBtn) newDealBtn.classList.toggle('hidden', false); // Selalu tampilkan untuk semua user
+            
+            // Sortable permissions
             if (sortableInstances['pipelines-stage']) {
                 sortableInstances['pipelines-stage'].option('disabled', !isAdmin);
             }
+
+            // Render deals sesuai role
+            const pipelineStage = document.getElementById('pipelines-stage');
+            if (pipelineStage) {
+                if (isAdmin) {
+                    renderAllDeals();
+                } else {
+                    pipelineStage.innerHTML = `
+                        <div class="empty-stage-message text-center text-gray-400 p-4 text-sm">
+                            <i class="fas fa-search text-3xl mb-2"></i>
+                            <p>Cari deal Anda menggunakan kolom pencarian di atas</p>
+                        </div>
+                    `;
+                }
+            }
         }
 
-        // Fungsi logout
-        function logout() {
-            auth.signOut()
-                .then(() => {
-                    console.log("User logged out successfully");
-                    // Clear any existing deals/activities data
-                    deals = [];
-                    activities = [];
-                    // Redirect to login page
-                    window.location.href = 'login.html';
-                })
-                .catch((error) => {
-                    console.error("Error logging out:", error);
-                    showToast("Gagal logout. Silakan coba lagi.", 5000);
+        // Fungsi untuk inisialisasi event listeners
+        function initEventListeners() {
+            console.log("Initializing event listeners...");
+            
+            try {
+                // Deal Form
+                const dealForm = document.getElementById('dealForm');
+                if (dealForm) {
+                    dealForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        saveDeal();
+                    });
+                }
+
+                // Buttons
+                const buttons = [
+                    { id: 'newDealBtn', func: openDealModal },
+                    { id: 'viewStatsBtn', func: showStats },
+                    { id: 'activityBtn', func: openActivityModal },
+                    { id: 'authButton', func: logout }
+                ];
+                
+                buttons.forEach(btn => {
+                    const element = document.getElementById(btn.id);
+                    if (element) {
+                        element.addEventListener('click', btn.func);
+                        console.log(`Event listener added for ${btn.id}`);
+                    }
                 });
+
+                // Search and filter
+                const searchInput = document.getElementById('searchDeals');
+                if (searchInput) {
+                    searchInput.addEventListener('keyup', filterDeals);
+                }
+                
+                const filterSelect = document.getElementById('filterPriority');
+                if (filterSelect) {
+                    filterSelect.addEventListener('change', filterDeals);
+                }
+
+                // Inisialisasi Sortable
+                initSortable();
+                
+            } catch (error) {
+                console.error("Error initializing event listeners:", error);
+                showToast("Gagal memuat beberapa fungsi", 3000);
+            }
         }
 
         // Fungsi untuk memuat deals dari Firebase
@@ -611,7 +657,9 @@
             // Jika bukan admin, hanya tampilkan deals yang dibuat oleh user tersebut
             if (currentUserRole !== 'admin') {
                 const currentUserEmail = auth.currentUser?.email;
-                query = query.where("salesName", "==", currentUserEmail || "");
+                if (currentUserEmail) {
+                    query = query.where("salesName", "==", currentUserEmail);
+                }
             }
             
             query.get()
@@ -629,9 +677,26 @@
                 });
         }
 
+        // Fungsi logout
+        function logout() {
+            auth.signOut()
+                .then(() => {
+                    console.log("User logged out successfully");
+                    deals = [];
+                    activities = [];
+                    window.location.href = 'login.html';
+                })
+                .catch((error) => {
+                    console.error("Error logging out:", error);
+                    showToast("Gagal logout. Silakan coba lagi.", 5000);
+                });
+        }
+
         // Fungsi untuk menampilkan toast notifikasi
         function showToast(message, duration = 3000) {
             const toastContainer = document.getElementById('toast-container');
+            if (!toastContainer) return;
+            
             const toast = document.createElement('div');
             toast.className = 'toast';
             toast.innerText = message;
@@ -647,40 +712,63 @@
             }, duration);
         }
 
-        // Fungsi untuk merender semua deals
-        function renderAllDeals() {
-            const pipelineStage = document.getElementById('pipelines-stage');
+        // Fungsi untuk render deal card
+        function renderDeal(deal) {
+            const dealCard = document.createElement('div');
+            dealCard.className = 'deal-card';
+            dealCard.dataset.id = deal.id;
             
-            if (deals.length === 0) {
-                pipelineStage.innerHTML = `
-                    <div class="empty-stage-message text-center text-gray-400 p-4 text-sm">
-                        <i class="fas fa-search text-3xl mb-2"></i>
-                        <p>Tidak ada deals yang ditemukan</p>
+            // Isi deal card sesuai dengan data deal
+            dealCard.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <h3 class="font-bold text-gray-800">${deal.dealName || 'No Name'}</h3>
+                    <span class="text-xs px-2 py-1 rounded-full ${
+                        deal.priority === 'hot' ? 'bg-red-100 text-red-800' : 
+                        deal.priority === 'warm' ? 'bg-yellow-100 text-yellow-800' : 
+                        'bg-blue-100 text-blue-800'
+                    }">
+                        ${deal.priority || 'cold'}
+                    </span>
+                </div>
+                <div class="mt-2 text-sm text-gray-600">
+                    <p><i class="fas fa-building mr-1"></i> ${deal.company || '-'}</p>
+                    <p class="mt-1"><i class="fas fa-user-tie mr-1"></i> ${deal.salesName || '-'}</p>
+                    <p class="mt-1 font-semibold text-blue-600">Rp ${formatNumber(deal.value) || '0'}</p>
+                </div>
+                <div class="mt-3 flex justify-between items-center">
+                    <span class="text-xs text-gray-500">${formatDate(deal.createdAt)}</span>
+                    <div class="flex space-x-2">
+                        <button onclick="openDealDetailModal('${deal.id}')" class="text-blue-600 hover:text-blue-800">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button onclick="prepareEditDeal('${deal.id}')" class="text-green-600 hover:text-green-800">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="confirmDeleteDeal('${deal.id}', '${deal.dealName}')" class="text-red-600 hover:text-red-800">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
                     </div>
-                `;
-                return;
-            }
-
-            pipelineStage.innerHTML = '';
-            deals.forEach(deal => {
-                pipelineStage.appendChild(renderDeal(deal));
-            });
-
-            // Inisialisasi SortableJS untuk drag and drop
-            initSortable();
+                </div>
+            `;
+            
+            return dealCard;
         }
 
-        // [Fungsi-fungsi lainnya seperti renderDeal, initSortable, saveDeal, dll.]
-        // ... (tetap dipertahankan sesuai kebutuhan aplikasi)
+        // Fungsi helper untuk format angka
+        function formatNumber(num) {
+            return new Intl.NumberFormat('id-ID').format(num);
+        }
+
+        // Fungsi helper untuk format tanggal
+        function formatDate(timestamp) {
+            if (!timestamp) return '-';
+            const date = timestamp.toDate();
+            return date.toLocaleDateString('id-ID');
+        }
 
         // Inisialisasi saat DOM siap
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('dealForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                saveDeal();
-            });
-            
-            // Inisialisasi sortable
+            // Hanya inisialisasi elemen yang tidak tergantung auth
             initSortable();
         });
     </script>
