@@ -474,7 +474,7 @@
                     <button type="button" onclick="closeDeleteModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
                         Batal
                     </button>
-                    <button type="button" id="confirmDeleteBtn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow-md font-medium transition duration-200 ease-in-out transform hover:scale-105 text-sm">
+                    <button type="button" id="confirmDeleteBtn" onclick="deleteDeal()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow-md font-medium transition duration-200 ease-in-out transform hover:scale-105 text-sm">
                         Hapus
                     </button>
                 </div>
@@ -485,16 +485,6 @@
         <div id="toast-container"></div>
     </div>
     <script>
-        // Konfigurasi Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyA630jQdTLNt1XHjVAXX10IjIeMVJ_vNn8",
-            authDomain: "pipelineefk.firebaseapp.com",
-            projectId: "pipelineefk",
-            storageBucket: "pipelineefk.appspot.com",
-            messagingSenderId: "763507094626",
-            appId: "1:763507094626:web:57838068505c964f654d3b"
-        };
-
         // Konfigurasi Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyA630jQdTLNt1XHjVAXX10IjIeMVJ_vNn8",
@@ -751,7 +741,7 @@
             if (currentUserRole !== 'admin') {
                 const currentUserEmail = auth.currentUser?.email;
                 if (currentUserEmail) {
-                    query = query.where("salesName", "==", currentUserEmail);
+                    query = query.where("createdBy", "==", currentUserEmail); // Menggunakan createdBy
                 }
             }
             
@@ -838,6 +828,239 @@
             initSortable();
         }
 
+        // Fungsi untuk membuka modal deal
+        function openDealModal(dealId = null) {
+            const dealModal = document.getElementById('dealModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const dealForm = document.getElementById('dealForm');
+            
+            // Reset form
+            dealForm.reset();
+            document.getElementById('dealId').value = '';
+            document.getElementById('value').value = ''; // Clear calculated value
+
+            if (dealId) {
+                modalTitle.textContent = 'Edit Deal';
+                const deal = deals.find(d => d.id === dealId);
+                if (deal) {
+                    document.getElementById('dealId').value = deal.id;
+                    document.getElementById('dealName').value = deal.dealName || '';
+                    document.getElementById('salesName').value = deal.salesName || '';
+                    document.getElementById('beforeDiscount').value = deal.beforeDiscount || '';
+                    document.getElementById('discount').value = deal.discount || '';
+                    document.getElementById('value').value = deal.value || '';
+                    document.getElementById('package').value = deal.package || '';
+                    document.getElementById('product').value = deal.product || '';
+                    document.getElementById('facility').value = deal.facility || '';
+                    document.getElementById('consultant').value = deal.consultant || '';
+                    document.getElementById('contractor').value = deal.contractor || '';
+                    document.getElementById('pic').value = deal.pic || '';
+                    document.getElementById('projectDate').value = deal.projectDate ? deal.projectDate.toDate().toISOString().split('T')[0] : '';
+                    document.getElementById('stage').value = deal.stage || DEFAULT_STAGE;
+                    document.getElementById('priority').value = deal.priority || 'cold';
+                }
+            } else {
+                modalTitle.textContent = 'Tambah Deal Baru';
+                document.getElementById('stage').value = DEFAULT_STAGE; // Set default stage for new deals
+                document.getElementById('priority').value = 'cold'; // Set default priority
+            }
+            
+            dealModal.classList.remove('hidden');
+            document.getElementById('dealModalContent').classList.add('modal-content-enter-active');
+        }
+
+        // Fungsi untuk menutup modal deal
+        function closeDealModal() {
+            const dealModalContent = document.getElementById('dealModalContent');
+            dealModalContent.classList.remove('modal-content-enter-active');
+            dealModalContent.classList.add('modal-content-leave-active');
+            
+            dealModalContent.addEventListener('transitionend', function handler() {
+                document.getElementById('dealModal').classList.add('hidden');
+                dealModalContent.classList.remove('modal-content-leave-active');
+                dealModalContent.removeEventListener('transitionend', handler);
+            }, { once: true });
+        }
+
+        // Fungsi untuk menghitung nilai deal setelah diskon
+        function calculateValue() {
+            const beforeDiscount = parseFloat(document.getElementById('beforeDiscount').value) || 0;
+            const discount = parseFloat(document.getElementById('discount').value) || 0;
+            
+            let calculatedValue = beforeDiscount;
+            if (discount > 0) {
+                calculatedValue = beforeDiscount * (1 - (discount / 100));
+            }
+            document.getElementById('value').value = calculatedValue.toFixed(0); // Tampilkan tanpa desimal
+        }
+
+        // Fungsi untuk menyimpan atau memperbarui deal
+        async function saveDeal() {
+            const dealId = document.getElementById('dealId').value;
+            const dealName = document.getElementById('dealName').value;
+            const salesName = document.getElementById('salesName').value;
+            const beforeDiscount = parseFloat(document.getElementById('beforeDiscount').value) || 0;
+            const discount = parseFloat(document.getElementById('discount').value) || 0;
+            const value = parseFloat(document.getElementById('value').value) || 0;
+            const packageType = document.getElementById('package').value;
+            const product = document.getElementById('product').value;
+            const facility = document.getElementById('facility').value;
+            const consultant = document.getElementById('consultant').value;
+            const contractor = document.getElementById('contractor').value;
+            const pic = document.getElementById('pic').value;
+            const projectDate = document.getElementById('projectDate').value;
+            const stage = document.getElementById('stage').value;
+            const priority = document.getElementById('priority').value;
+
+            if (!dealName || !value) {
+                showToast("Nama Proyek dan Nilai harus diisi.", 3000);
+                return;
+            }
+
+            const dealData = {
+                dealName: dealName,
+                salesName: salesName,
+                beforeDiscount: beforeDiscount,
+                discount: discount,
+                value: value,
+                package: packageType,
+                product: product,
+                facility: facility,
+                consultant: consultant,
+                contractor: contractor,
+                pic: pic,
+                projectDate: projectDate ? firebase.firestore.Timestamp.fromDate(new Date(projectDate)) : null,
+                stage: stage,
+                priority: priority,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            try {
+                if (dealId) {
+                    // Update existing deal
+                    await dealsCollection.doc(dealId).update(dealData);
+                    showToast("Deal berhasil diperbarui!", 2000);
+                    // Tambahkan aktivitas
+                    await activitiesCollection.add({
+                        message: `Deal "${dealName}" diperbarui oleh ${auth.currentUser.email}.`,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        userEmail: auth.currentUser.email,
+                        read: false
+                    });
+                } else {
+                    // Add new deal
+                    dealData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                    dealData.createdBy = auth.currentUser.email; // Simpan email pembuat deal
+                    await dealsCollection.add(dealData);
+                    showToast("Deal baru berhasil ditambahkan!", 2000);
+                    // Tambahkan aktivitas
+                    await activitiesCollection.add({
+                        message: `Deal baru "${dealName}" ditambahkan oleh ${auth.currentUser.email}.`,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        userEmail: auth.currentUser.email,
+                        read: false
+                    });
+                }
+                closeDealModal();
+                loadDealsFromFirebase(); // Muat ulang deals untuk menampilkan yang baru/diperbarui
+                loadActivitiesFromFirebase(); // Muat ulang aktivitas
+            } catch (error) {
+                console.error("Error saving deal:", error);
+                showToast("Gagal menyimpan deal. Silakan coba lagi.", 3000);
+            }
+        }
+
+        // Fungsi untuk menyiapkan modal edit deal
+        function prepareEditDeal(dealId) {
+            openDealModal(dealId);
+        }
+
+        let dealToDeleteId = null;
+        let dealToDeleteName = '';
+
+        // Fungsi untuk menampilkan modal konfirmasi penghapusan
+        function confirmDeleteDeal(dealId, dealName) {
+            dealToDeleteId = dealId;
+            dealToDeleteName = dealName;
+            document.getElementById('dealToDeleteName').textContent = dealName;
+            document.getElementById('deleteModal').classList.remove('hidden');
+            document.getElementById('deleteModalContent').classList.add('modal-content-enter-active');
+        }
+
+        // Fungsi untuk menutup modal konfirmasi penghapusan
+        function closeDeleteModal() {
+            const deleteModalContent = document.getElementById('deleteModalContent');
+            deleteModalContent.classList.remove('modal-content-enter-active');
+            deleteModalContent.classList.add('modal-content-leave-active');
+            
+            deleteModalContent.addEventListener('transitionend', function handler() {
+                document.getElementById('deleteModal').classList.add('hidden');
+                deleteModalContent.classList.remove('modal-content-leave-active');
+                deleteModalContent.removeEventListener('transitionend', handler);
+            }, { once: true });
+        }
+
+        // Fungsi untuk menghapus deal
+        async function deleteDeal() {
+            if (!dealToDeleteId) return;
+
+            try {
+                await dealsCollection.doc(dealToDeleteId).delete();
+                showToast(`Deal "${dealToDeleteName}" berhasil dihapus!`, 2000);
+                // Tambahkan aktivitas
+                await activitiesCollection.add({
+                    message: `Deal "${dealToDeleteName}" dihapus oleh ${auth.currentUser.email}.`,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    userEmail: auth.currentUser.email,
+                    read: false
+                });
+                closeDeleteModal();
+                loadDealsFromFirebase(); // Muat ulang deals setelah penghapusan
+                loadActivitiesFromFirebase(); // Muat ulang aktivitas
+            } catch (error) {
+                console.error("Error deleting deal:", error);
+                showToast("Gagal menghapus deal. Silakan coba lagi.", 3000);
+            }
+        }
+
+        // Fungsi untuk membuka modal detail deal
+        function openDealDetailModal(dealId) {
+            const deal = deals.find(d => d.id === dealId);
+            if (!deal) {
+                showToast("Detail deal tidak ditemukan.", 3000);
+                return;
+            }
+
+            document.getElementById('dealDetailTitle').textContent = deal.dealName || 'Detail Deal';
+            document.getElementById('detailSalesName').textContent = deal.salesName || '-';
+            document.getElementById('detailBeforeDiscount').textContent = `Rp ${formatNumber(deal.beforeDiscount) || '0'}`;
+            document.getElementById('detailDiscount').textContent = `${deal.discount || '0'}%`;
+            document.getElementById('detailValue').textContent = `Rp ${formatNumber(deal.value) || '0'}`;
+            document.getElementById('detailPackage').textContent = deal.package || '-';
+            document.getElementById('detailProduct').textContent = deal.product || '-';
+            document.getElementById('detailFacility').textContent = deal.facility || '-';
+            document.getElementById('detailConsultant').textContent = deal.consultant || '-';
+            document.getElementById('detailContractor').textContent = deal.contractor || '-';
+            document.getElementById('detailPIC').textContent = deal.pic || '-';
+            document.getElementById('detailCreatedDate').textContent = formatDate(deal.projectDate) || '-';
+
+            document.getElementById('dealDetailModal').classList.remove('hidden');
+            document.getElementById('dealDetailModalContent').classList.add('modal-content-enter-active');
+        }
+
+        // Fungsi untuk menutup modal detail deal
+        function closeDealDetailModal() {
+            const dealDetailModalContent = document.getElementById('dealDetailModalContent');
+            dealDetailModalContent.classList.remove('modal-content-enter-active');
+            dealDetailModalContent.classList.add('modal-content-leave-active');
+            
+            dealDetailModalContent.addEventListener('transitionend', function handler() {
+                document.getElementById('dealDetailModal').classList.add('hidden');
+                dealDetailModalContent.classList.remove('modal-content-leave-active');
+                dealDetailModalContent.removeEventListener('transitionend', handler);
+            }, { once: true });
+        }
+
         // ==================== FUNGSI SORTABLE ====================
 
         // Fungsi untuk inisialisasi SortableJS
@@ -855,7 +1078,7 @@
                     if (currentUserRole !== 'admin') return;
                     
                     const dealId = evt.item.dataset.id;
-                    const newStage = 'main-pipeline';
+                    const newStage = 'main-pipeline'; // Karena hanya ada satu stage yang bisa di-drag ke dalamnya
                     
                     updateDealStage(dealId, newStage);
                 }
@@ -894,8 +1117,8 @@
                 
                 if (viewStatsBtn) viewStatsBtn.classList.toggle('hidden', !isAdmin);
                 if (activityBtn) activityBtn.classList.toggle('hidden', !isAdmin);
-                if (newDealBtn) newDealBtn.classList.toggle('hidden', false);
-                
+                if (newDealBtn) newDealBtn.classList.toggle('hidden', false); // Tombol "Deal Baru" selalu terlihat
+
                 // Sortable permissions
                 if (sortableInstances['pipelines-stage']) {
                     sortableInstances['pipelines-stage'].option('disabled', !isAdmin);
@@ -1030,7 +1253,6 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Hanya inisialisasi elemen yang tidak tergantung auth
             initSortable();
-        });
         });
     </script>
 </body>
