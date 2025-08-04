@@ -404,23 +404,23 @@
                             <div class="mb-4">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="consultant">Konsultan</label>
                                 <select id="consultant" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                    <option value="">Pilih Konsultan atau Ketik Baru</option>
+                                    <option value="">Pilih Konsultan</option>
                                 </select>
-                                <input type="text" id="newConsultant" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2 hidden" placeholder="Ketik nama konsultan baru">
+                                <input type="text" id="newConsultant" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama konsultan baru">
                             </div>
                             <div class="mb-4">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="contractor">Kontraktor</label>
                                 <select id="contractor" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                    <option value="">Pilih Kontraktor atau Ketik Baru</option>
+                                    <option value="">Pilih Kontraktor</option>
                                 </select>
-                                <input type="text" id="newContractor" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2 hidden" placeholder="Ketik nama kontraktor baru">
+                                <input type="text" id="newContractor" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama kontraktor baru">
                             </div>
                             <div class="mb-4">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="pic">PIC</label>
                                 <select id="pic" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                    <option value="">Pilih PIC atau Ketik Baru</option>
+                                    <option value="">Pilih PIC</option>
                                 </select>
-                                <input type="text" id="newPic" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2 hidden" placeholder="Ketik nama PIC baru">
+                                <input type="text" id="newPic" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama PIC baru">
                             </div>
                             <div class="mb-6">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="priority">Prioritas</label>
@@ -942,15 +942,17 @@
         }
 
         // Fungsi untuk mengisi dropdown dengan opsi unik
-        function populateDropdown(selectElementId, newInputElementId, uniqueValues, selectedValue = '') {
+        // Fungsi ini sekarang hanya akan mengisi dropdown, tidak lagi mengelola input teks baru
+        function populateDropdown(selectElementId, uniqueValues, selectedValue = '') {
             const selectElement = document.getElementById(selectElementId);
-            const newInputElement = document.getElementById(newInputElementId);
             selectElement.innerHTML = ''; // Bersihkan opsi yang ada
 
             // Tambahkan opsi default
             const defaultOption = document.createElement('option');
             defaultOption.value = '';
-            defaultOption.textContent = `Pilih ${selectElement.previousElementSibling.textContent.replace(':', '').replace(' atau Ketik Baru', '')} atau Ketik Baru`;
+            // Mengambil teks label yang terkait dengan selectElement
+            const labelText = selectElement.previousElementSibling.textContent.replace(':', '').trim();
+            defaultOption.textContent = `Pilih ${labelText}`;
             selectElement.appendChild(defaultOption);
 
             // Tambahkan opsi dari nilai unik
@@ -965,30 +967,7 @@
             });
 
             // Set nilai yang dipilih
-            if (selectedValue && uniqueValues.has(selectedValue)) {
-                selectElement.value = selectedValue;
-                newInputElement.classList.add('hidden'); // Sembunyikan input baru jika nilai sudah ada
-            } else if (selectedValue) {
-                // Jika nilai yang dipilih tidak ada di daftar unik, pilih opsi kosong dan tampilkan input baru
-                selectElement.value = '';
-                newInputElement.value = selectedValue;
-                newInputElement.classList.remove('hidden');
-            } else {
-                selectElement.value = '';
-                newInputElement.value = '';
-                newInputElement.classList.add('hidden');
-            }
-
-            // Tambahkan event listener untuk menampilkan/menyembunyikan input teks baru
-            selectElement.onchange = function() {
-                if (this.value === '') {
-                    newInputElement.classList.remove('hidden');
-                    newInputElement.focus();
-                } else {
-                    newInputElement.classList.add('hidden');
-                    newInputElement.value = ''; // Kosongkan input teks baru jika opsi dipilih
-                }
-            };
+            selectElement.value = selectedValue;
         }
 
 
@@ -1002,10 +981,15 @@
             document.getElementById('dealId').value = '';
             document.getElementById('value').value = '';
 
+            // Reset input teks baru
+            document.getElementById('newConsultant').value = '';
+            document.getElementById('newContractor').value = '';
+            document.getElementById('newPic').value = '';
+
             // Isi dropdown Konsultan, Kontraktor, PIC
-            populateDropdown('consultant', 'newConsultant', uniqueConsultants);
-            populateDropdown('contractor', 'newContractor', uniqueContractors);
-            populateDropdown('pic', 'newPic', uniquePICs);
+            populateDropdown('consultant', uniqueConsultants);
+            populateDropdown('contractor', uniqueContractors);
+            populateDropdown('pic', uniquePICs);
 
             if (dealId) {
                 modalTitle.textContent = 'Edit Deal';
@@ -1022,9 +1006,27 @@
                     document.getElementById('facility').value = deal.facility || '';
                     
                     // Set nilai untuk dropdown Konsultan, Kontraktor, PIC
-                    populateDropdown('consultant', 'newConsultant', uniqueConsultants, deal.consultant);
-                    populateDropdown('contractor', 'newContractor', uniqueContractors, deal.contractor);
-                    populateDropdown('pic', 'newPic', uniquePICs, deal.pic);
+                    // Jika nilai deal ada di uniqueValues, set dropdown. Jika tidak, set input teks baru.
+                    if (deal.consultant && uniqueConsultants.has(deal.consultant)) {
+                        document.getElementById('consultant').value = deal.consultant;
+                    } else {
+                        document.getElementById('consultant').value = ''; // Pastikan dropdown kosong jika nilai tidak ada
+                        document.getElementById('newConsultant').value = deal.consultant || '';
+                    }
+
+                    if (deal.contractor && uniqueContractors.has(deal.contractor)) {
+                        document.getElementById('contractor').value = deal.contractor;
+                    } else {
+                        document.getElementById('contractor').value = ''; // Pastikan dropdown kosong jika nilai tidak ada
+                        document.getElementById('newContractor').value = deal.contractor || '';
+                    }
+
+                    if (deal.pic && uniquePICs.has(deal.pic)) {
+                        document.getElementById('pic').value = deal.pic;
+                    } else {
+                        document.getElementById('pic').value = ''; // Pastikan dropdown kosong jika nilai tidak ada
+                        document.getElementById('newPic').value = deal.pic || '';
+                    }
 
                     document.getElementById('projectDate').value = deal.projectDate ? deal.projectDate.toDate().toISOString().split('T')[0] : '';
                     document.getElementById('stage').value = deal.stage || DEFAULT_STAGE;
@@ -1080,20 +1082,20 @@
             const product = document.getElementById('product').value;
             const facility = document.getElementById('facility').value;
             
-            // Ambil nilai dari dropdown atau input teks baru
-            let consultant = document.getElementById('consultant').value;
-            if (consultant === '') { // Jika opsi "Ketik Baru" dipilih
-                consultant = document.getElementById('newConsultant').value;
+            // Ambil nilai dari input teks baru jika ada, jika tidak, ambil dari dropdown
+            let consultant = document.getElementById('newConsultant').value.trim();
+            if (!consultant) { // Jika input teks baru kosong
+                consultant = document.getElementById('consultant').value;
             }
 
-            let contractor = document.getElementById('contractor').value;
-            if (contractor === '') { // Jika opsi "Ketik Baru" dipilih
-                contractor = document.getElementById('newContractor').value;
+            let contractor = document.getElementById('newContractor').value.trim();
+            if (!contractor) { // Jika input teks baru kosong
+                contractor = document.getElementById('contractor').value;
             }
 
-            let pic = document.getElementById('pic').value;
-            if (pic === '') { // Jika opsi "Ketik Baru" dipilih
-                pic = document.getElementById('newPic').value;
+            let pic = document.getElementById('newPic').value.trim();
+            if (!pic) { // Jika input teks baru kosong
+                pic = document.getElementById('pic').value;
             }
 
             const projectDate = document.getElementById('projectDate').value;
@@ -1146,7 +1148,7 @@
                     });
                 }
                 closeDealModal();
-                loadDealsFromFirebase();
+                loadDealsFromFirebase(); // Memuat ulang deals untuk memperbarui daftar unik
                 loadActivitiesFromFirebase();
             } catch (error) {
                 console.error("Error saving deal:", error);
