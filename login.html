@@ -86,15 +86,16 @@
             const password = document.getElementById('password').value;
             const errorMessage = document.getElementById('errorMessage');
 
-            auth.signInWithEmailAndPassword(email, password)
-                .then(() => {
-                    window.location.href = 'app.html';
-                })
-                .catch((error) => {
-                    errorMessage.textContent = error.message;
-                    errorMessage.classList.remove('hidden');
-                });
-        });
+auth.signInWithEmailAndPassword(email, password)
+    .then((userCredential) => {
+        console.log("Login success, redirecting to app.html");
+        window.location.href = 'app.html';
+    })
+    .catch((error) => {
+        console.error("Login error:", error);
+        errorMessage.textContent = error.message;
+        errorMessage.classList.remove('hidden');
+    });
 
         // Redirect jika sudah login
         auth.onAuthStateChanged((user) => {
