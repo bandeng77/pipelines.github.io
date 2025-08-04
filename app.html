@@ -551,7 +551,7 @@
         const activitiesCollection = db.collection('activities');
         const usersCollection = db.collection('users');
 
-        let deals = [];
+        let deals = []; // Variabel ini akan menyimpan SEMUA deals yang bisa diakses oleh user saat ini
         let activities = [];
         let charts = {};
         const DEFAULT_STAGE = 'main-pipeline';
@@ -611,7 +611,7 @@
 
                     console.log("Current role:", currentUserRole);
                     applyUserPermissions();
-                    loadDealsFromFirebase();
+                    // loadDealsFromFirebase() akan dipanggil di applyUserPermissions()
                     loadActivitiesFromFirebase();
                     
                     initEventListeners();
@@ -826,26 +826,25 @@
         // ==================== FUNGSI DEALS ====================
 
         // Fungsi untuk memuat deals dari Firebase
+        // Fungsi ini sekarang akan memuat SEMUA deals yang bisa diakses oleh user
+        // Admin: Semua deals
+        // User Sales: Semua deals (untuk keperluan pencarian)
         function loadDealsFromFirebase() {
             console.log("Loading deals from Firebase...");
             
             let query = dealsCollection.orderBy("createdAt", "desc");
             
-            // Jika bukan admin, hanya tampilkan deals yang dibuat oleh user tersebut
-            if (currentUserRole !== 'admin') {
-                const currentUserEmail = auth.currentUser?.email;
-                if (currentUserEmail) {
-                    query = query.where("createdBy", "==", currentUserEmail);
-                }
-            }
+            // Tidak ada lagi filter createdBy di sini.
+            // Semua deals akan dimuat ke variabel 'deals' untuk keperluan pencarian.
+            // Filtering untuk tampilan default pipeline akan dilakukan di renderAllDeals().
             
             query.get()
                 .then((querySnapshot) => {
-                    deals = [];
+                    deals = []; // Reset array deals
                     querySnapshot.forEach((doc) => {
                         deals.push({ id: doc.id, ...doc.data() });
                     });
-                    console.log("Deals loaded:", deals.length);
+                    console.log("Total deals loaded (for search/admin view):", deals.length);
                     renderAllDeals(); // Panggil renderAllDeals setelah deals dimuat
                 })
                 .catch((error) => {
@@ -854,7 +853,7 @@
                 });
         }
 
-        // Fungsi untuk render deal card
+        // Fungsi untuk render deal card (tidak berubah)
         function renderDeal(deal) {
             const dealCard = document.createElement('div');
             dealCard.className = 'deal-card';
@@ -894,41 +893,41 @@
             return dealCard;
         }
 
-        // Fungsi untuk render semua deals
+        // Fungsi untuk render semua deals (untuk tampilan default pipeline)
         function renderAllDeals() {
             const pipelineStage = document.getElementById('pipelines-stage');
             if (!pipelineStage) return;
             
             pipelineStage.innerHTML = ''; // Bersihkan konten pipeline
 
-            let dealsToRender = [];
+            let dealsToDisplay = [];
             if (currentUserRole === 'admin') {
-                dealsToRender = deals; // Admin melihat semua deals
+                dealsToDisplay = deals; // Admin melihat semua deals
             } else {
-                // User sales hanya melihat deals yang dibuatnya
+                // User sales hanya melihat deals yang dibuatnya secara default
                 const currentUserEmail = auth.currentUser?.email;
-                dealsToRender = deals.filter(deal => deal.createdBy === currentUserEmail);
+                dealsToDisplay = deals.filter(deal => deal.createdBy === currentUserEmail);
             }
 
-            if (dealsToRender.length === 0) {
+            if (dealsToDisplay.length === 0) {
                 pipelineStage.innerHTML = `
                     <div class="empty-stage-message text-center text-gray-400 p-4 text-sm w-full">
-                        <i class="fas fa-search text-3xl mb-2"></i>
-                        <p>Tidak ada deals yang ditemukan di pipeline Anda.</p>
-                        <p>Gunakan kolom pencarian untuk mencari deal lainnya.</p>
+                        <i class="fas fa-inbox text-3xl mb-2"></i>
+                        <p>Tidak ada deals yang Anda input di pipeline ini.</p>
+                        <p>Gunakan kolom pencarian di atas untuk mencari deal lainnya.</p>
                     </div>
                 `;
                 return;
             }
 
-            dealsToRender.forEach(deal => {
+            dealsToDisplay.forEach(deal => {
                 const dealCard = renderDeal(deal);
                 if (dealCard) {
                     pipelineStage.appendChild(dealCard);
                 }
             });
 
-            initSortable(); // Inisialisasi ulang sortable setelah render
+            initSortable();
         }
 
         // Fungsi untuk membuka modal deal
@@ -1268,8 +1267,9 @@
                     sortableInstances['pipelines-stage'].option('disabled', !isAdmin);
                 }
 
-                // Render deals sesuai role
-                loadDealsFromFirebase(); // Panggil ulang untuk memuat deals sesuai filter role
+                // Panggil loadDealsFromFirebase di sini untuk memastikan data deals dimuat
+                // sebelum renderAllDeals dipanggil.
+                loadDealsFromFirebase(); 
                 
             } catch (error) {
                 console.error("Error in applyUserPermissions:", error);
@@ -1330,15 +1330,17 @@
         // ==================== FUNGSI LAINNYA ====================
 
         // Fungsi untuk filter deals
+        // Fungsi ini sekarang akan mencari di SEMUA deals yang dimuat ke variabel 'deals'
         function filterDeals() {
             try {
                 const searchTerm = document.getElementById('searchDeals').value.toLowerCase();
                 const priorityFilter = document.getElementById('filterPriority').value;
                 
+                // Filter dari SEMUA deals yang sudah dimuat
                 const filteredDeals = deals.filter(deal => {
                     const matchesSearch = 
                         (deal.dealName && deal.dealName.toLowerCase().includes(searchTerm)) ||
-                        (deal.company && deal.company.toLowerCase().includes(searchTerm)) ||
+                        (deal.company && deal.company.toLowerCase().includes(searchTerm)) || // Jika ada field company
                         (deal.salesName && deal.salesName.toLowerCase().includes(searchTerm));
                     
                     const matchesPriority = 
@@ -1396,7 +1398,7 @@
 
         // Inisialisasi saat DOM siap
         document.addEventListener('DOMContentLoaded', function() {
-            initSortable(); // Inisialisasi Sortable saat DOM siap
+            initSortable();
         });
     </script>
 </body>
