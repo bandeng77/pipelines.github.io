@@ -511,7 +511,7 @@
         let sortableInstances = {};
         let authInitialized = false;
 
-    // Fungsi untuk menangani perubahan status autentikasi
+        // Fungsi untuk menangani perubahan status autentikasi
         auth.onAuthStateChanged(async (user) => {
             if (authInitialized) return;
             authInitialized = true;
@@ -563,38 +563,35 @@
 
         // Fungsi untuk menerapkan permissions berdasarkan role
         function applyUserPermissions() {
-            const isAdmin = currentUserRole === 'admin';
-            const currentUserEmail = auth.currentUser?.email;
-            
-            console.log("Applying permissions for:", currentUserEmail, "Role:", currentUserRole);
-            
-            // Admin features
-            const viewStatsBtn = document.getElementById('viewStatsBtn');
-            const activityBtn = document.getElementById('activityBtn');
-            const newDealBtn = document.getElementById('newDealBtn');
-            
-            if (viewStatsBtn) viewStatsBtn.classList.toggle('hidden', !isAdmin);
-            if (activityBtn) activityBtn.classList.toggle('hidden', !isAdmin);
-            if (newDealBtn) newDealBtn.classList.toggle('hidden', false); // Selalu tampilkan untuk semua user
-            
-            // Sortable permissions
-            if (sortableInstances['pipelines-stage']) {
-                sortableInstances['pipelines-stage'].option('disabled', !isAdmin);
-            }
+            try {
+                const isAdmin = currentUserRole === 'admin';
+                const currentUserEmail = auth.currentUser?.email;
+                
+                console.log("Applying permissions for:", currentUserEmail, "Role:", currentUserRole);
+                
+                // Admin features
+                const viewStatsBtn = document.getElementById('viewStatsBtn');
+                const activityBtn = document.getElementById('activityBtn');
+                const newDealBtn = document.getElementById('newDealBtn');
+                
+                if (viewStatsBtn) viewStatsBtn.classList.toggle('hidden', !isAdmin);
+                if (activityBtn) activityBtn.classList.toggle('hidden', !isAdmin);
+                if (newDealBtn) newDealBtn.classList.toggle('hidden', false); // Selalu tampilkan untuk semua user
+                
+                // Sortable permissions
+                if (sortableInstances['pipelines-stage']) {
+                    sortableInstances['pipelines-stage'].option('disabled', !isAdmin);
+                }
 
-            // Render deals sesuai role
-            const pipelineStage = document.getElementById('pipelines-stage');
-            if (pipelineStage) {
-                if (isAdmin) {
+                // Render deals
+                if (typeof renderAllDeals === 'function') {
                     renderAllDeals();
                 } else {
-                    pipelineStage.innerHTML = `
-                        <div class="empty-stage-message text-center text-gray-400 p-4 text-sm">
-                            <i class="fas fa-search text-3xl mb-2"></i>
-                            <p>Cari deal Anda menggunakan kolom pencarian di atas</p>
-                        </div>
-                    `;
+                    console.error("renderAllDeals function is not defined");
                 }
+            } catch (error) {
+                console.error("Error in applyUserPermissions:", error);
+                showToast("Gagal menerapkan permissions", 3000);
             }
         }
 
@@ -756,14 +753,129 @@
 
         // Fungsi helper untuk format angka
         function formatNumber(num) {
-            return new Intl.NumberFormat('id-ID').format(num);
+            return num ? new Intl.NumberFormat('id-ID').format(num) : '0';
         }
 
         // Fungsi helper untuk format tanggal
         function formatDate(timestamp) {
             if (!timestamp) return '-';
-            const date = timestamp.toDate();
-            return date.toLocaleDateString('id-ID');
+            try {
+                const date = timestamp.toDate();
+                return date.toLocaleDateString('id-ID');
+            } catch (e) {
+                return '-';
+            }
+        }
+
+        // Fungsi untuk render semua deals
+        function renderAllDeals() {
+            const pipelineStage = document.getElementById('pipelines-stage');
+            if (!pipelineStage) return;
+            
+            if (deals.length === 0) {
+                pipelineStage.innerHTML = `
+                    <div class="empty-stage-message text-center text-gray-400 p-4 text-sm">
+                        <i class="fas fa-search text-3xl mb-2"></i>
+                        <p>Tidak ada deals yang ditemukan</p>
+                    </div>
+                `;
+                return;
+            }
+
+            pipelineStage.innerHTML = '';
+            deals.forEach(deal => {
+                const dealCard = renderDeal(deal);
+                if (dealCard) {
+                    pipelineStage.appendChild(dealCard);
+                }
+            });
+
+            initSortable();
+        }
+
+        // Fungsi untuk inisialisasi SortableJS
+        function initSortable() {
+            const pipelineStage = document.getElementById('pipelines-stage');
+            if (!pipelineStage) return;
+
+            sortableInstances['pipelines-stage'] = new Sortable(pipelineStage, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                dragClass: 'sortable-drag',
+                disabled: currentUserRole !== 'admin',
+                onEnd: function(evt) {
+                    if (currentUserRole !== 'admin') return;
+                    
+                    const dealId = evt.item.dataset.id;
+                    const newStage = 'main-pipeline';
+                    
+                    updateDealStage(dealId, newStage);
+                }
+            });
+        }
+
+        // Fungsi untuk update stage deal
+        function updateDealStage(dealId, newStage) {
+            dealsCollection.doc(dealId).update({
+                stage: newStage,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                showToast("Deal berhasil dipindahkan", 2000);
+            })
+            .catch((error) => {
+                console.error("Error updating deal stage:", error);
+                showToast("Gagal memindahkan deal", 3000);
+            });
+        }
+
+        // Fungsi untuk filter deals
+        function filterDeals() {
+            try {
+                const searchTerm = document.getElementById('searchDeals').value.toLowerCase();
+                const priorityFilter = document.getElementById('filterPriority').value;
+                
+                const filteredDeals = deals.filter(deal => {
+                    const matchesSearch = 
+                        (deal.dealName && deal.dealName.toLowerCase().includes(searchTerm)) ||
+                        (deal.company && deal.company.toLowerCase().includes(searchTerm)) ||
+                        (deal.salesName && deal.salesName.toLowerCase().includes(searchTerm));
+                    
+                    const matchesPriority = 
+                        priorityFilter === 'all' || 
+                        (deal.priority && deal.priority === priorityFilter);
+                    
+                    return matchesSearch && matchesPriority;
+                });
+                
+                renderFilteredDeals(filteredDeals);
+            } catch (error) {
+                console.error("Error filtering deals:", error);
+            }
+        }
+
+        // Fungsi untuk render deals yang sudah difilter
+        function renderFilteredDeals(filteredDeals) {
+            const pipelineStage = document.getElementById('pipelines-stage');
+            if (!pipelineStage) return;
+            
+            pipelineStage.innerHTML = '';
+            
+            if (filteredDeals.length === 0) {
+                pipelineStage.innerHTML = `
+                    <div class="empty-stage-message text-center text-gray-400 p-4 text-sm">
+                        <i class="fas fa-search text-3xl mb-2"></i>
+                        <p>Tidak ada deals yang sesuai dengan filter</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            filteredDeals.forEach(deal => {
+                const dealCard = renderDeal(deal);
+                pipelineStage.appendChild(dealCard);
+            });
         }
 
         // Inisialisasi saat DOM siap
