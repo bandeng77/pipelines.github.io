@@ -19,9 +19,6 @@
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-        .input-field {
-            transition: all 0.3s ease;
-        }
         .input-field:focus {
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
         }
@@ -77,30 +74,56 @@
 
         // Inisialisasi Firebase
         firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
+        
+        // Flag untuk mencegah multiple submission
+        let isLoggingIn = false;
+        let authChecked = false;
+
+        // Cek status auth saat pertama kali load
+        firebase.auth().onAuthStateChanged((user) => {
+            if (authChecked) return;
+            authChecked = true;
+            
+            if (user) {
+                console.log("Already logged in as:", user.email);
+                // Gunakan timer untuk memastikan DOM siap
+                setTimeout(() => {
+                    window.location.replace('app.html');
+                }, 100);
+            }
+        });
 
         // Handle form login
-        document.getElementById('loginForm').addEventListener('submit', (e) => {
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            if (isLoggingIn) return;
+            isLoggingIn = true;
+            
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const errorMessage = document.getElementById('errorMessage');
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Memproses...';
 
-auth.signInWithEmailAndPassword(email, password)
-    .then((userCredential) => {
-        console.log("Login success, redirecting to app.html");
-        window.location.href = 'app.html';
-    })
-    .catch((error) => {
-        console.error("Login error:", error);
-        errorMessage.textContent = error.message;
-        errorMessage.classList.remove('hidden');
-    });
-
-        // Redirect jika sudah login
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                window.location.href = 'app.html';
+            try {
+                const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+                console.log("Login success for:", userCredential.user.email);
+                
+                // Tunggu 500ms untuk memastikan auth state terupdate
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Redirect dengan replace untuk hindari history duplikat
+                window.location.replace('app.html');
+            } catch (error) {
+                console.error("Login error:", error);
+                errorMessage.textContent = "Email atau password salah";
+                errorMessage.classList.remove('hidden');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i> Masuk';
+                isLoggingIn = false;
             }
         });
     </script>
