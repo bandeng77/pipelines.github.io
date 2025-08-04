@@ -13,12 +13,477 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
 
     <style>
-        /* [Semua style CSS yang sama tetap dipertahankan] */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .pipeline-stage {
+            min-height: 480px;
+            max-height: 600px;
+            transition: all 0.3s ease;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background-color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            box-sizing: border-box;
+        }
+        .pipeline-stage-header {
+            padding: 1.25rem;
+            border-bottom: 1px solid #e2e8f0;
+            background-color: #f1f5f9;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.25rem;
+        }
+        .pipeline-stage-header h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1f2937;
+            flex-shrink: 0;
+        }
+        .pipeline-stage-header span {
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .pipeline-stage-content {
+            flex-grow: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            min-height: 100px;
+            height: 100%;
+        }
+        .deal-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: grab;
+            position: relative;
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        .deal-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        }
+        .deal-card:active {
+            cursor: grabbing;
+        }
+        .sortable-ghost {
+            opacity: 0.4;
+            background-color: #e0f2fe;
+            border: 1px dashed #90cdf4;
+        }
+        .sortable-chosen {
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            transform: scale(1.02);
+        }
+        .sortable-drag {
+            opacity: 0.9;
+        }
+        .stage-main-pipeline { border-left: 5px solid #3B82F6; }
+        .pipeline-stage-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        .pipeline-stage-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .pipeline-stage-content::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        .pipeline-stage-content::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .modal-content-enter {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        .modal-content-enter-active {
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+        }
+        .modal-content-leave {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .modal-content-leave-active {
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 0.3s ease-in, transform 0.3s ease-in;
+        }
+        #toast-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .toast {
+            background-color: #333;
+            color: white;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transform: translateX(100%);
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        #activityModalContent {
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .activity-item {
+            padding: 0.75rem;
+            background-color: #f9fafb;
+            border-radius: 0.375rem;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 0.5rem;
+        }
+        .activity-item:last-child {
+            margin-bottom: 0;
+        }
+        .activity-item p {
+            font-size: 0.875rem;
+            color: #374151;
+        }
+        .activity-item .activity-date {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-top: 0.25rem;
+        }
+        .deal-card .text-xs i {
+            font-size: 0.7rem;
+        }
+        .deal-card .flex.space-x-2 button i {
+            font-size: 0.8rem;
+            vertical-align: middle;
+        }
+        .deal-card .flex.space-x-2 button {
+            padding: 0.15rem 0.3rem;
+            font-size: 0.75rem;
+        }
+        .deal-card .flex.space-x-2 {
+            gap: 0.2rem;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
-    <!-- [Semua struktur HTML yang sama tetap dipertahankan] -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="mb-8 bg-white p-6 rounded-lg shadow-md">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                <div>
+                    <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900">Sales Pipeline Manager <i class="fas fa-chart-line text-blue-600 ml-2"></i></h1>
+                    <p class="text-sm sm:text-base text-gray-600 mt-1">Kelola peluang penjualan Anda dengan mudah</p>
+                </div>
+                <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-4 sm:mt-0">
+                    <button id="authButton" onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm">
+                        <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                    </button>
 
+                    <button id="newDealBtn" onclick="openDealModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm">
+                        <i class="fas fa-plus-circle mr-2"></i> Deal Baru
+                    </button>
+                    
+                    <button id="viewStatsBtn" onclick="showStats()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm">
+                        <i class="fas fa-chart-pie mr-2"></i> Statistik
+                    </button>
+                    
+                    <button id="activityBtn" onclick="openActivityModal()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm">
+                        <i class="fas fa-bell mr-2"></i> Aktivitas
+                        <span id="activity-badge" class="ml-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full hidden">0</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mt-6 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
+                <input type="text" id="searchDeals" onkeyup="filterDeals()" placeholder="Cari deal berdasarkan nama, perusahaan..." class="w-full sm:w-1/2 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                <select id="filterPriority" onchange="filterDeals()" class="w-full sm:w-1/4 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                    <option value="all">Semua Prioritas</option>
+                    <option value="hot">Hot</option>
+                    <option value="warm">Warm</option>
+                    <option value="cold">Cold</option>
+                </select>
+            </div>
+        </header>
+
+        <!-- Pipeline Visualization -->
+        <div class="grid grid-cols-1 gap-6 mb-10">
+            <div class="pipeline-stage stage-main-pipeline">
+                <div class="pipeline-stage-header">
+                    <h3>Pipelines</h3>
+                </div>
+                <div id="pipelines-stage" class="pipeline-stage-content space-y-4">
+                    <!-- Deals akan ditampilkan di sini -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Section (hidden by default) -->
+        <div id="stats-section" class="hidden bg-white p-6 rounded-lg shadow-md mb-10">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center"><i class="fas fa-chart-bar mr-3 text-gray-500"></i> Analisis Performa Penjualan</h2>
+                <button onclick="hideStats()" class="text-gray-500 hover:text-gray-700 transition duration-200">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                    <canvas id="dealSizeChart"></canvas>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                    <canvas id="winRateChart"></canvas>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                    <canvas id="dealsBySalesChart"></canvas>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                    <canvas id="dealsByProductPackageChart"></canvas>
+                </div>
+            </div>
+            <div class="mt-8 bg-gray-50 p-4 rounded-lg shadow-inner">
+                <canvas id="pipelineValueChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Add/Edit Deal Modal -->
+        <div id="dealModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-xl p-8 w-full max-w-4xl shadow-2xl modal-content-enter" id="dealModalContent">
+                <h2 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900" id="modalTitle">Tambah Deal Baru</h2>
+                <form id="dealForm">
+                    <input type="hidden" id="dealId">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Kolom 1 -->
+                        <div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="dealName">Nama Proyek <span class="text-red-500">*</span></label>
+                                <input type="text" id="dealName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="salesName">Nama Sales</label>
+                                <select id="salesName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih Sales</option>
+                                    <option value="Pamungkas">Pamungkas</option>
+                                    <option value="Rory">Rory</option>
+                                    <option value="Rangga">Rangga</option>
+                                    <option value="Dhea">Dhea</option>
+                                    <option value="YIB Wahyu">YIB Wahyu</option>
+                                    <option value="David">David</option>
+                                    <option value="Hadi">Hadi</option>
+                                    <option value="Engineering">Engineering</option>
+                                </select>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="beforeDiscount">Sebelum Diskon (IDR)</label>
+                                <input type="number" id="beforeDiscount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" oninput="calculateValue()">
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="discount">Diskon (%)</label>
+                                <input type="number" id="discount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" max="100" oninput="calculateValue()">
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="value">Nilai (IDR) <span class="text-red-500">*</span></label>
+                                <input type="number" id="value" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" readonly required>
+                            </div>
+                        </div>
+                        <!-- Kolom 2 -->
+                        <div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="package">Paket</label>
+                                <select id="package" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih Paket</option>
+                                    <option value="Electronic Package">Electronic Package</option>
+                                    <option value="M&E">M&E</option>
+                                    <option value="Fire Fighting Cont">Fire Fighting Cont</option>
+                                </select>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="product">Produk</label>
+                                <select id="product" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih Produk</option>
+                                    <option value="Fire">Fire</option>
+                                    <option value="Fire & Water">Fire & Water</option>
+                                    <option value="FAS & FSS">FAS & FSS</option>
+                                    <option value="Vesda">Vesda</option>
+                                    <option value="Suppression">Suppression</option>
+                                    <option value="Mechanical">Mechanical</option>
+                                </select>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="facility">Fasilitas</label>
+                                <select id="facility" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih Fasilitas</option>
+                                    <option value="Industrial">Industrial</option>
+                                    <option value="Office">Office</option>
+                                    <option value="Hotel">Hotel</option>
+                                    <option value="Data Center">Data Center</option>
+                                    <option value="Oil & Gas">Oil & Gas</option>
+                                    <option value="Warehouse">Warehouse</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        <!-- Kolom 3 -->
+                        <div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="consultant">Konsultan</label>
+                                <input type="text" id="consultant" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="contractor">Kontraktor</label>
+                                <input type="text" id="contractor" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="pic">PIC</label>
+                                <input type="text" id="pic" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="projectDate">Tanggal Proyek</label>
+                                <input type="date" id="projectDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                            </div>
+                            <div class="mb-4" id="stageFieldContainer">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="stage">Tahap <span class="text-red-500">*</span></label>
+                                <select id="stage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
+                                    <option value="main-pipeline">Main Pipeline</option>
+                                    <option value="identified">Identified</option>
+                                    <option value="on-hold">On Hold</option>
+                                    <option value="lost">Lost</option>
+                                </select>
+                            </div>
+                            <div class="mb-6">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="priority">Prioritas</label>
+                                <select id="priority" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="cold">Cold</option>
+                                    <option value="warm">Warm</option>
+                                    <option value="hot">Hot</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button type="button" onclick="closeDealModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
+                            Batal
+                        </button>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md font-medium transition duration-200 ease-in-out transform hover:scale-105 text-sm">
+                            Simpan Deal
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Deal Detail Modal -->
+        <div id="dealDetailModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-xl p-8 w-full max-w-md shadow-2xl modal-content-enter" id="dealDetailModalContent">
+                <h2 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900" id="dealDetailTitle">Detail Deal</h2>
+                <div class="space-y-4 text-sm">
+                    <div>
+                        <p class="text-gray-700 font-semibold">Nama Sales:</p>
+                        <p id="detailSalesName" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">Sebelum Diskon (IDR):</p>
+                        <p id="detailBeforeDiscount" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">Diskon:</p>
+                        <p id="detailDiscount" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">Nilai (IDR):</p>
+                        <p id="detailValue" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">Paket:</p>
+                        <p id="detailPackage" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">Produk:</p>
+                        <p id="detailProduct" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">Fasilitas:</p>
+                        <p id="detailFacility" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">Konsultan:</p>
+                        <p id="detailConsultant" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">Kontraktor:</p>
+                        <p id="detailContractor" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">PIC:</p>
+                        <p id="detailPIC" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">Tanggal Proyek:</p>
+                        <p id="detailCreatedDate" class="text-gray-900"></p>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" onclick="closeDealDetailModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Modal -->
+        <div id="activityModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-xl p-8 w-full max-w-lg shadow-2xl modal-content-enter" id="activityModalContent">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center"><i class="fas fa-history mr-3 text-gray-500"></i> Aktivitas Terakhir</h2>
+                    <button onclick="closeActivityModal()" class="text-gray-500 hover:text-gray-700 transition duration-200">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div id="activity-feed-modal" class="space-y-3">
+                    <!-- Aktivitas akan dimuat di sini -->
+                </div>
+                <div class="flex justify-end mt-6">
+                    <button onclick="closeActivityModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Confirmation Modal -->
+        <div id="deleteModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-xl p-8 w-full max-w-sm shadow-2xl modal-content-enter" id="deleteModalContent">
+                <h2 class="text-xl font-bold mb-4 text-gray-900">Konfirmasi Penghapusan</h2>
+                <p class="text-gray-700 mb-6 text-sm">Apakah Anda yakin ingin menghapus "<span id="dealToDeleteName" class="font-semibold"></span>"? Aksi ini tidak dapat dibatalkan.</p>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeDeleteModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
+                        Batal
+                    </button>
+                    <button type="button" id="confirmDeleteBtn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow-md font-medium transition duration-200 ease-in-out transform hover:scale-105 text-sm">
+                        Hapus
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notification Container -->
+        <div id="toast-container"></div>
+    </div>
     <script>
         // Konfigurasi Firebase
         const firebaseConfig = {
