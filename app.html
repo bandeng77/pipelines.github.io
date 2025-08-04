@@ -524,35 +524,43 @@
         }
 
         // Cek status auth saat halaman dimuat
-        auth.onAuthStateChanged(async (user) => {
-            if (!user) {
-                window.location.href = 'login.html';
-                return;
-            }
+auth.onAuthStateChanged(async (user) => {
+    console.log("Auth state changed:", user ? user.email : "no user");
+    
+    if (!user) {
+        console.log("No user, redirecting to login");
+        window.location.href = 'login.html';
+        return;
+    }
 
-            try {
-                // Cek role user
-                if (user.email === 'admin@genetek.co.id') {
-                    currentUserRole = 'admin';
-                    await usersCollection.doc(user.uid).set({ 
-                        role: 'admin',
-                        email: user.email 
-                    }, { merge: true });
-                } else {
-                    const userDoc = await usersCollection.doc(user.uid).get();
-                    currentUserRole = userDoc.exists ? userDoc.data().role : 'user';
-                }
+    try {
+        // Cek role user
+        if (user.email === 'admin@genetek.co.id') {
+            currentUserRole = 'admin';
+            await usersCollection.doc(user.uid).set({ 
+                role: 'admin',
+                email: user.email 
+            }, { merge: true });
+        } else {
+            const userDoc = await usersCollection.doc(user.uid).get();
+            currentUserRole = userDoc.exists ? userDoc.data().role : 'user';
+        }
 
-                // Terapkan permissions
-                applyUserPermissions();
-                loadDealsFromFirebase();
-                loadActivitiesFromFirebase();
-            } catch (error) {
-                console.error("Error:", error);
-                window.location.href = 'login.html';
-            }
-        });
-
+        console.log("User role determined:", currentUserRole);
+        
+        // Hanya render aplikasi jika sudah di halaman app.html
+        if (window.location.pathname.endsWith('app.html')) {
+            applyUserPermissions();
+            loadDealsFromFirebase();
+            loadActivitiesFromFirebase();
+        } else {
+            window.location.href = 'app.html';
+        }
+    } catch (error) {
+        console.error("Error:", error);
+        window.location.href = 'login.html';
+    }
+});
         // Terapkan permissions berdasarkan role
         function applyUserPermissions() {
             const isAdmin = currentUserRole === 'admin';
