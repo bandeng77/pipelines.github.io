@@ -728,6 +728,77 @@
                 toast.addEventListener('transitionend', () => toast.remove(), { once: true });
             }, duration);
         }
+// ==================== FUNGSI STATISTIK ====================
+
+// Fungsi untuk menampilkan bagian statistik
+function showStats() {
+    const statsSection = document.getElementById('stats-section');
+    if (statsSection) {
+        statsSection.classList.remove('hidden');
+        // Panggil fungsi untuk merender semua chart di sini
+        renderAllCharts();
+    }
+}
+
+// Fungsi untuk menyembunyikan bagian statistik
+function hideStats() {
+    const statsSection = document.getElementById('stats-section');
+    if (statsSection) {
+        statsSection.classList.add('hidden');
+    }
+}
+
+// Fungsi untuk merender semua chart (akan diimplementasikan lebih lanjut)
+function renderAllCharts() {
+    // Implementasi chart akan ditambahkan di sini
+    // Untuk saat ini, kita bisa menambahkan placeholder atau log
+    console.log("Rendering all charts...");
+
+    // Contoh placeholder untuk chart
+    // Anda perlu mengimplementasikan logika pengambilan data dan konfigurasi Chart.js
+    // untuk setiap chart (dealSizeChart, winRateChart, dealsBySalesChart, dealsByProductPackageChart, pipelineValueChart)
+    // Misalnya:
+    // renderDealSizeChart();
+    // renderWinRateChart();
+    // renderDealsBySalesChart();
+    // renderDealsByProductPackageChart();
+    // renderPipelineValueChart();
+}
+
+// Contoh fungsi render chart (Anda perlu mengulanginya untuk setiap chart)
+// function renderDealSizeChart() {
+//     const ctx = document.getElementById('dealSizeChart').getContext('2d');
+//     if (charts.dealSizeChart) {
+//         charts.dealSizeChart.destroy();
+//     }
+//     charts.dealSizeChart = new Chart(ctx, {
+//         type: 'bar',
+//         data: {
+//             labels: ['<10 Juta', '10-50 Juta', '50-100 Juta', '>100 Juta'],
+//             datasets: [{
+//                 label: 'Jumlah Deal',
+//                 data: [10, 20, 15, 5], // Data dummy
+//                 backgroundColor: 'rgba(75, 192, 192, 0.6)',
+//                 borderColor: 'rgba(75, 192, 192, 1)',
+//                 borderWidth: 1
+//             }]
+//         },
+//         options: {
+//             responsive: true,
+//             plugins: {
+//                 title: {
+//                     display: true,
+//                     text: 'Distribusi Ukuran Deal'
+//                 }
+//             },
+//             scales: {
+//                 y: {
+//                     beginAtZero: true
+//                 }
+//             }
+//         }
+//     });
+// }
 
         // ==================== FUNGSI DEALS ====================
 
