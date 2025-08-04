@@ -21,10 +21,18 @@
         }
         .input-field:focus {
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+            outline: none;
+        }
+        .btn-login {
+            transition: all 0.3s ease;
+        }
+        .btn-login:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
         }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
+<body class="min-h-screen flex items-center justify-center p-4 bg-gray-50">
     <div class="login-card bg-white p-8 w-full">
         <div class="text-center mb-8">
             <div class="flex items-center justify-center mb-4">
@@ -39,19 +47,21 @@
                 <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email</label>
                 <input type="email" id="email" required
                     class="input-field w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-blue-500"
-                    placeholder="email@genetek.co.id">
+                    placeholder="admin@genetek.co.id"
+                    value="admin@genetek.co.id">
             </div>
 
             <div>
                 <label for="password" class="block text-sm font-medium text-gray-700 mb-2">Password</label>
                 <input type="password" id="password" required
                     class="input-field w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-blue-500"
-                    placeholder="••••••••">
+                    placeholder="••••••••"
+                    value="Genetek@2025!!">
             </div>
 
             <div id="errorMessage" class="text-red-500 text-sm hidden"></div>
 
-            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition duration-200 flex items-center justify-center">
+            <button type="submit" id="loginBtn" class="btn-login w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium flex items-center justify-center">
                 <i class="fas fa-sign-in-alt mr-2"></i> Masuk
             </button>
         </form>
@@ -75,21 +85,20 @@
         // Inisialisasi Firebase
         firebase.initializeApp(firebaseConfig);
         
-        // Flag untuk mencegah multiple submission
-        let isLoggingIn = false;
+        // Variabel kontrol
         let authChecked = false;
+        let isLoggingIn = false;
 
-        // Cek status auth saat pertama kali load
+        // Cek status auth saat pertama load
         firebase.auth().onAuthStateChanged((user) => {
             if (authChecked) return;
             authChecked = true;
             
-            if (user) {
-                console.log("Already logged in as:", user.email);
-                // Gunakan timer untuk memastikan DOM siap
+            if (user && window.location.pathname.includes('login.html')) {
+                console.log("User already logged in, redirecting...");
                 setTimeout(() => {
                     window.location.replace('app.html');
-                }, 100);
+                }, 800);
             }
         });
 
@@ -103,17 +112,19 @@
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const errorMessage = document.getElementById('errorMessage');
-            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const loginBtn = document.getElementById('loginBtn');
             
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Memproses...';
+            // Update UI
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Memproses...';
+            errorMessage.classList.add('hidden');
 
             try {
-                const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
-                console.log("Login success for:", userCredential.user.email);
+                // Login dengan Firebase
+                await firebase.auth().signInWithEmailAndPassword(email, password);
                 
-                // Tunggu 500ms untuk memastikan auth state terupdate
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // Tunggu 1 detik untuk memastikan auth state stabil
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 
                 // Redirect dengan replace untuk hindari history duplikat
                 window.location.replace('app.html');
@@ -121,11 +132,18 @@
                 console.error("Login error:", error);
                 errorMessage.textContent = "Email atau password salah";
                 errorMessage.classList.remove('hidden');
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i> Masuk';
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i> Masuk';
                 isLoggingIn = false;
             }
         });
+
+        // Auto-submit untuk testing (bisa dihapus di production)
+        setTimeout(() => {
+            if (window.location.href.includes('localhost')) {
+                document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+            }
+        }, 500);
     </script>
 </body>
 </html>
