@@ -495,6 +495,16 @@
             appId: "1:763507094626:web:57838068505c964f654d3b"
         };
 
+        // Konfigurasi Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyA630jQdTLNt1XHjVAXX10IjIeMVJ_vNn8",
+            authDomain: "pipelineefk.firebaseapp.com",
+            projectId: "pipelineefk",
+            storageBucket: "pipelineefk.appspot.com",
+            messagingSenderId: "763507094626",
+            appId: "1:763507094626:web:57838068505c964f654d3b"
+        };
+
         // Inisialisasi Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
@@ -510,6 +520,8 @@
         let currentUserRole = 'user';
         let sortableInstances = {};
         let authInitialized = false;
+
+        // ==================== FUNGSI UTAMA ====================
 
         // Fungsi untuk menangani perubahan status autentikasi
         auth.onAuthStateChanged(async (user) => {
@@ -561,89 +573,173 @@
             }
         });
 
-        // Fungsi untuk menerapkan permissions berdasarkan role
-        function applyUserPermissions() {
-            try {
-                const isAdmin = currentUserRole === 'admin';
-                const currentUserEmail = auth.currentUser?.email;
-                
-                console.log("Applying permissions for:", currentUserEmail, "Role:", currentUserRole);
-                
-                // Admin features
-                const viewStatsBtn = document.getElementById('viewStatsBtn');
-                const activityBtn = document.getElementById('activityBtn');
-                const newDealBtn = document.getElementById('newDealBtn');
-                
-                if (viewStatsBtn) viewStatsBtn.classList.toggle('hidden', !isAdmin);
-                if (activityBtn) activityBtn.classList.toggle('hidden', !isAdmin);
-                if (newDealBtn) newDealBtn.classList.toggle('hidden', false); // Selalu tampilkan untuk semua user
-                
-                // Sortable permissions
-                if (sortableInstances['pipelines-stage']) {
-                    sortableInstances['pipelines-stage'].option('disabled', !isAdmin);
-                }
+        // ==================== FUNGSI AKTIVITAS ====================
 
-                // Render deals
-                if (typeof renderAllDeals === 'function') {
-                    renderAllDeals();
-                } else {
-                    console.error("renderAllDeals function is not defined");
+        // Fungsi untuk memuat aktivitas dari Firebase
+        function loadActivitiesFromFirebase() {
+            console.log("Loading activities from Firebase...");
+            
+            let query = activitiesCollection.orderBy("timestamp", "desc").limit(50);
+            
+            // Jika bukan admin, hanya tampilkan aktivitas yang terkait dengan user tersebut
+            if (currentUserRole !== 'admin') {
+                const currentUserEmail = auth.currentUser?.email;
+                if (currentUserEmail) {
+                    query = query.where("userEmail", "==", currentUserEmail);
                 }
-            } catch (error) {
-                console.error("Error in applyUserPermissions:", error);
-                showToast("Gagal menerapkan permissions", 3000);
+            }
+            
+            query.get()
+                .then((querySnapshot) => {
+                    activities = [];
+                    querySnapshot.forEach((doc) => {
+                        activities.push({ id: doc.id, ...doc.data() });
+                    });
+                    console.log("Activities loaded:", activities.length);
+                    updateActivityBadge();
+                })
+                .catch((error) => {
+                    console.error("Error loading activities:", error);
+                    showToast("Gagal memuat aktivitas terbaru", 3000);
+                });
+        }
+
+        // Fungsi untuk memperbarui badge aktivitas
+        function updateActivityBadge() {
+            const activityBadge = document.getElementById('activity-badge');
+            if (!activityBadge) return;
+            
+            const unreadCount = activities.filter(act => !act.read).length;
+            
+            if (unreadCount > 0) {
+                activityBadge.textContent = unreadCount;
+                activityBadge.classList.remove('hidden');
+            } else {
+                activityBadge.classList.add('hidden');
             }
         }
 
-        // Fungsi untuk inisialisasi event listeners
-        function initEventListeners() {
-            console.log("Initializing event listeners...");
-            
+        // Fungsi untuk membuka modal aktivitas
+        function openActivityModal() {
             try {
-                // Deal Form
-                const dealForm = document.getElementById('dealForm');
-                if (dealForm) {
-                    dealForm.addEventListener('submit', function(e) {
-                        e.preventDefault();
-                        saveDeal();
+                const activityModal = document.getElementById('activityModal');
+                const activityFeed = document.getElementById('activity-feed-modal');
+                
+                if (!activityModal || !activityFeed) return;
+                
+                // Render aktivitas
+                activityFeed.innerHTML = '';
+                
+                if (activities.length === 0) {
+                    activityFeed.innerHTML = `
+                        <div class="text-center text-gray-500 py-4">
+                            <i class="fas fa-inbox text-3xl mb-2"></i>
+                            <p>Tidak ada aktivitas terbaru</p>
+                        </div>
+                    `;
+                } else {
+                    activities.forEach(activity => {
+                        const activityItem = document.createElement('div');
+                        activityItem.className = 'activity-item';
+                        activityItem.innerHTML = `
+                            <p>${activity.message || 'Aktivitas tidak tersedia'}</p>
+                            <div class="activity-date">
+                                ${formatDateTime(activity.timestamp)}
+                                ${activity.read ? '' : '<span class="ml-2 text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">Baru</span>'}
+                            </div>
+                        `;
+                        activityFeed.appendChild(activityItem);
                     });
                 }
-
-                // Buttons
-                const buttons = [
-                    { id: 'newDealBtn', func: openDealModal },
-                    { id: 'viewStatsBtn', func: showStats },
-                    { id: 'activityBtn', func: openActivityModal },
-                    { id: 'authButton', func: logout }
-                ];
                 
-                buttons.forEach(btn => {
-                    const element = document.getElementById(btn.id);
-                    if (element) {
-                        element.addEventListener('click', btn.func);
-                        console.log(`Event listener added for ${btn.id}`);
-                    }
-                });
-
-                // Search and filter
-                const searchInput = document.getElementById('searchDeals');
-                if (searchInput) {
-                    searchInput.addEventListener('keyup', filterDeals);
-                }
+                activityModal.classList.remove('hidden');
                 
-                const filterSelect = document.getElementById('filterPriority');
-                if (filterSelect) {
-                    filterSelect.addEventListener('change', filterDeals);
-                }
-
-                // Inisialisasi Sortable
-                initSortable();
-                
+                // Tandai aktivitas sebagai telah dibaca
+                markActivitiesAsRead();
             } catch (error) {
-                console.error("Error initializing event listeners:", error);
-                showToast("Gagal memuat beberapa fungsi", 3000);
+                console.error("Error opening activity modal:", error);
+                showToast("Gagal membuka aktivitas", 3000);
             }
         }
+
+        // Fungsi untuk menandai aktivitas sebagai telah dibaca
+        function markActivitiesAsRead() {
+            const batch = db.batch();
+            const unreadActivities = activities.filter(act => !act.read);
+            
+            unreadActivities.forEach(activity => {
+                const activityRef = activitiesCollection.doc(activity.id);
+                batch.update(activityRef, { read: true });
+            });
+            
+            if (unreadActivities.length > 0) {
+                batch.commit()
+                    .then(() => {
+                        console.log("Activities marked as read");
+                        updateActivityBadge();
+                    })
+                    .catch(error => {
+                        console.error("Error marking activities as read:", error);
+                    });
+            }
+        }
+
+        // ==================== FUNGSI UTILITAS ====================
+
+        // Fungsi helper untuk format tanggal dan waktu
+        function formatDateTime(timestamp) {
+            if (!timestamp) return '-';
+            try {
+                const date = timestamp.toDate();
+                return date.toLocaleString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (e) {
+                return '-';
+            }
+        }
+
+        // Fungsi helper untuk format angka
+        function formatNumber(num) {
+            return num ? new Intl.NumberFormat('id-ID').format(num) : '0';
+        }
+
+        // Fungsi helper untuk format tanggal
+        function formatDate(timestamp) {
+            if (!timestamp) return '-';
+            try {
+                const date = timestamp.toDate();
+                return date.toLocaleDateString('id-ID');
+            } catch (e) {
+                return '-';
+            }
+        }
+
+        // Fungsi untuk menampilkan toast notifikasi
+        function showToast(message, duration = 3000) {
+            const toastContainer = document.getElementById('toast-container');
+            if (!toastContainer) return;
+            
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = message;
+            toastContainer.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.add('show');
+            });
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+            }, duration);
+        }
+
+        // ==================== FUNGSI DEALS ====================
 
         // Fungsi untuk memuat deals dari Firebase
         function loadDealsFromFirebase() {
@@ -672,41 +768,6 @@
                     console.error("Error loading deals:", error);
                     showToast("Gagal memuat data deals", 3000);
                 });
-        }
-
-        // Fungsi logout
-        function logout() {
-            auth.signOut()
-                .then(() => {
-                    console.log("User logged out successfully");
-                    deals = [];
-                    activities = [];
-                    window.location.href = 'login.html';
-                })
-                .catch((error) => {
-                    console.error("Error logging out:", error);
-                    showToast("Gagal logout. Silakan coba lagi.", 5000);
-                });
-        }
-
-        // Fungsi untuk menampilkan toast notifikasi
-        function showToast(message, duration = 3000) {
-            const toastContainer = document.getElementById('toast-container');
-            if (!toastContainer) return;
-            
-            const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.innerText = message;
-            toastContainer.appendChild(toast);
-
-            requestAnimationFrame(() => {
-                toast.classList.add('show');
-            });
-
-            setTimeout(() => {
-                toast.classList.remove('show');
-                toast.addEventListener('transitionend', () => toast.remove(), { once: true });
-            }, duration);
         }
 
         // Fungsi untuk render deal card
@@ -751,22 +812,6 @@
             return dealCard;
         }
 
-        // Fungsi helper untuk format angka
-        function formatNumber(num) {
-            return num ? new Intl.NumberFormat('id-ID').format(num) : '0';
-        }
-
-        // Fungsi helper untuk format tanggal
-        function formatDate(timestamp) {
-            if (!timestamp) return '-';
-            try {
-                const date = timestamp.toDate();
-                return date.toLocaleDateString('id-ID');
-            } catch (e) {
-                return '-';
-            }
-        }
-
         // Fungsi untuk render semua deals
         function renderAllDeals() {
             const pipelineStage = document.getElementById('pipelines-stage');
@@ -792,6 +837,8 @@
 
             initSortable();
         }
+
+        // ==================== FUNGSI SORTABLE ====================
 
         // Fungsi untuk inisialisasi SortableJS
         function initSortable() {
@@ -829,6 +876,90 @@
                 showToast("Gagal memindahkan deal", 3000);
             });
         }
+
+        // ==================== FUNGSI PERMISSIONS ====================
+
+        // Fungsi untuk menerapkan permissions berdasarkan role
+        function applyUserPermissions() {
+            try {
+                const isAdmin = currentUserRole === 'admin';
+                const currentUserEmail = auth.currentUser?.email;
+                
+                console.log("Applying permissions for:", currentUserEmail, "Role:", currentUserRole);
+                
+                // Admin features
+                const viewStatsBtn = document.getElementById('viewStatsBtn');
+                const activityBtn = document.getElementById('activityBtn');
+                const newDealBtn = document.getElementById('newDealBtn');
+                
+                if (viewStatsBtn) viewStatsBtn.classList.toggle('hidden', !isAdmin);
+                if (activityBtn) activityBtn.classList.toggle('hidden', !isAdmin);
+                if (newDealBtn) newDealBtn.classList.toggle('hidden', false);
+                
+                // Sortable permissions
+                if (sortableInstances['pipelines-stage']) {
+                    sortableInstances['pipelines-stage'].option('disabled', !isAdmin);
+                }
+
+                // Render deals
+                renderAllDeals();
+                
+            } catch (error) {
+                console.error("Error in applyUserPermissions:", error);
+                showToast("Gagal menerapkan permissions", 3000);
+            }
+        }
+
+        // ==================== FUNGSI EVENT LISTENERS ====================
+
+        // Fungsi untuk inisialisasi event listeners
+        function initEventListeners() {
+            console.log("Initializing event listeners...");
+            
+            try {
+                // Deal Form
+                const dealForm = document.getElementById('dealForm');
+                if (dealForm) {
+                    dealForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        saveDeal();
+                    });
+                }
+
+                // Buttons
+                const buttons = [
+                    { id: 'newDealBtn', func: openDealModal },
+                    { id: 'viewStatsBtn', func: showStats },
+                    { id: 'activityBtn', func: openActivityModal },
+                    { id: 'authButton', func: logout }
+                ];
+                
+                buttons.forEach(btn => {
+                    const element = document.getElementById(btn.id);
+                    if (element) {
+                        element.addEventListener('click', btn.func);
+                        console.log(`Event listener added for ${btn.id}`);
+                    }
+                });
+
+                // Search and filter
+                const searchInput = document.getElementById('searchDeals');
+                if (searchInput) {
+                    searchInput.addEventListener('keyup', filterDeals);
+                }
+                
+                const filterSelect = document.getElementById('filterPriority');
+                if (filterSelect) {
+                    filterSelect.addEventListener('change', filterDeals);
+                }
+
+            } catch (error) {
+                console.error("Error initializing event listeners:", error);
+                showToast("Gagal memuat beberapa fungsi", 3000);
+            }
+        }
+
+        // ==================== FUNGSI LAINNYA ====================
 
         // Fungsi untuk filter deals
         function filterDeals() {
@@ -878,10 +1009,28 @@
             });
         }
 
+        // Fungsi logout
+        function logout() {
+            auth.signOut()
+                .then(() => {
+                    console.log("User logged out successfully");
+                    deals = [];
+                    activities = [];
+                    window.location.href = 'login.html';
+                })
+                .catch((error) => {
+                    console.error("Error logging out:", error);
+                    showToast("Gagal logout. Silakan coba lagi.", 5000);
+                });
+        }
+
+        // ==================== INISIALISASI ====================
+
         // Inisialisasi saat DOM siap
         document.addEventListener('DOMContentLoaded', function() {
             // Hanya inisialisasi elemen yang tidak tergantung auth
             initSortable();
+        });
         });
     </script>
 </body>
