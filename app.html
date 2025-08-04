@@ -583,9 +583,14 @@
                 .then((querySnapshot) => {
                     activities = [];
                     querySnapshot.forEach((doc) => {
-                        activities.push({ id: doc.id, ...doc.data() });
+                        const activityData = doc.data();
+                        // Pastikan timestamp adalah objek Timestamp Firebase
+                        if (activityData.timestamp && typeof activityData.timestamp.toDate !== 'function') {
+                            activityData.timestamp = firebase.firestore.Timestamp.fromMillis(activityData.timestamp);
+                        }
+                        activities.push({ id: doc.id, ...activityData });
                     });
-                    console.log("Activities loaded:", activities.length);
+                    console.log("Activities loaded:", activities.length, activities); // Log untuk debugging
                     updateActivityBadge();
                 })
                 .catch((error) => {
@@ -614,11 +619,16 @@
             try {
                 const activityModal = document.getElementById('activityModal');
                 const activityFeed = document.getElementById('activity-feed-modal');
-                
-                if (!activityModal || !activityFeed) return;
+                const activityModalContent = document.getElementById('activityModalContent');
+
+                if (!activityModal || !activityFeed || !activityModalContent) {
+                    console.error("Elemen modal aktivitas tidak ditemukan.");
+                    showToast("Gagal membuka aktivitas: Elemen tidak lengkap.", 3000);
+                    return;
+                }
                 
                 // Render aktivitas
-                activityFeed.innerHTML = '';
+                activityFeed.innerHTML = ''; // Bersihkan konten sebelumnya
                 
                 if (activities.length === 0) {
                     activityFeed.innerHTML = `
@@ -628,7 +638,14 @@
                         </div>
                     `;
                 } else {
-                    activities.forEach(activity => {
+                    // Urutkan aktivitas berdasarkan timestamp terbaru jika belum diurutkan
+                    const sortedActivities = [...activities].sort((a, b) => {
+                        const tsA = a.timestamp ? (a.timestamp.toDate ? a.timestamp.toDate().getTime() : a.timestamp) : 0;
+                        const tsB = b.timestamp ? (b.timestamp.toDate ? b.timestamp.toDate().getTime() : b.timestamp) : 0;
+                        return tsB - tsA; // Urutkan dari terbaru ke terlama
+                    });
+
+                    sortedActivities.forEach(activity => {
                         const activityItem = document.createElement('div');
                         activityItem.className = 'activity-item';
                         activityItem.innerHTML = `
@@ -642,7 +659,10 @@
                     });
                 }
                 
-                activityModal.classList.remove('hidden');
+                activityModal.classList.remove('hidden'); // Pastikan modal terlihat
+                // Tambahkan kelas untuk transisi masuk
+                activityModalContent.classList.remove('modal-content-leave-active'); // Hapus kelas keluar jika ada
+                activityModalContent.classList.add('modal-content-enter-active');
                 
                 // Tandai aktivitas sebagai telah dibaca
                 markActivitiesAsRead();
@@ -728,77 +748,6 @@
                 toast.addEventListener('transitionend', () => toast.remove(), { once: true });
             }, duration);
         }
-// ==================== FUNGSI STATISTIK ====================
-
-// Fungsi untuk menampilkan bagian statistik
-function showStats() {
-    const statsSection = document.getElementById('stats-section');
-    if (statsSection) {
-        statsSection.classList.remove('hidden');
-        // Panggil fungsi untuk merender semua chart di sini
-        renderAllCharts();
-    }
-}
-
-// Fungsi untuk menyembunyikan bagian statistik
-function hideStats() {
-    const statsSection = document.getElementById('stats-section');
-    if (statsSection) {
-        statsSection.classList.add('hidden');
-    }
-}
-
-// Fungsi untuk merender semua chart (akan diimplementasikan lebih lanjut)
-function renderAllCharts() {
-    // Implementasi chart akan ditambahkan di sini
-    // Untuk saat ini, kita bisa menambahkan placeholder atau log
-    console.log("Rendering all charts...");
-
-    // Contoh placeholder untuk chart
-    // Anda perlu mengimplementasikan logika pengambilan data dan konfigurasi Chart.js
-    // untuk setiap chart (dealSizeChart, winRateChart, dealsBySalesChart, dealsByProductPackageChart, pipelineValueChart)
-    // Misalnya:
-    // renderDealSizeChart();
-    // renderWinRateChart();
-    // renderDealsBySalesChart();
-    // renderDealsByProductPackageChart();
-    // renderPipelineValueChart();
-}
-
-// Contoh fungsi render chart (Anda perlu mengulanginya untuk setiap chart)
-// function renderDealSizeChart() {
-//     const ctx = document.getElementById('dealSizeChart').getContext('2d');
-//     if (charts.dealSizeChart) {
-//         charts.dealSizeChart.destroy();
-//     }
-//     charts.dealSizeChart = new Chart(ctx, {
-//         type: 'bar',
-//         data: {
-//             labels: ['<10 Juta', '10-50 Juta', '50-100 Juta', '>100 Juta'],
-//             datasets: [{
-//                 label: 'Jumlah Deal',
-//                 data: [10, 20, 15, 5], // Data dummy
-//                 backgroundColor: 'rgba(75, 192, 192, 0.6)',
-//                 borderColor: 'rgba(75, 192, 192, 1)',
-//                 borderWidth: 1
-//             }]
-//         },
-//         options: {
-//             responsive: true,
-//             plugins: {
-//                 title: {
-//                     display: true,
-//                     text: 'Distribusi Ukuran Deal'
-//                 }
-//             },
-//             scales: {
-//                 y: {
-//                     beginAtZero: true
-//                 }
-//             }
-//         }
-//     });
-// }
 
         // ==================== FUNGSI DEALS ====================
 
@@ -937,12 +886,15 @@ function renderAllCharts() {
             }
             
             dealModal.classList.remove('hidden');
+            document.getElementById('dealModalContent').classList.remove('modal-content-leave-active'); // Hapus kelas keluar jika ada
             document.getElementById('dealModalContent').classList.add('modal-content-enter-active');
         }
 
         // Fungsi untuk menutup modal deal
         function closeDealModal() {
             const dealModalContent = document.getElementById('dealModalContent');
+            if (!dealModalContent) return;
+
             dealModalContent.classList.remove('modal-content-enter-active');
             dealModalContent.classList.add('modal-content-leave-active');
             
@@ -1055,12 +1007,15 @@ function renderAllCharts() {
             dealToDeleteName = dealName;
             document.getElementById('dealToDeleteName').textContent = dealName;
             document.getElementById('deleteModal').classList.remove('hidden');
+            document.getElementById('deleteModalContent').classList.remove('modal-content-leave-active'); // Hapus kelas keluar jika ada
             document.getElementById('deleteModalContent').classList.add('modal-content-enter-active');
         }
 
         // Fungsi untuk menutup modal konfirmasi penghapusan
         function closeDeleteModal() {
             const deleteModalContent = document.getElementById('deleteModalContent');
+            if (!deleteModalContent) return;
+
             deleteModalContent.classList.remove('modal-content-enter-active');
             deleteModalContent.classList.add('modal-content-leave-active');
             
@@ -1116,12 +1071,15 @@ function renderAllCharts() {
             document.getElementById('detailCreatedDate').textContent = formatDate(deal.projectDate) || '-';
 
             document.getElementById('dealDetailModal').classList.remove('hidden');
+            document.getElementById('dealDetailModalContent').classList.remove('modal-content-leave-active'); // Hapus kelas keluar jika ada
             document.getElementById('dealDetailModalContent').classList.add('modal-content-enter-active');
         }
 
         // Fungsi untuk menutup modal detail deal
         function closeDealDetailModal() {
             const dealDetailModalContent = document.getElementById('dealDetailModalContent');
+            if (!dealDetailModalContent) return;
+
             dealDetailModalContent.classList.remove('modal-content-enter-active');
             dealDetailModalContent.classList.add('modal-content-leave-active');
             
@@ -1131,7 +1089,26 @@ function renderAllCharts() {
                 dealDetailModalContent.removeEventListener('transitionend', handler);
             }, { once: true });
         }
+    // Fungsi untuk menutup modal aktivitas
+    function closeActivityModal() {
+        console.log("closeActivityModal() called."); // Tambahkan log ini
+        const activityModalContent = document.getElementById('activityModalContent');
+        if (!activityModalContent) {
+            console.error("Elemen activityModalContent tidak ditemukan saat menutup modal.");
+            return;
+        }
 
+        activityModalContent.classList.remove('modal-content-enter-active');
+        activityModalContent.classList.add('modal-content-leave-active');
+        
+        activityModalContent.addEventListener('transitionend', function handler() {
+            document.getElementById('activityModal').classList.add('hidden');
+            activityModalContent.classList.remove('modal-content-leave-active');
+            activityModalContent.removeEventListener('transitionend', handler);
+            console.log("Modal aktivitas disembunyikan."); // Tambahkan log ini
+        }, { once: true });
+    }
+    
         // ==================== FUNGSI SORTABLE ====================
 
         // Fungsi untuk inisialisasi SortableJS
@@ -1169,6 +1146,40 @@ function renderAllCharts() {
                 console.error("Error updating deal stage:", error);
                 showToast("Gagal memindahkan deal", 3000);
             });
+        }
+
+        // ==================== FUNGSI STATISTIK ====================
+
+        // Fungsi untuk menampilkan bagian statistik
+        function showStats() {
+            const statsSection = document.getElementById('stats-section');
+            if (statsSection) {
+                statsSection.classList.remove('hidden');
+                // Panggil fungsi untuk merender semua chart di sini
+                renderAllCharts();
+            }
+        }
+
+        // Fungsi untuk menyembunyikan bagian statistik
+        function hideStats() {
+            const statsSection = document.getElementById('stats-section');
+            if (statsSection) {
+                statsSection.classList.add('hidden');
+            }
+        }
+
+        // Fungsi untuk merender semua chart (akan diimplementasikan lebih lanjut)
+        function renderAllCharts() {
+            console.log("Rendering all charts...");
+            // Implementasi chart akan ditambahkan di sini
+            // Anda perlu mengimplementasikan logika pengambilan data dan konfigurasi Chart.js
+            // untuk setiap chart (dealSizeChart, winRateChart, dealsBySalesChart, dealsByProductPackageChart, pipelineValueChart)
+            // Contoh:
+            // renderDealSizeChart();
+            // renderWinRateChart();
+            // renderDealsBySalesChart();
+            // renderDealsByProductPackageChart();
+            // renderPipelineValueChart();
         }
 
         // ==================== FUNGSI PERMISSIONS ====================
