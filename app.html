@@ -385,6 +385,19 @@
                                     <option value="Other">Other</option>
                                 </select>
                             </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="projectDate">Tanggal Proyek</label>
+                                <input type="date" id="projectDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                            </div>
+                            <div class="mb-4" id="stageFieldContainer">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="stage">Tahap <span class="text-red-500">*</span></label>
+                                <select id="stage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
+                                    <option value="main-pipeline">Main Pipeline</option>
+                                    <option value="identified">Identified</option>
+                                    <option value="on-hold">On Hold</option>
+                                    <option value="lost">Lost</option>
+                                </select>
+                            </div>
                         </div>
                         <!-- Kolom 3 -->
                         <div>
@@ -408,19 +421,6 @@
                                     <option value="">Pilih PIC atau Ketik Baru</option>
                                 </select>
                                 <input type="text" id="newPic" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2 hidden" placeholder="Ketik nama PIC baru">
-                            </div>
-                            <div class="mb-4">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="projectDate">Tanggal Proyek</label>
-                                <input type="date" id="projectDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                            </div>
-                            <div class="mb-4" id="stageFieldContainer">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="stage">Tahap <span class="text-red-500">*</span></label>
-                                <select id="stage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
-                                    <option value="main-pipeline">Main Pipeline</option>
-                                    <option value="identified">Identified</option>
-                                    <option value="on-hold">On Hold</option>
-                                    <option value="lost">Lost</option>
-                                </select>
                             </div>
                             <div class="mb-6">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="priority">Prioritas</label>
@@ -649,7 +649,6 @@
                     activities = [];
                     querySnapshot.forEach((doc) => {
                         const activityData = doc.data();
-                        // Pastikan timestamp adalah objek Timestamp Firebase
                         if (activityData.timestamp && typeof activityData.timestamp.toDate !== 'function') {
                             activityData.timestamp = firebase.firestore.Timestamp.fromMillis(activityData.timestamp);
                         }
@@ -948,9 +947,9 @@
             const newInputElement = document.getElementById(newInputElementId);
             selectElement.innerHTML = ''; // Bersihkan opsi yang ada
 
-            // Tambahkan opsi default "Ketik Baru"
+            // Tambahkan opsi default
             const defaultOption = document.createElement('option');
-            defaultOption.value = ''; // Nilai kosong untuk opsi "Ketik Baru"
+            defaultOption.value = '';
             defaultOption.textContent = `Pilih ${selectElement.previousElementSibling.textContent.replace(':', '').replace(' atau Ketik Baru', '')} atau Ketik Baru`;
             selectElement.appendChild(defaultOption);
 
@@ -965,81 +964,31 @@
                 }
             });
 
-            // --- START MODIFIKASI UNTUK PERBAIKAN BUG "KETIK BARU" ---
-
-            // Fungsi helper untuk mengatur visibilitas input teks baru
-            const toggleNewInputVisibility = () => {
-                if (selectElement.value === '') {
-                    newInputElement.classList.remove('hidden');
-                    // Fokuskan input teks baru jika baru muncul dan kosong
-                    if (!newInputElement.value) { 
-                        newInputElement.focus();
-                    }
-                } else {
-                    newInputElement.classList.add('hidden');
-                    newInputElement.value = ''; // Kosongkan input teks baru jika opsi lain dipilih
-                }
-            };
-
-            // Set nilai yang dipilih dan atur visibilitas awal
+            // Set nilai yang dipilih
             if (selectedValue && uniqueValues.has(selectedValue)) {
                 selectElement.value = selectedValue;
+                newInputElement.classList.add('hidden'); // Sembunyikan input baru jika nilai sudah ada
             } else if (selectedValue) {
-                // Jika nilai yang dipilih tidak ada di daftar unik, pilih opsi kosong
+                // Jika nilai yang dipilih tidak ada di daftar unik, pilih opsi kosong dan tampilkan input baru
                 selectElement.value = '';
-                newInputElement.value = selectedValue; // Isi input teks baru dengan nilai yang tidak ada di daftar
+                newInputElement.value = selectedValue;
+                newInputElement.classList.remove('hidden');
             } else {
-                // Default: pilih opsi kosong
                 selectElement.value = '';
-            }
-            // Panggil toggleNewInputVisibility untuk mengatur status awal
-            toggleNewInputVisibility();
-
-
-            // Hapus event listener sebelumnya untuk mencegah duplikasi
-            selectElement.removeEventListener('change', toggleNewInputVisibility);
-            // Tidak perlu menghapus mousedown karena kita akan menambahkannya sekali saja
-
-            // Tambahkan event listener 'change' (untuk perubahan nilai normal)
-            selectElement.addEventListener('change', toggleNewInputVisibility);
-
-            // Tambahkan event listener 'mousedown' untuk menangani kasus "Ketik Baru" yang sudah terpilih
-            // Ini akan terpicu saat pengguna mengklik dropdown, bahkan jika nilai tidak berubah.
-            // Gunakan { once: true } jika Anda ingin listener hanya terpicu sekali per pembukaan modal,
-            // atau pastikan listener dihapus/ditambahkan dengan benar di openDealModal.
-            // Untuk kesederhanaan dan agar selalu responsif, kita bisa biarkan tanpa 'once'
-            // dan pastikan tidak ada duplikasi listener saat populateDropdown dipanggil berulang.
-            // Cara terbaik adalah menghapus listener sebelum menambahkannya, seperti yang dilakukan untuk 'change'.
-            // Namun, karena mousedown ini spesifik untuk bug ini, kita bisa menambahkannya sekali saja
-            // atau memastikan tidak ada duplikasi.
-            // Untuk saat ini, kita akan menambahkan listener ini setiap kali populateDropdown dipanggil,
-            // yang berarti kita perlu memastikan tidak ada duplikasi.
-            // Solusi yang lebih bersih adalah menambahkan listener ini di initEventListeners
-            // dan memicu toggleNewInputVisibility secara manual.
-            // Untuk saat ini, kita akan menambahkan dan menghapus listener mousedown secara eksplisit.
-
-            // Hapus listener mousedown yang mungkin sudah ada
-            const oldMousedownListener = selectElement.dataset.mousedownListener;
-            if (oldMousedownListener) {
-                selectElement.removeEventListener('mousedown', eval(oldMousedownListener));
+                newInputElement.value = '';
+                newInputElement.classList.add('hidden');
             }
 
-            const newMousedownListener = (event) => {
-                // Beri sedikit delay untuk memastikan browser punya waktu untuk memperbarui nilai select
-                // sebelum kita memeriksanya, terutama jika klik mengubah nilai.
-                setTimeout(() => {
-                    if (selectElement.value === '') {
-                        newInputElement.classList.remove('hidden');
-                        if (!newInputElement.value) {
-                            newInputElement.focus();
-                        }
-                    }
-                }, 50); // Delay kecil, bisa disesuaikan
+            // Tambahkan event listener untuk menampilkan/menyembunyikan input teks baru
+            selectElement.onchange = function() {
+                if (this.value === '') {
+                    newInputElement.classList.remove('hidden');
+                    newInputElement.focus();
+                } else {
+                    newInputElement.classList.add('hidden');
+                    newInputElement.value = ''; // Kosongkan input teks baru jika opsi dipilih
+                }
             };
-            selectElement.addEventListener('mousedown', newMousedownListener);
-            selectElement.dataset.mousedownListener = newMousedownListener.toString(); // Simpan referensi untuk penghapusan
-
-            // --- END MODIFIKASI ---
         }
 
 
@@ -1054,7 +1003,6 @@
             document.getElementById('value').value = '';
 
             // Isi dropdown Konsultan, Kontraktor, PIC
-            // Panggil populateDropdown untuk setiap elemen
             populateDropdown('consultant', 'newConsultant', uniqueConsultants);
             populateDropdown('contractor', 'newContractor', uniqueContractors);
             populateDropdown('pic', 'newPic', uniquePICs);
