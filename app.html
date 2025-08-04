@@ -64,9 +64,10 @@
             background-color: #ffffff;
             border: 1px solid #e2e8f0;
             border-radius: 0.5rem;
-            padding: 1rem;
-            margin-bottom: 0.75rem;
+            padding: 0.75rem; /* Mengurangi padding */
+            margin-bottom: 0.5rem; /* Mengurangi margin bawah */
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            font-size: 0.875rem; /* Ukuran font dasar untuk deal card */
         }
         .deal-card:hover {
             transform: translateY(-3px);
@@ -166,19 +167,46 @@
             color: #6b7280;
             margin-top: 0.25rem;
         }
-        .deal-card .text-xs i {
-            font-size: 0.7rem;
+        
+        /* Penyesuaian CSS untuk deal card yang lebih ringkas */
+        .deal-card h3 {
+            font-size: 0.95rem; /* Sedikit lebih kecil dari 1rem */
+            font-weight: 700;
+            color: #1f2937;
+            white-space: nowrap; /* Mencegah nama deal wrap jika terlalu panjang */
+            overflow: hidden; /* Sembunyikan overflow */
+            text-overflow: ellipsis; /* Tambahkan elipsis jika terpotong */
+            max-width: calc(100% - 60px); /* Beri ruang untuk priority badge */
         }
-        .deal-card .flex.space-x-2 button i {
-            font-size: 0.8rem;
-            vertical-align: middle;
+
+        .priority-badge { /* Kelas baru untuk badge prioritas */
+            font-size: 0.65rem; /* Lebih kecil */
+            padding: 0.15rem 0.4rem; /* Mengurangi padding */
+            line-height: 1; /* Memastikan tinggi baris konsisten */
         }
-        .deal-card .flex.space-x-2 button {
-            padding: 0.15rem 0.3rem;
-            font-size: 0.75rem;
+
+        .deal-details p {
+            font-size: 0.75rem; /* Lebih kecil */
+            margin-top: 0.15rem; /* Mengurangi margin atas */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        .deal-card .flex.space-x-2 {
-            gap: 0.2rem;
+
+        .deal-details p i {
+            font-size: 0.7rem; /* Lebih kecil */
+        }
+
+        .deal-actions button {
+            padding: 0.1rem 0.25rem; /* Mengurangi padding tombol */
+            font-size: 0.7rem; /* Lebih kecil */
+        }
+        .deal-actions button i {
+            font-size: 0.7rem; /* Lebih kecil */
+        }
+
+        .deal-footer {
+            margin-top: 0.5rem; /* Mengurangi margin atas */
         }
     </style>
 </head>
@@ -445,28 +473,25 @@
             </div>
         </div>
 
-    <!-- Activity Modal -->
-    <div id="activityModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
-        <div class="bg-white rounded-xl p-8 w-full max-w-lg shadow-2xl modal-content-enter" id="activityModalContent">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center"><i class="fas fa-history mr-3 text-gray-500"></i> Aktivitas Terakhir</h2>
-                <!-- Tombol X -->
-                <button onclick="closeActivityModal()" class="text-gray-500 hover:text-gray-700 transition duration-200">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-            <div id="activity-feed-modal" class="space-y-3">
-                <!-- Aktivitas akan dimuat di sini -->
-            </div>
-            <div class="flex justify-end mt-6">
-                <!-- Tombol Tutup -->
-                <button onclick="closeActivityModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
-                    Tutup
-                </button>
+        <!-- Activity Modal -->
+        <div id="activityModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-xl p-8 w-full max-w-lg shadow-2xl modal-content-enter" id="activityModalContent">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center"><i class="fas fa-history mr-3 text-gray-500"></i> Aktivitas Terakhir</h2>
+                    <button onclick="closeActivityModal()" class="text-gray-500 hover:text-gray-700 transition duration-200">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div id="activity-feed-modal" class="space-y-3">
+                    <!-- Aktivitas akan dimuat di sini -->
+                </div>
+                <div class="flex justify-end mt-6">
+                    <button onclick="closeActivityModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
+                        Tutup
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
-    
 
         <!-- Delete Confirmation Modal -->
         <div id="deleteModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
@@ -697,6 +722,26 @@
             }
         }
 
+        // Fungsi untuk menutup modal aktivitas
+        function closeActivityModal() {
+            console.log("closeActivityModal() called."); // Tambahkan log ini
+            const activityModalContent = document.getElementById('activityModalContent');
+            if (!activityModalContent) {
+                console.error("Elemen activityModalContent tidak ditemukan saat menutup modal.");
+                return;
+            }
+
+            activityModalContent.classList.remove('modal-content-enter-active');
+            activityModalContent.classList.add('modal-content-leave-active');
+            
+            activityModalContent.addEventListener('transitionend', function handler() {
+                document.getElementById('activityModal').classList.add('hidden');
+                activityModalContent.classList.remove('modal-content-leave-active');
+                activityModalContent.removeEventListener('transitionend', handler);
+                console.log("Modal aktivitas disembunyikan."); // Tambahkan log ini
+            }, { once: true });
+        }
+
         // ==================== FUNGSI UTILITAS ====================
 
         // Fungsi helper untuk format tanggal dan waktu
@@ -793,7 +838,7 @@
             dealCard.innerHTML = `
                 <div class="flex justify-between items-start">
                     <h3 class="font-bold text-gray-800">${deal.dealName || 'No Name'}</h3>
-                    <span class="text-xs px-2 py-1 rounded-full ${
+                    <span class="priority-badge px-2 py-1 rounded-full ${ /* Tambahkan kelas priority-badge */
                         deal.priority === 'hot' ? 'bg-red-100 text-red-800' : 
                         deal.priority === 'warm' ? 'bg-yellow-100 text-yellow-800' : 
                         'bg-blue-100 text-blue-800'
@@ -801,14 +846,13 @@
                         ${deal.priority || 'cold'}
                     </span>
                 </div>
-                <div class="mt-2 text-sm text-gray-600">
-                    <p><i class="fas fa-building mr-1"></i> ${deal.company || '-'}</p>
-                    <p class="mt-1"><i class="fas fa-user-tie mr-1"></i> ${deal.salesName || '-'}</p>
-                    <p class="mt-1 font-semibold text-blue-600">Rp ${formatNumber(deal.value) || '0'}</p>
+                <div class="mt-1 text-sm text-gray-600 deal-details"> <!-- Tambahkan kelas deal-details -->
+                    <p><i class="fas fa-user-tie mr-1"></i> ${deal.salesName || '-'}</p>
+                    <p class="font-semibold text-blue-600">Rp ${formatNumber(deal.value) || '0'}</p>
                 </div>
-                <div class="mt-3 flex justify-between items-center">
+                <div class="mt-2 flex justify-between items-center deal-footer"> <!-- Tambahkan kelas deal-footer -->
                     <span class="text-xs text-gray-500">${formatDate(deal.createdAt)}</span>
-                    <div class="flex space-x-2">
+                    <div class="flex space-x-1 deal-actions"> <!-- Mengurangi space-x dan tambahkan kelas deal-actions -->
                         <button onclick="openDealDetailModal('${deal.id}')" class="text-blue-600 hover:text-blue-800">
                             <i class="fas fa-eye"></i>
                         </button>
@@ -867,8 +911,8 @@
                 const deal = deals.find(d => d.id === dealId);
                 if (deal) {
                     document.getElementById('dealId').value = deal.id;
-                    document.getElementById('dealName').value = deal.dealName || '';
                     document.getElementById('salesName').value = deal.salesName || '';
+                    document.getElementById('dealName').value = deal.dealName || '';
                     document.getElementById('beforeDiscount').value = deal.beforeDiscount || '';
                     document.getElementById('discount').value = deal.discount || '';
                     document.getElementById('value').value = deal.value || '';
@@ -1092,26 +1136,7 @@
                 dealDetailModalContent.removeEventListener('transitionend', handler);
             }, { once: true });
         }
-    // Fungsi untuk menutup modal aktivitas
-    function closeActivityModal() {
-        console.log("closeActivityModal() called."); // Tambahkan log ini
-        const activityModalContent = document.getElementById('activityModalContent');
-        if (!activityModalContent) {
-            console.error("Elemen activityModalContent tidak ditemukan saat menutup modal.");
-            return;
-        }
 
-        activityModalContent.classList.remove('modal-content-enter-active');
-        activityModalContent.classList.add('modal-content-leave-active');
-        
-        activityModalContent.addEventListener('transitionend', function handler() {
-            document.getElementById('activityModal').classList.add('hidden');
-            activityModalContent.classList.remove('modal-content-leave-active');
-            activityModalContent.removeEventListener('transitionend', handler);
-            console.log("Modal aktivitas disembunyikan."); // Tambahkan log ini
-        }, { once: true });
-    }
-    
         // ==================== FUNGSI SORTABLE ====================
 
         // Fungsi untuk inisialisasi SortableJS
