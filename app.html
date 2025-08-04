@@ -649,6 +649,7 @@
                     activities = [];
                     querySnapshot.forEach((doc) => {
                         const activityData = doc.data();
+                        // Pastikan timestamp adalah objek Timestamp Firebase
                         if (activityData.timestamp && typeof activityData.timestamp.toDate !== 'function') {
                             activityData.timestamp = firebase.firestore.Timestamp.fromMillis(activityData.timestamp);
                         }
@@ -947,9 +948,9 @@
             const newInputElement = document.getElementById(newInputElementId);
             selectElement.innerHTML = ''; // Bersihkan opsi yang ada
 
-            // Tambahkan opsi default
+            // Tambahkan opsi default "Ketik Baru"
             const defaultOption = document.createElement('option');
-            defaultOption.value = '';
+            defaultOption.value = ''; // Nilai kosong untuk opsi "Ketik Baru"
             defaultOption.textContent = `Pilih ${selectElement.previousElementSibling.textContent.replace(':', '').replace(' atau Ketik Baru', '')} atau Ketik Baru`;
             selectElement.appendChild(defaultOption);
 
@@ -964,19 +965,23 @@
                 }
             });
 
+            // --- START MODIFIKASI UNTUK MEMPERBAIKI BUG DROPDOWN "KETIK BARU" ---
+
             // Set nilai yang dipilih
             if (selectedValue && uniqueValues.has(selectedValue)) {
                 selectElement.value = selectedValue;
                 newInputElement.classList.add('hidden'); // Sembunyikan input baru jika nilai sudah ada
+                newInputElement.value = ''; // Pastikan input teks baru kosong
             } else if (selectedValue) {
                 // Jika nilai yang dipilih tidak ada di daftar unik, pilih opsi kosong dan tampilkan input baru
-                selectElement.value = '';
+                selectElement.value = ''; // Pilih opsi "Ketik Baru"
                 newInputElement.value = selectedValue;
-                newInputElement.classList.remove('hidden');
+                newInputElement.classList.remove('hidden'); // Tampilkan input teks baru
             } else {
+                // Default: pilih opsi kosong dan sembunyikan input teks baru
                 selectElement.value = '';
                 newInputElement.value = '';
-                newInputElement.classList.add('hidden');
+                newInputElement.classList.add('hidden'); // Sembunyikan input teks baru secara default
             }
 
             // Tambahkan event listener untuk menampilkan/menyembunyikan input teks baru
@@ -989,6 +994,8 @@
                     newInputElement.value = ''; // Kosongkan input teks baru jika opsi dipilih
                 }
             };
+
+            // --- END MODIFIKASI ---
         }
 
 
@@ -1003,6 +1010,7 @@
             document.getElementById('value').value = '';
 
             // Isi dropdown Konsultan, Kontraktor, PIC
+            // Panggil populateDropdown untuk setiap elemen
             populateDropdown('consultant', 'newConsultant', uniqueConsultants);
             populateDropdown('contractor', 'newContractor', uniqueContractors);
             populateDropdown('pic', 'newPic', uniquePICs);
