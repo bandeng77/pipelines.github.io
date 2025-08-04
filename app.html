@@ -1,16 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sales Pipeline Manager</title>
+    <title>Sales Pipeline Manager - Genetek</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-    <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
@@ -192,29 +189,32 @@
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                 <div>
                     <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900">Sales Pipeline Manager <i class="fas fa-chart-line text-blue-600 ml-2"></i></h1>
-                    <p class="text-sm sm:text-base text-gray-600 mt-1">Visualize, track, and manage your sales opportunities with ease.</p>
+                    <p class="text-sm sm:text-base text-gray-600 mt-1">Kelola peluang penjualan Anda dengan mudah</p>
                 </div>
                 <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-4 sm:mt-0">
-                    <button id="authButton" onclick="toggleAuth()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm">
-                        <i class="fas fa-sign-in-alt mr-2"></i> Login
+                    <button id="authButton" onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm">
+                        <i class="fas fa-sign-out-alt mr-2"></i> Logout
                     </button>
 
-                    <button id="newDealBtn" onclick="openDealModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm hidden">
-                        <i class="fas fa-plus-circle mr-2"></i> New Deal
+                    <button id="newDealBtn" onclick="openDealModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm">
+                        <i class="fas fa-plus-circle mr-2"></i> Deal Baru
                     </button>
-                    <button id="viewStatsBtn" onclick="showStats()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm hidden">
-                        <i class="fas fa-chart-pie mr-2"></i> View Stats
+                    
+                    <button id="viewStatsBtn" onclick="showStats()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm">
+                        <i class="fas fa-chart-pie mr-2"></i> Statistik
                     </button>
-                    <button id="activityBtn" onclick="openActivityModal()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm hidden">
-                        <i class="fas fa-bell mr-2"></i> Activity
+                    
+                    <button id="activityBtn" onclick="openActivityModal()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm">
+                        <i class="fas fa-bell mr-2"></i> Aktivitas
                         <span id="activity-badge" class="ml-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full hidden">0</span>
                     </button>
                 </div>
             </div>
+            
             <div class="mt-6 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
-                <input type="text" id="searchDeals" onkeyup="filterDeals()" placeholder="Search deals by name, company, sales name..." class="w-full sm:w-1/2 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                <input type="text" id="searchDeals" onkeyup="filterDeals()" placeholder="Cari deal berdasarkan nama, perusahaan..." class="w-full sm:w-1/2 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                 <select id="filterPriority" onchange="filterDeals()" class="w-full sm:w-1/4 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                    <option value="all">All Priorities</option>
+                    <option value="all">Semua Prioritas</option>
                     <option value="hot">Hot</option>
                     <option value="warm">Warm</option>
                     <option value="cold">Cold</option>
@@ -229,7 +229,7 @@
                     <h3>Pipelines</h3>
                 </div>
                 <div id="pipelines-stage" class="pipeline-stage-content space-y-4">
-                    <!-- Deals and empty message will be rendered here -->
+                    <!-- Deals akan ditampilkan di sini -->
                 </div>
             </div>
         </div>
@@ -237,7 +237,7 @@
         <!-- Stats Section (hidden by default) -->
         <div id="stats-section" class="hidden bg-white p-6 rounded-lg shadow-md mb-10">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center"><i class="fas fa-chart-bar mr-3 text-gray-500"></i> Sales Performance Analytics</h2>
+                <h2 class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center"><i class="fas fa-chart-bar mr-3 text-gray-500"></i> Analisis Performa Penjualan</h2>
                 <button onclick="hideStats()" class="text-gray-500 hover:text-gray-700 transition duration-200">
                     <i class="fas fa-times text-xl"></i>
                 </button>
@@ -260,924 +260,339 @@
                 <canvas id="pipelineValueChart"></canvas>
             </div>
         </div>
-    </div>
 
-    <!-- Add/Edit Deal Modal -->
-    <div id="dealModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
-        <div class="bg-white rounded-xl p-8 w-full max-w-4xl shadow-2xl modal-content-enter" id="dealModalContent">
-            <h2 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900" id="modalTitle">Add New Deal</h2>
-            <form id="dealForm">
-                <input type="hidden" id="dealId">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <!-- Column 1 -->
-                    <div>
-                        <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="dealName">Project Name <span class="text-red-500">*</span></label>
-                            <input type="text" id="dealName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
+        <!-- Add/Edit Deal Modal -->
+        <div id="dealModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-xl p-8 w-full max-w-4xl shadow-2xl modal-content-enter" id="dealModalContent">
+                <h2 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900" id="modalTitle">Tambah Deal Baru</h2>
+                <form id="dealForm">
+                    <input type="hidden" id="dealId">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Kolom 1 -->
+                        <div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="dealName">Nama Proyek <span class="text-red-500">*</span></label>
+                                <input type="text" id="dealName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="salesName">Nama Sales</label>
+                                <select id="salesName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih Sales</option>
+                                    <option value="Pamungkas">Pamungkas</option>
+                                    <option value="Rory">Rory</option>
+                                    <option value="Rangga">Rangga</option>
+                                    <option value="Dhea">Dhea</option>
+                                    <option value="YIB Wahyu">YIB Wahyu</option>
+                                    <option value="David">David</option>
+                                    <option value="Hadi">Hadi</option>
+                                    <option value="Engineering">Engineering</option>
+                                </select>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="beforeDiscount">Sebelum Diskon (IDR)</label>
+                                <input type="number" id="beforeDiscount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" oninput="calculateValue()">
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="discount">Diskon (%)</label>
+                                <input type="number" id="discount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" max="100" oninput="calculateValue()">
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="value">Nilai (IDR) <span class="text-red-500">*</span></label>
+                                <input type="number" id="value" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" readonly required>
+                            </div>
                         </div>
-                        <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="salesName">Sales Name</label>
-                            <select id="salesName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                <option value="">Select Sales</option>
-                                <option value="Pamungkas">Pamungkas</option>
-                                <option value="Rory">Rory</option>
-                                <option value="Rangga">Rangga</option>
-                                <option value="Dhea">Dhea</option>
-                                <option value="YIB Wahyu">YIB Wahyu</option>
-                                <option value="David">David</option>
-                                <option value="Hadi">Hadi</option>
-                                <option value="Engineering">Engineering</option>
-                            </select>
+                        <!-- Kolom 2 -->
+                        <div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="package">Paket</label>
+                                <select id="package" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih Paket</option>
+                                    <option value="Electronic Package">Electronic Package</option>
+                                    <option value="M&E">M&E</option>
+                                    <option value="Fire Fighting Cont">Fire Fighting Cont</option>
+                                </select>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="product">Produk</label>
+                                <select id="product" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih Produk</option>
+                                    <option value="Fire">Fire</option>
+                                    <option value="Fire & Water">Fire & Water</option>
+                                    <option value="FAS & FSS">FAS & FSS</option>
+                                    <option value="Vesda">Vesda</option>
+                                    <option value="Suppression">Suppression</option>
+                                    <option value="Mechanical">Mechanical</option>
+                                </select>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="facility">Fasilitas</label>
+                                <select id="facility" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih Fasilitas</option>
+                                    <option value="Industrial">Industrial</option>
+                                    <option value="Office">Office</option>
+                                    <option value="Hotel">Hotel</option>
+                                    <option value="Data Center">Data Center</option>
+                                    <option value="Oil & Gas">Oil & Gas</option>
+                                    <option value="Warehouse">Warehouse</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="beforeDiscount">Before Discount (IDR)</label>
-                            <input type="number" id="beforeDiscount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" oninput="calculateValue()">
-                        </div>
-                        <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="discount">Discount (%)</label>
-                            <input type="number" id="discount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" max="100" oninput="calculateValue()">
-                        </div>
-                        <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="value">Value (IDR) <span class="text-red-500">*</span></label>
-                            <input type="number" id="value" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" readonly required>
+                        <!-- Kolom 3 -->
+                        <div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="consultant">Konsultan</label>
+                                <input type="text" id="consultant" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="contractor">Kontraktor</label>
+                                <input type="text" id="contractor" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="pic">PIC</label>
+                                <input type="text" id="pic" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="projectDate">Tanggal Proyek</label>
+                                <input type="date" id="projectDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                            </div>
+                            <div class="mb-4" id="stageFieldContainer">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="stage">Tahap <span class="text-red-500">*</span></label>
+                                <select id="stage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
+                                    <option value="main-pipeline">Main Pipeline</option>
+                                    <option value="identified">Identified</option>
+                                    <option value="on-hold">On Hold</option>
+                                    <option value="lost">Lost</option>
+                                </select>
+                            </div>
+                            <div class="mb-6">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="priority">Prioritas</label>
+                                <select id="priority" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="cold">Cold</option>
+                                    <option value="warm">Warm</option>
+                                    <option value="hot">Hot</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
-                    <!-- Column 2 -->
-                    <div>
-                        <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="package">Package</label>
-                            <select id="package" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                <option value="">Select Package</option>
-                                <option value="Electronic Package">Electronic Package</option>
-                                <option value="M&E">M&E</option>
-                                <option value="Fire Fighting Cont">Fire Fighting Cont</option>
-                            </select>
-                        </div>
-                        <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="product">Product</label>
-                            <select id="product" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                <option value="">Select Product</option>
-                                <option value="Fire">Fire</option>
-                                <option value="Fire & Water">Fire & Water</option>
-                                <option value="FAS & FSS">FAS & FSS</option>
-                                <option value="Vesda">Vesda</option>
-                                <option value="Suppression">Suppression</option>
-                                <option value="Mechanical">Mechanical</option>
-                            </select>
-                        </div>
-                        <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="facility">Facility</label>
-                            <select id="facility" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                <option value="">Select Facility</option>
-                                <option value="Industrial">Industrial</option>
-                                <option value="Office">Office</option>
-                                <option value="Hotel">Hotel</option>
-                                <option value="Data Center">Data Center</option>
-                                <option value="Oil & Gas">Oil & Gas</option>
-                                <option value="Warehouse">Warehouse</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button type="button" onclick="closeDealModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
+                            Batal
+                        </button>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md font-medium transition duration-200 ease-in-out transform hover:scale-105 text-sm">
+                            Simpan Deal
+                        </button>
                     </div>
-                    <!-- Column 3 -->
+                </form>
+            </div>
+        </div>
+
+        <!-- Deal Detail Modal -->
+        <div id="dealDetailModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-xl p-8 w-full max-w-md shadow-2xl modal-content-enter" id="dealDetailModalContent">
+                <h2 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900" id="dealDetailTitle">Detail Deal</h2>
+                <div class="space-y-4 text-sm">
                     <div>
-                        <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="consultant">Consultant</label>
-                            <input type="text" id="consultant" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                        </div>
-                        <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="contractor">Contractor</label>
-                            <input type="text" id="contractor" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                        </div>
-                        <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="pic">PIC</label>
-                            <input type="text" id="pic" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                        </div>
-                        <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="projectDate">Project Date</label>
-                            <input type="date" id="projectDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                        </div>
-                        <div class="mb-4" id="stageFieldContainer">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="stage">Stage <span class="text-red-500">*</span></label>
-                            <select id="stage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
-                                <option value="main-pipeline">Main Pipeline</option>
-                                <option value="identified">Identified</option>
-                                <option value="on-hold">On Hold</option>
-                                <option value="lost">Lost</option>
-                            </select>
-                        </div>
-                        <div class="mb-6">
-                            <label class="block text-gray-700 text-sm font-semibold mb-2" for="priority">Priority</label>
-                            <select id="priority" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                <option value="cold">Cold</option>
-                                <option value="warm">Warm</option>
-                                <option value="hot">Hot</option>
-                            </select>
-                        </div>
+                        <p class="text-gray-700 font-semibold">Nama Sales:</p>
+                        <p id="detailSalesName" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">Sebelum Diskon (IDR):</p>
+                        <p id="detailBeforeDiscount" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">Diskon:</p>
+                        <p id="detailDiscount" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">Nilai (IDR):</p>
+                        <p id="detailValue" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">Paket:</p>
+                        <p id="detailPackage" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">Produk:</p>
+                        <p id="detailProduct" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">Fasilitas:</p>
+                        <p id="detailFacility" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">Konsultan:</p>
+                        <p id="detailConsultant" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">Kontraktor:</p>
+                        <p id="detailContractor" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">PIC:</p>
+                        <p id="detailPIC" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">Tanggal Proyek:</p>
+                        <p id="detailCreatedDate" class="text-gray-900"></p>
                     </div>
                 </div>
                 <div class="flex justify-end space-x-3 mt-6">
-                    <button type="button" onclick="closeDealModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
-                        Cancel
-                    </button>
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md font-medium transition duration-200 ease-in-out transform hover:scale-105 text-sm">
-                        Save Deal
+                    <button type="button" onclick="closeDealDetailModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
+                        Tutup
                     </button>
                 </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Deal Detail Modal -->
-    <div id="dealDetailModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
-        <div class="bg-white rounded-xl p-8 w-full max-w-md shadow-2xl modal-content-enter" id="dealDetailModalContent">
-            <h2 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900" id="dealDetailTitle">Deal Details</h2>
-            <div class="space-y-4 text-sm">
-                <div>
-                    <p class="text-gray-700 font-semibold">Sales Name:</p>
-                    <p id="detailSalesName" class="text-gray-900"></p>
-                </div>
-                <div>
-                    <p class="text-gray-700 font-semibold">Before Discount (IDR):</p>
-                    <p id="detailBeforeDiscount" class="text-gray-900"></p>
-                </div>
-                <div>
-                    <p class="text-gray-700 font-semibold">Discount:</p>
-                    <p id="detailDiscount" class="text-gray-900"></p>
-                </div>
-                <div>
-                    <p class="text-gray-700 font-semibold">Value (IDR):</p>
-                    <p id="detailValue" class="text-gray-900"></p>
-                </div>
-                <div>
-                    <p class="text-gray-700 font-semibold">Package:</p>
-                    <p id="detailPackage" class="text-gray-900"></p>
-                </div>
-                <div>
-                    <p class="text-gray-700 font-semibold">Product:</p>
-                    <p id="detailProduct" class="text-gray-900"></p>
-                </div>
-                <div>
-                    <p class="text-gray-700 font-semibold">Facility:</p>
-                    <p id="detailFacility" class="text-gray-900"></p>
-                </div>
-                <div>
-                    <p class="text-gray-700 font-semibold">Consultant:</p>
-                    <p id="detailConsultant" class="text-gray-900"></p>
-                </div>
-                <div>
-                    <p class="text-gray-700 font-semibold">Contractor:</p>
-                    <p id="detailContractor" class="text-gray-900"></p>
-                </div>
-                <div>
-                    <p class="text-gray-700 font-semibold">PIC:</p>
-                    <p id="detailPIC" class="text-gray-900"></p>
-                </div>
-                <div>
-                    <p class="text-gray-700 font-semibold">Project Date:</p>
-                    <p id="detailCreatedDate" class="text-gray-900"></p>
-                </div>
-            </div>
-            <div class="flex justify-end space-x-3 mt-6">
-                <button type="button" onclick="closeDealDetailModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
-                    Close
-                </button>
             </div>
         </div>
-    </div>
 
-    <!-- Activity Modal -->
-    <div id="activityModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
-        <div class="bg-white rounded-xl p-8 w-full max-w-lg shadow-2xl modal-content-enter" id="activityModalContent">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center"><i class="fas fa-history mr-3 text-gray-500"></i> Recent Activity</h2>
-                <button onclick="closeActivityModal()" class="text-gray-500 hover:text-gray-700 transition duration-200">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-            <div id="activity-feed-modal" class="space-y-3">
-                <!-- Activities will be loaded here -->
-            </div>
-            <div class="flex justify-end mt-6">
-                <button onclick="closeActivityModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
-                    Close
-                </button>
+        <!-- Activity Modal -->
+        <div id="activityModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-xl p-8 w-full max-w-lg shadow-2xl modal-content-enter" id="activityModalContent">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center"><i class="fas fa-history mr-3 text-gray-500"></i> Aktivitas Terakhir</h2>
+                    <button onclick="closeActivityModal()" class="text-gray-500 hover:text-gray-700 transition duration-200">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div id="activity-feed-modal" class="space-y-3">
+                    <!-- Aktivitas akan dimuat di sini -->
+                </div>
+                <div class="flex justify-end mt-6">
+                    <button onclick="closeActivityModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
+                        Tutup
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Delete Confirmation Modal -->
-    <div id="deleteModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
-        <div class="bg-white rounded-xl p-8 w-full max-w-sm shadow-2xl modal-content-enter" id="deleteModalContent">
-            <h2 class="text-xl font-bold mb-4 text-gray-900">Confirm Deletion</h2>
-            <p class="text-gray-700 mb-6 text-sm">Are you sure you want to delete "<span id="dealToDeleteName" class="font-semibold"></span>"? This action cannot be undone.</p>
-            <div class="flex justify-end space-x-3">
-                <button type="button" onclick="closeDeleteModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
-                    Cancel
-                </button>
-                <button type="button" id="confirmDeleteBtn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow-md font-medium transition duration-200 ease-in-out transform hover:scale-105 text-sm">
-                    Delete
-                </button>
+        <!-- Delete Confirmation Modal -->
+        <div id="deleteModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-xl p-8 w-full max-w-sm shadow-2xl modal-content-enter" id="deleteModalContent">
+                <h2 class="text-xl font-bold mb-4 text-gray-900">Konfirmasi Penghapusan</h2>
+                <p class="text-gray-700 mb-6 text-sm">Apakah Anda yakin ingin menghapus "<span id="dealToDeleteName" class="font-semibold"></span>"? Aksi ini tidak dapat dibatalkan.</p>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeDeleteModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
+                        Batal
+                    </button>
+                    <button type="button" id="confirmDeleteBtn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow-md font-medium transition duration-200 ease-in-out transform hover:scale-105 text-sm">
+                        Hapus
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Toast Notification Container -->
-    <div id="toast-container"></div>
+        <!-- Toast Notification Container -->
+        <div id="toast-container"></div>
+    </div>
 
     <script>
-        // Firebase Configuration
+        // Konfigurasi Firebase
         const firebaseConfig = {
-          apiKey: "AIzaSyA630jQdTLNt1XHjVAXX10IjIeMVJ_vNn8",
-          authDomain: "pipelineefk.firebaseapp.com",
-          projectId: "pipelineefk",
-          storageBucket: "pipelineefk.appspot.com",
-          messagingSenderId: "763507094626",
-          appId: "1:763507094626:web:57838068505c964f654d3b"
+            apiKey: "AIzaSyA630jQdTLNt1XHjVAXX10IjIeMVJ_vNn8",
+            authDomain: "pipelineefk.firebaseapp.com",
+            projectId: "pipelineefk",
+            storageBucket: "pipelineefk.appspot.com",
+            messagingSenderId: "763507094626",
+            appId: "1:763507094626:web:57838068505c964f654d3b"
         };
 
-        // Initialize Firebase
+        // Inisialisasi Firebase
         firebase.initializeApp(firebaseConfig);
-
-        // Get a reference to the Firestore service
         const db = firebase.firestore();
         const auth = firebase.auth();
-
-        // Reference to the 'deals' collection
         const dealsCollection = db.collection('deals');
-        // Reference to the 'activities' collection
         const activitiesCollection = db.collection('activities');
-        // Reference to the 'users' collection (untuk menyimpan role)
         const usersCollection = db.collection('users');
 
-        let deals = []; // Local array to hold deals fetched from Firebase
-        let activities = []; // Local array to hold activities fetched from Firebase
-        let charts = {}; // To store chart instances
+        let deals = [];
+        let activities = [];
+        let charts = {};
+        const DEFAULT_STAGE = 'main-pipeline';
+        let currentUserRole = 'user';
+        let sortableInstances = {};
 
-        const DEFAULT_STAGE = 'main-pipeline'; // Stage default untuk semua deal
+        // Fungsi logout
+        function logout() {
+            auth.signOut()
+                .then(() => {
+                    window.location.href = 'login.html';
+                })
+                .catch((error) => {
+                    console.error("Error logout:", error);
+                    showToast("Gagal logout. Silakan coba lagi.", 5000);
+                });
+        }
 
-        let currentUserRole = 'guest'; // Default role sebelum login
-
-        // --- Firebase Authentication Listener ---
+        // Cek status auth saat halaman dimuat
         auth.onAuthStateChanged(async (user) => {
-            const authButton = document.getElementById('authButton');
-            if (user) {
-                // User is signed in.
-                authButton.innerHTML = '<i class="fas fa-sign-out-alt mr-2"></i> Logout';
-                console.log("User logged in:", user.email);
-                
-                try {
+            if (!user) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            try {
+                // Cek role user
+                if (user.email === 'admin@genetek.co.id') {
+                    currentUserRole = 'admin';
+                    await usersCollection.doc(user.uid).set({ 
+                        role: 'admin',
+                        email: user.email 
+                    }, { merge: true });
+                } else {
                     const userDoc = await usersCollection.doc(user.uid).get();
-                    if (userDoc.exists) {
-                        currentUserRole = userDoc.data().role;
-                    } else {
-                        // Set default role based on email
-                        if (user.email === 'admin@genetek.co.id') {
-                            await usersCollection.doc(user.uid).set({ 
-                                role: 'admin',
-                                email: user.email 
-                            });
-                            currentUserRole = 'admin';
-                        } else {
-                            await usersCollection.doc(user.uid).set({ 
-                                role: 'user',
-                                email: user.email 
-                            });
-                            currentUserRole = 'user';
-                        }
-                    }
-                    console.log("User role:", currentUserRole);
-                } catch (error) {
-                    console.error("Error fetching user role:", error);
-                    currentUserRole = 'user'; // Fallback
+                    currentUserRole = userDoc.exists ? userDoc.data().role : 'user';
                 }
-                
+
+                // Terapkan permissions
                 applyUserPermissions();
                 loadDealsFromFirebase();
                 loadActivitiesFromFirebase();
-            } else {
-                // User is signed out.
-                authButton.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i> Login';
-                console.log("User logged out.");
-                currentUserRole = 'guest';
-                applyUserPermissions();
-                // Kosongkan tampilan pipeline saat logout
-                document.getElementById('pipelines-stage').innerHTML = `
-                    <div class="empty-stage-message text-center text-gray-400 p-4 text-sm">
-                        <i class="fas fa-lock text-3xl mb-2"></i><p>Please log in to view or search deals.</p>
-                    </div>
-                `;
-                deals = []; // Clear local deals
-                activities = []; // Clear local activities
-                updateActivityBadge(); // Reset badge
-                hideStats(); // Sembunyikan stats jika terlihat
+            } catch (error) {
+                console.error("Error:", error);
+                window.location.href = 'login.html';
             }
         });
 
-        // --- Toggle Auth (Login/Logout) ---
-        function toggleAuth() {
-            if (auth.currentUser) {
-                // If logged in, log out
-                auth.signOut().then(() => {
-                    showToast("Logged out successfully!");
-                }).catch((error) => {
-                    console.error("Error signing out:", error);
-                    showToast("Error logging out. Please try again.", 5000);
-                });
-            } else {
-                // If not logged in, prompt for login
-                const email = prompt("Enter email:");
-                const password = prompt("Enter password:");
-                if (email && password) {
-                    auth.signInWithEmailAndPassword(email, password)
-                        .then((userCredential) => {
-                            showToast(`Logged in as ${userCredential.user.email}!`);
-                        })
-                        .catch((error) => {
-                            console.error("Error signing in:", error);
-                            showToast(`Login failed: ${error.message}`, 5000);
-                            // Example for new user registration (for testing purposes)
-                            if (error.code === 'auth/user-not-found') {
-                                if (confirm("User not found. Do you want to register?")) {
-                                    auth.createUserWithEmailAndPassword(email, password)
-                                        .then(async (userCredential) => {
-                                            // Set default role based on email
-                                            const role = email === 'admin@genetek.co.id' ? 'admin' : 'user';
-                                            await usersCollection.doc(userCredential.user.uid).set({ 
-                                                role: role,
-                                                email: email 
-                                            });
-                                            showToast(`Registered and logged in as ${userCredential.user.email}!`);
-                                        })
-                                        .catch((regError) => {
-                                            console.error("Error registering:", regError);
-                                            showToast(`Registration failed: ${regError.message}`, 5000);
-                                        });
-                                }
-                            }
-                        });
-                }
-            }
-        }
-
-        // --- Apply User Permissions ---
+        // Terapkan permissions berdasarkan role
         function applyUserPermissions() {
-            const newDealBtn = document.getElementById('newDealBtn');
-            const viewStatsBtn = document.getElementById('viewStatsBtn');
-            const activityBtn = document.getElementById('activityBtn');
-            const searchInput = document.getElementById('searchDeals');
-            const filterPrioritySelect = document.getElementById('filterPriority');
+            const isAdmin = currentUserRole === 'admin';
+            
+            // Sembunyikan/tampilkan fitur admin
+            document.getElementById('viewStatsBtn').classList.toggle('hidden', !isAdmin);
+            document.getElementById('activityBtn').classList.toggle('hidden', !isAdmin);
+            
+            // Aktifkan/nonaktifkan drag-and-drop
+            if (sortableInstances['pipelines-stage']) {
+                sortableInstances['pipelines-stage'].option('disabled', !isAdmin);
+            }
 
-            if (currentUserRole === 'admin') {
-                newDealBtn.classList.remove('hidden');
-                viewStatsBtn.classList.remove('hidden');
-                activityBtn.classList.remove('hidden');
-                searchInput.disabled = false;
-                filterPrioritySelect.disabled = false;
-                // Admin bisa drag-and-drop
-                if (sortableInstances['pipelines-stage']) {
-                    sortableInstances['pipelines-stage'].option('disabled', false);
-                }
-                renderAllDeals(); // Admin selalu melihat semua deal
-            } else if (currentUserRole === 'user') {
-                // Show new deal button for regular users
-                newDealBtn.classList.remove('hidden');
-                viewStatsBtn.classList.add('hidden');
-                activityBtn.classList.add('hidden');
-                searchInput.disabled = false;
-                filterPrioritySelect.disabled = false;
-                // User tidak bisa drag-and-drop
-                if (sortableInstances['pipelines-stage']) {
-                    sortableInstances['pipelines-stage'].option('disabled', true);
-                }
-                // Kosongkan tampilan pipeline untuk user, hanya tampilkan pesan search
+            // Render deals sesuai role
+            if (isAdmin) {
+                renderAllDeals();
+            } else {
                 document.getElementById('pipelines-stage').innerHTML = `
                     <div class="empty-stage-message text-center text-gray-400 p-4 text-sm">
-                        <i class="fas fa-search text-3xl mb-2"></i><p>Search for your deals.</p>
+                        <i class="fas fa-search text-3xl mb-2"></i><p>Cari deal Anda.</p>
                     </div>
                 `;
-            } else { // guest
-                newDealBtn.classList.add('hidden');
-                viewStatsBtn.classList.add('hidden');
-                activityBtn.classList.add('hidden');
-                searchInput.disabled = true;
-                filterPrioritySelect.disabled = true;
-                if (sortableInstances['pipelines-stage']) {
-                    sortableInstances['pipelines-stage'].option('disabled', true);
-                }
             }
         }
 
-        // --- Firebase Data Loading ---
+        // [Fungsi-fungsi lainnya seperti loadDealsFromFirebase, renderDeal, filterDeals, dll.]
+        // ... (salin semua fungsi dari code(7).html yang belum tercakup di sini)
+
+        // Inisialisasi saat DOM siap
         document.addEventListener('DOMContentLoaded', function() {
-            console.log("DOM Content Loaded. Starting data loading...");
-            // Data loading will be triggered by onAuthStateChanged
             document.getElementById('dealForm').addEventListener('submit', function(e) {
                 e.preventDefault();
                 saveDeal();
             });
+            
+            // Inisialisasi sortable
+            initSortable();
         });
 
-        async function loadDealsFromFirebase() {
-            try {
-                const snapshot = await dealsCollection.orderBy('created', 'asc').get();
-                deals = snapshot.docs.map(doc => {
-                    const data = doc.data();
-                    return {
-                        id: doc.id,
-                        ...data,
-                        beforeDiscount: data.beforeDiscount !== undefined ? data.beforeDiscount : 0,
-                        discount: data.discount !== undefined ? data.discount : 0,
-                        value: data.value !== undefined ? data.value : 0,
-                        created: data.created ? data.created.toDate() : new Date(),
-                        projectDate: data.projectDate ? data.projectDate.toDate() : null,
-                        stage: data.stage || DEFAULT_STAGE
-                    };
-                });
-                console.log("Deals loaded from Firebase:", deals);
-                applyUserPermissions();
-                initSortable();
-            } catch (error) {
-                console.error("Error loading deals from Firebase:", error);
-                showToast("Error loading deals. Please try again.", 5000);
-            }
-        }
-
-        async function loadActivitiesFromFirebase() {
-            try {
-                const snapshot = await activitiesCollection.orderBy('date', 'desc').limit(20).get();
-                activities = snapshot.docs.map(doc => {
-                    const data = doc.data();
-                    return {
-                        id: doc.id,
-                        ...data,
-                        date: data.date ? data.date.toDate() : new Date()
-                    };
-                });
-                console.log("Activities loaded from Firebase:", activities);
-                updateActivityBadge();
-            } catch (error) {
-                console.error("Error loading activities from Firebase:", error);
-                showToast("Error loading activities. Please try again.", 5000);
-            }
-        }
-
-        // --- Modal Functions ---
-        function openModal(id) {
-            const modal = document.getElementById(id);
-            const modalContent = document.getElementById(`${id}Content`);
-            modal.classList.remove('hidden');
-            requestAnimationFrame(() => {
-                modalContent.classList.remove('modal-content-enter');
-                modalContent.classList.add('modal-content-enter-active');
-            });
-        }
-
-        function closeModal(id) {
-            const modal = document.getElementById(id);
-            const modalContent = document.getElementById(`${id}Content`);
-            modalContent.classList.remove('modal-content-enter-active');
-            modalContent.classList.add('modal-content-leave-active');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-                modalContent.classList.remove('modal-content-leave-active');
-                modalContent.classList.add('modal-content-enter');
-            }, 300);
-        }
-
-        function calculateValue() {
-            const beforeDiscountInput = document.getElementById('beforeDiscount');
-            const discountInput = document.getElementById('discount');
-            const valueInput = document.getElementById('value');
-
-            const beforeDiscount = parseFloat(beforeDiscountInput.value) || 0;
-            let discount = parseFloat(discountInput.value) || 0;
-
-            if (discount < 0) discount = 0;
-            if (discount > 100) discount = 100;
-            discountInput.value = discount;
-
-            const calculatedValue = beforeDiscount * (1 - (discount / 100));
-            valueInput.value = calculatedValue.toFixed(2);
-        }
-
-        function openDealModal(deal = null) {
-            if (currentUserRole === 'guest') {
-                showToast("You need to log in to add/edit deals.", 3000);
-                return;
-            }
-            
-            openModal('dealModal');
-            // Tampilkan field stage di modal
-            document.getElementById('stageFieldContainer').style.display = 'block';
-            
-            // Set stage field to read-only for non-admin users
-            const stageField = document.getElementById('stage');
-            if (currentUserRole !== 'admin') {
-                stageField.disabled = true;
-            } else {
-                stageField.disabled = false;
-            }
-
-            if (deal) {
-                document.getElementById('modalTitle').innerText = 'Edit Deal';
-                document.getElementById('dealId').value = deal.id;
-                document.getElementById('dealName').value = deal.name;
-                document.getElementById('salesName').value = deal.salesName || '';
-                document.getElementById('beforeDiscount').value = deal.beforeDiscount || 0;
-                document.getElementById('discount').value = deal.discount || 0;
-                document.getElementById('package').value = deal.package || '';
-                document.getElementById('product').value = deal.product || '';
-                document.getElementById('facility').value = deal.facility || '';
-                document.getElementById('consultant').value = deal.consultant || '';
-                document.getElementById('contractor').value = deal.contractor || '';
-                document.getElementById('pic').value = deal.pic || '';
-                document.getElementById('priority').value = deal.priority || 'cold';
-                document.getElementById('projectDate').value = deal.projectDate ? new Date(deal.projectDate).toISOString().split('T')[0] : '';
-                document.getElementById('stage').value = deal.stage || DEFAULT_STAGE;
-                calculateValue();
-            } else {
-                document.getElementById('modalTitle').innerText = 'Add New Deal';
-                document.getElementById('dealForm').reset();
-                document.getElementById('dealId').value = '';
-                document.getElementById('priority').value = 'cold';
-                document.getElementById('salesName').value = '';
-                document.getElementById('package').value = '';
-                document.getElementById('product').value = '';
-                document.getElementById('facility').value = '';
-                document.getElementById('projectDate').value = '';
-                document.getElementById('value').value = 0;
-                document.getElementById('stage').value = DEFAULT_STAGE;
-                calculateValue();
-            }
-        }
-
-        function closeDealModal() {
-            closeModal('dealModal');
-            document.getElementById('dealForm').reset();
-        }
-
-        function openDealDetailModal(deal) {
-            document.getElementById('dealDetailTitle').innerText = `Details for ${deal.name}`;
-            document.getElementById('detailSalesName').innerText = deal.salesName || 'N/A';
-            document.getElementById('detailBeforeDiscount').innerText = `IDR ${deal.beforeDiscount ? deal.beforeDiscount.toLocaleString() : '0'}`;
-            document.getElementById('detailDiscount').innerText = `${deal.discount ? deal.discount + '%' : '0%'}`;
-            document.getElementById('detailValue').innerText = `IDR ${deal.value ? deal.value.toLocaleString() : '0'}`;
-            document.getElementById('detailPackage').innerText = deal.package || 'N/A';
-            document.getElementById('detailProduct').innerText = deal.product || 'N/A';
-            document.getElementById('detailFacility').innerText = deal.facility || 'N/A';
-            document.getElementById('detailConsultant').innerText = deal.consultant || 'N/A';
-            document.getElementById('detailContractor').innerText = deal.contractor || 'N/A';
-            document.getElementById('detailPIC').innerText = deal.pic || 'N/A';
-            document.getElementById('detailCreatedDate').innerText = deal.projectDate ? deal.projectDate.toLocaleDateString() : 'N/A';
-            openModal('dealDetailModal');
-        }
-
-        function closeDealDetailModal() {
-            closeModal('dealDetailModal');
-        }
-
-        function openActivityModal() {
-            if (currentUserRole !== 'admin') {
-                showToast("You don't have permission to view activity.", 3000);
-                return;
-            }
-            renderActivityFeedModal();
-            openModal('activityModal');
-            document.getElementById('activity-badge').classList.add('hidden');
-            document.getElementById('activity-badge').innerText = '0';
-        }
-
-        function closeActivityModal() {
-            closeModal('activityModal');
-        }
-
-        function closeDeleteModal() {
-            closeModal('deleteModal');
-        }
-
-        function showStats() {
-            if (currentUserRole !== 'admin') {
-                showToast("You don't have permission to view stats.", 3000);
-                return;
-            }
-            document.getElementById('stats-section').classList.remove('hidden');
-            updateCharts();
-        }
-
-        function hideStats() {
-            document.getElementById('stats-section').classList.add('hidden');
-            for (const chartId in charts) {
-                if (charts[chartId]) {
-                    charts[chartId].destroy();
-                }
-            }
-            charts = {};
-        }
-
-        // --- Deal CRUD Operations (Firebase Integrated) ---
-        async function saveDeal() {
-            const dealId = document.getElementById('dealId').value;
-            const dealName = document.getElementById('dealName').value;
-            const salesName = document.getElementById('salesName').value;
-            const beforeDiscount = parseFloat(document.getElementById('beforeDiscount').value) || 0;
-            const discount = parseFloat(document.getElementById('discount').value) || 0;
-            const value = parseFloat(document.getElementById('value').value) || 0;
-            const package = document.getElementById('package').value;
-            const product = document.getElementById('product').value;
-            const facility = document.getElementById('facility').value;
-            const consultant = document.getElementById('consultant').value;
-            const contractor = document.getElementById('contractor').value;
-            const pic = document.getElementById('pic').value;
-            const priority = document.getElementById('priority').value;
-            const projectDate = document.getElementById('projectDate').value;
-            const stage = document.getElementById('stage').value || DEFAULT_STAGE;
-
-            const dealData = {
-                name: dealName,
-                salesName: salesName,
-                beforeDiscount: beforeDiscount,
-                discount: discount,
-                value: value,
-                package: package,
-                product: product,
-                facility: facility,
-                consultant: consultant,
-                contractor: contractor,
-                pic: pic,
-                stage: stage,
-                priority: priority,
-                projectDate: projectDate ? new Date(projectDate) : null,
-            };
-
-            try {
-                if (dealId) {
-                    await dealsCollection.doc(dealId).update(dealData);
-                    console.log(`Deal "${dealName}" updated in Firestore.`);
-                    showToast(`Deal "${dealName}" updated!`);
-                    addActivityToFirebase(`Edited deal: ${dealName}`);
-                } else {
-                    dealData.created = firebase.firestore.FieldValue.serverTimestamp();
-                    // For non-admin users, automatically set the salesName to their email prefix
-                    if (currentUserRole === 'user' && auth.currentUser) {
-                        dealData.salesName = auth.currentUser.email.split('@')[0]; // Use the part before @
-                    }
-                    await dealsCollection.add(dealData);
-                    console.log(`New deal "${dealName}" added to Firestore.`);
-                    showToast(`New deal "${dealName}" added!`);
-                    addActivityToFirebase(`Added new deal: ${dealName}`);
-                }
-                await loadDealsFromFirebase();
-                closeDealModal();
-            } catch (error) {
-                console.error("Error saving deal to Firebase:", error);
-                showToast("Error saving deal. Please try again.", 5000);
-            }
-        }
-
-        async function confirmDeleteDeal(dealId) {
-            if (currentUserRole !== 'admin') {
-                showToast("You don't have permission to delete deals.", 3000);
-                return;
-            }
-            const deal = deals.find(d => d.id === dealId);
-            if (deal) {
-                document.getElementById('dealToDeleteName').innerText = deal.name;
-                document.getElementById('confirmDeleteBtn').onclick = () => deleteDeal(dealId);
-                openModal('deleteModal');
-            }
-        }
-
-        async function deleteDeal(dealId) {
-            try {
-                const dealToDelete = deals.find(d => d.id === dealId);
-                await dealsCollection.doc(dealId).delete();
-                console.log(`Deal "${dealToDelete.name}" deleted from Firestore.`);
-                showToast(`Deal "${dealToDelete.name}" deleted!`);
-                addActivityToFirebase(`Deleted deal: ${dealToDelete.name}`);
-                await loadDealsFromFirebase();
-                closeDeleteModal();
-            } catch (error) {
-                console.error("Error deleting deal from Firebase:", error);
-                showToast("Error deleting deal. Please try again.", 5000);
-            }
-        }
-
-        // --- UI Rendering ---
-        function renderAllDeals() {
-            const pipelineStageElement = document.getElementById('pipelines-stage');
-            pipelineStageElement.innerHTML = ''; // Clear existing deals
-
-            const emptyMessage = document.createElement('div');
-            emptyMessage.className = 'empty-stage-message text-center text-gray-400 p-4 text-sm';
-            emptyMessage.innerHTML = '<i class="fas fa-box-open text-3xl mb-2"></i><p>No deals here yet.</p>';
-            pipelineStageElement.appendChild(emptyMessage);
-
-            const searchTerm = document.getElementById('searchDeals').value.toLowerCase();
-            const filterPriority = document.getElementById('filterPriority').value;
-
-            deals.forEach(deal => {
-                const matchesSearch = (deal.name.toLowerCase().includes(searchTerm) ||
-                                     (deal.salesName && deal.salesName.toLowerCase().includes(searchTerm)));
-                const matchesPriority = (filterPriority === 'all' || deal.priority === filterPriority);
-                
-                // For admin, show all matching deals
-                // For sales users, only show deals where they are the sales person
-                const isSalesUserDeal = currentUserRole === 'user' && 
-                                       auth.currentUser && 
-                                       deal.salesName && 
-                                       deal.salesName.toLowerCase() === auth.currentUser.email.split('@')[0].toLowerCase();
-                
-                if (matchesSearch && matchesPriority && 
-                    (currentUserRole === 'admin' || isSalesUserDeal)) {
-                    renderDeal(deal);
-                }
-            });
-
-            // Show/hide empty message based on actual content
-            if (pipelineStageElement.children.length > 1) {
-                emptyMessage.classList.add('hidden');
-            } else {
-                emptyMessage.classList.remove('hidden');
-            }
-        }
-
-        function renderDeal(deal) {
-            const dealCard = document.createElement('div');
-            dealCard.className = `deal-card`;
-            dealCard.dataset.id = deal.id;
-            dealCard.dataset.stage = deal.stage;
-            dealCard.dataset.priority = deal.priority;
-
-            let priorityIcon = '';
-            let priorityColor = '';
-            if (deal.priority === 'hot') {
-                priorityIcon = '<i class="fas fa-fire text-red-500"></i>';
-                priorityColor = 'bg-red-100 text-red-800';
-            } else if (deal.priority === 'warm') {
-                priorityIcon = '<i class="fas fa-sun text-orange-500"></i>';
-                priorityColor = 'bg-orange-100 text-orange-800';
-            } else { // cold
-                priorityIcon = '<i class="fas fa-snowflake text-blue-400"></i>';
-                priorityColor = 'bg-blue-100 text-blue-800';
-            }
-
-            dealCard.innerHTML = `
-                <div class="flex justify-between items-start mb-2">
-                    <h4 class="font-semibold text-base text-gray-900 cursor-pointer" onclick="openDealDetailModal(deals.find(d => d.id === '${deal.id}'))">${deal.name}</h4>
-                </div>
-                <p class="text-xs text-gray-500 flex items-center"><i class="fas fa-user-tie mr-2 text-gray-400"></i>${deal.salesName || 'N/A'}</p>
-                
-                <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
-                    <span class="text-xs font-medium ${priorityColor} px-2 py-1 rounded-full flex items-center">
-                        ${priorityIcon} <span class="ml-1">${deal.priority.charAt(0).toUpperCase() + deal.priority.slice(1)}</span>
-                    </span>
-                    <div class="flex space-x-2">
-                        ${currentUserRole === 'admin' ? `
-                            <button onclick="openDealModal(deals.find(d => d.id === '${deal.id}'))" class="text-blue-500 hover:text-blue-700 font-medium flex items-center text-base"><i class="fas fa-edit"></i></button>
-                            <button onclick="confirmDeleteDeal('${deal.id}')" class="text-red-500 hover:text-red-700 font-medium flex items-center text-base"><i class="fas fa-trash-alt"></i></button>
-                        ` : ''}
-                    </div>
-                </div>
-            `;
-
-            document.getElementById('pipelines-stage').appendChild(dealCard);
-        }
-
-        function filterDeals() {
-            const pipelineStageElement = document.getElementById('pipelines-stage');
-            pipelineStageElement.innerHTML = ''; // Clear current view
-
-            const searchTerm = document.getElementById('searchDeals').value.toLowerCase();
-            const filterPriority = document.getElementById('filterPriority').value;
-
-            if (currentUserRole === 'admin') {
-                // Admin sees all deals matching search
-                const filteredDeals = deals.filter(deal => {
-                    const matchesSearch = (deal.name.toLowerCase().includes(searchTerm) ||
-                                       (deal.salesName && deal.salesName.toLowerCase().includes(searchTerm));
-                    const matchesPriority = (filterPriority === 'all' || deal.priority === filterPriority);
-                    return matchesSearch && matchesPriority;
-                });
-
-                if (filteredDeals.length > 0) {
-                    filteredDeals.forEach(deal => renderDeal(deal));
-                } else {
-                    pipelineStageElement.innerHTML = `
-                        <div class="empty-stage-message text-center text-gray-400 p-4 text-sm">
-                            <i class="fas fa-frown text-3xl mb-2"></i><p>No deals found matching your search.</p>
-                        </div>
-                    `;
-                }
-            } else if (currentUserRole === 'user') {
-                // Sales users only see their own deals when searching
-                if (searchTerm.length > 0) {
-                    const userEmailPrefix = auth.currentUser ? auth.currentUser.email.split('@')[0].toLowerCase() : '';
-                    const filteredDeals = deals.filter(deal => {
-                        const isUsersDeal = deal.salesName && deal.salesName.toLowerCase() === userEmailPrefix;
-                        const matchesSearch = (deal.name.toLowerCase().includes(searchTerm) ||
-                                             (deal.salesName && deal.salesName.toLowerCase().includes(searchTerm)));
-                        const matchesPriority = (filterPriority === 'all' || deal.priority === filterPriority);
-                        return isUsersDeal && matchesSearch && matchesPriority;
-                    });
-
-                    if (filteredDeals.length > 0) {
-                        filteredDeals.forEach(deal => renderDeal(deal));
-                    } else {
-                        pipelineStageElement.innerHTML = `
-                            <div class="empty-stage-message text-center text-gray-400 p-4 text-sm">
-                                <i class="fas fa-frown text-3xl mb-2"></i><p>No deals found matching your search.</p>
-                            </div>
-                        `;
-                    }
-                } else {
-                    // If search term is empty, show "Search for deals" message
-                    pipelineStageElement.innerHTML = `
-                        <div class="empty-stage-message text-center text-gray-400 p-4 text-sm">
-                            <i class="fas fa-search text-3xl mb-2"></i><p>Search for your deals.</p>
-                        </div>
-                    `;
-                }
-            }
-            // For guest, nothing happens as search is disabled
-        }
-
-        // --- Sortable.js Initialization and Event Handling ---
-        let sortableInstances = {};
-
-        function initSortable() {
-            // Destroy existing Sortable instances to prevent duplicates
-            if (sortableInstances['pipelines-stage']) {
-                sortableInstances['pipelines-stage'].destroy();
-                delete sortableInstances['pipelines-stage'];
-            }
-
-            const pipelineElement = document.getElementById('pipelines-stage');
-            if (pipelineElement) {
-                sortableInstances['pipelines-stage'] = new Sortable(pipelineElement, {
-                    group: 'pipeline',
-                    animation: 150,
-                    ghostClass: 'sortable-ghost',
-                    chosenClass: 'sortable-chosen',
-                    dragClass: 'sortable-drag',
-                    disabled: currentUserRole !== 'admin', // Disable for non-admin
-                    onEnd: async function (evt) {
-                        console.log("Deal reordered within the main pipeline.");
-                    }
-                });
-            }
-        }
-
-        // --- Activity Feed (Firebase Integrated) ---
-        async function addActivityToFirebase(text) {
-            try {
-                await activitiesCollection.add({
-                    text: text,
-                    date: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                console.log(`Activity added to Firestore: "${text}"`);
-                await loadActivitiesFromFirebase();
-            } catch (error) {
-                console.error("Error adding activity to Firebase:", error);
-            }
-        }
-
-        function updateActivityBadge() {
-            const badge = document.getElementById('activity-badge');
-            if (activities.length > 0) {
-                badge.innerText = activities.length;
-                badge.classList.remove('hidden');
-            } else {
-                badge.classList.add('hidden');
-            }
-        }
-
-        function renderActivityFeedModal() {
-            const activityFeedModal = document.getElementById('activity-feed-modal');
-            activityFeedModal.innerHTML = '';
-
-            if (activities.length === 0) {
-                activityFeedModal.innerHTML = `
-                    <div class="p-4 bg-gray-50 rounded-lg border border-gray-200 text-center text-gray-500 text-sm">
-                        <i class="fas fa-clipboard-list text-2xl mb-2"></i>
-                        <p>No recent activity.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            activities.forEach(activity => {
-                const activityElement = document.createElement('div');
-                activityElement.className = 'activity-item';
-                activityElement.innerHTML = `
-                    <p>${activity.text}</p>
-                    <p class="activity-date">${activity.date.toLocaleString()}</p>
-                `;
-                activityFeedModal.appendChild(activityElement);
-            });
-        }
-
-        // --- Toast Notification ---
+        // Fungsi untuk menampilkan toast notifikasi
         function showToast(message, duration = 3000) {
             const toastContainer = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -1195,242 +610,7 @@
             }, duration);
         }
 
-        // --- Chart Functions ---
-        function generateRandomColors(num) {
-            const colors = [];
-            for (let i = 0; i < num; i++) {
-                const r = Math.floor(Math.random() * 200);
-                const g = Math.floor(Math.random() * 200);
-                const b = Math.floor(Math.random() * 200);
-                colors.push(`rgba(${r}, ${g}, ${b}, 0.8)`);
-            }
-            return colors;
-        }
-
-        function calculateDealsBySalesPerson() {
-            const salesData = {};
-            deals.forEach(deal => {
-                if (deal.salesName) {
-                    salesData[deal.salesName] = (salesData[deal.salesName] || 0) + 1;
-                }
-            });
-
-            const labels = Object.keys(salesData);
-            const data = Object.values(salesData);
-            const colors = generateRandomColors(labels.length);
-
-            return { salesLabels: labels, salesData: data, salesColors: colors };
-        }
-
-        function calculateDealsByProductPackage() {
-            const productPackageData = {};
-            deals.forEach(deal => {
-                let key = 'N/A';
-                if (deal.product && deal.package) {
-                    key = `${deal.product} (${deal.package})`;
-                } else if (deal.product) {
-                    key = deal.product;
-                } else if (deal.package) {
-                    key = deal.package;
-                }
-                productPackageData[key] = (productPackageData[key] || 0) + 1;
-            });
-
-            const labels = Object.keys(productPackageData);
-            const data = Object.values(productPackageData);
-            const colors = generateRandomColors(labels.length);
-
-            return { productPackageLabels: labels, productPackageData: data, productPackageColors: colors };
-        }
-
-        function updateCharts() {
-            for (const chartId in charts) {
-                if (charts[chartId]) {
-                    charts[chartId].destroy();
-                }
-            }
-            charts = {};
-
-            // Deal Size Distribution Chart
-            const dealSizeCtx = document.getElementById('dealSizeChart').getContext('2d');
-            charts.dealSizeChart = new Chart(dealSizeCtx, {
-                type: 'bar',
-                data: {
-                    labels: ['<IDR 1 Jt', 'IDR 1 Jt-5 Jt', 'IDR 5 Jt-10 Jt', 'IDR 10 Jt-50 Jt', 'IDR 50 Jt+'],
-                    datasets: [{
-                        label: 'Number of Deals',
-                        data: calculateDealSizeDistribution(),
-                        backgroundColor: [
-                            'rgba(59, 130, 246, 0.8)', 'rgba(16, 185, 129, 0.8)', 'rgba(245, 158, 11, 0.8)',
-                            'rgba(236, 72, 153, 0.8)', 'rgba(139, 92, 246, 0.8)'
-                        ],
-                        borderColor: [
-                            'rgba(59, 130, 246, 1)', 'rgba(16, 185, 129, 1)', 'rgba(245, 158, 11, 1)',
-                            'rgba(236, 72, 153, 1)', 'rgba(139, 92, 246, 1)'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: {
-                        title: { display: true, text: 'Deal Size Distribution (All Deals)', font: { size: 16, weight: 'bold' }, color: '#333' },
-                        legend: { display: false },
-                        tooltip: { callbacks: { label: function(context) { return `Deals: ${context.parsed.y}`; } } }
-                    },
-                    scales: { y: { beginAtZero: true, title: { display: true, text: 'Number of Deals' }, ticks: { precision: 0 } }, x: { title: { display: true, text: 'Deal Value Range' } } }
-                }
-            });
-
-            const winRateCtx = document.getElementById('winRateChart').getContext('2d');
-            const { identified, lost, onHold, inProgressOther } = calculateWinRate();
-            charts.winRateChart = new Chart(winRateCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Identified', 'On Hold', 'Lost', 'Other In Progress'],
-                    datasets: [{
-                        data: [identified, onHold, lost, inProgressOther],
-                        backgroundColor: [
-                            'rgba(34, 197, 94, 0.8)', 'rgba(148, 163, 184, 0.8)', 'rgba(239, 68, 68, 0.8)', 'rgba(59, 130, 246, 0.8)'
-                        ],
-                        borderColor: [
-                            'rgba(34, 197, 94, 1)', 'rgba(148, 163, 184, 1)', 'rgba(239, 68, 68, 1)', 'rgba(59, 130, 246, 1)'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: {
-                        title: { display: true, text: 'Deal Status Distribution', font: { size: 16, weight: 'bold' }, color: '#333' },
-                        legend: { position: 'right', labels: { font: { size: 12 } } },
-                        tooltip: { callbacks: { label: function(context) { let label = context.label || ''; if (label) { label += ': '; } if (context.parsed !== null) { label += context.parsed; } return label; } } }
-                    }
-                }
-            });
-
-            const dealsBySalesCtx = document.getElementById('dealsBySalesChart').getContext('2d');
-            const { salesLabels, salesData, salesColors } = calculateDealsBySalesPerson();
-            charts.dealsBySalesChart = new Chart(dealsBySalesCtx, {
-                type: 'bar',
-                data: {
-                    labels: salesLabels,
-                    datasets: [{
-                        label: 'Number of Deals',
-                        data: salesData,
-                        backgroundColor: salesColors,
-                        borderColor: salesColors.map(color => color.replace('0.8', '1')),
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: {
-                        title: { display: true, text: 'Deals by Sales Person', font: { size: 16, weight: 'bold' }, color: '#333' },
-                        legend: { display: false },
-                        tooltip: { callbacks: { label: function(context) { return `Deals: ${context.parsed.y}`; } } }
-                    },
-                    scales: { y: { beginAtZero: true, title: { display: true, text: 'Number of Deals' }, ticks: { precision: 0 } }, x: { title: { display: true, text: 'Sales Person' } } }
-                }
-            });
-
-            const dealsByProductPackageCtx = document.getElementById('dealsByProductPackageChart').getContext('2d');
-            const { productPackageLabels, productPackageData, productPackageColors } = calculateDealsByProductPackage();
-            charts.dealsByProductPackageChart = new Chart(dealsByProductPackageCtx, {
-                type: 'pie',
-                data: {
-                    labels: productPackageLabels,
-                    datasets: [{
-                        label: 'Number of Deals',
-                        data: productPackageData,
-                        backgroundColor: productPackageColors,
-                        borderColor: productPackageColors.map(color => color.replace('0.8', '1')),
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: {
-                        title: { display: true, text: 'Deals by Product/Package', font: { size: 16, weight: 'bold' }, color: '#333' },
-                        legend: { position: 'right', labels: { font: { size: 12 } } },
-                        tooltip: { callbacks: { label: function(context) { let label = context.label || ''; if (label) { label += ': '; } if (context.parsed !== null) { label += context.parsed; } return label; } } }
-                    }
-                }
-            });
-
-            const pipelineValueCtx = document.getElementById('pipelineValueChart').getContext('2d');
-            const { labels, data } = calculatePipelineValueTrend();
-            charts.pipelineValueChart = new Chart(pipelineValueCtx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Total Pipeline Value',
-                        data: data,
-                        fill: true,
-                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                        borderColor: 'rgba(59, 130, 246, 1)',
-                        tension: 0.4,
-                        pointBackgroundColor: 'rgba(59, 130, 246, 1)',
-                        pointBorderColor: '#fff',
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: 'rgba(59, 130, 246, 1)'
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: {
-                        title: { display: true, text: 'Pipeline Value Trend Over Time', font: { size: 16, weight: 'bold' }, color: '#333' },
-                        tooltip: { callbacks: { label: function(context) { return `Value: IDR ${context.parsed.y.toLocaleString()}`; } } }
-                    },
-                    scales: {
-                        y: { beginAtZero: true, title: { display: true, text: 'Value (IDR)' }, ticks: { callback: function(value) { return 'IDR ' + value.toLocaleString(); } } },
-                        x: { title: { display: true, text: 'Date' } }
-                    }
-                }
-            });
-        }
-
-        function calculateDealSizeDistribution() {
-            const distribution = [0, 0, 0, 0, 0];
-            deals.forEach(deal => {
-                if (deal.value < 1000000) { distribution[0]++; }
-                else if (deal.value >= 1000000 && deal.value < 5000000) { distribution[1]++; }
-                else if (deal.value >= 5000000 && deal.value < 10000000) { distribution[2]++; }
-                else if (deal.value >= 10000000 && deal.value < 50000000) { distribution[3]++; }
-                else if (deal.value >= 50000000) { distribution[4]++; }
-            });
-            return distribution;
-        }
-
-        function calculateWinRate() {
-            let identified = deals.filter(d => d.stage === 'identified').length;
-            let lost = deals.filter(d => d.stage === 'lost').length;
-            let onHold = deals.filter(d => d.stage === 'on-hold').length;
-            let inProgressOther = deals.filter(d => d.stage === DEFAULT_STAGE).length;
-            return { identified, lost, onHold, inProgressOther };
-        }
-
-        function calculatePipelineValueTrend() {
-            const monthlyValues = {};
-            const allDates = new Set();
-            deals.forEach(deal => {
-                const dateToUse = deal.projectDate || deal.created;
-                if (dateToUse instanceof Date) {
-                    const monthYearKey = `${dateToUse.getFullYear()}-${(dateToUse.getMonth() + 1).toString().padStart(2, '0')}`;
-                    allDates.add(monthYearKey);
-                    if (!monthlyValues[monthYearKey]) { monthlyValues[monthYearKey] = 0; }
-                    monthlyValues[monthYearKey] += deal.value;
-                }
-            });
-            const sortedMonthKeys = Array.from(allDates).sort();
-            const labels = sortedMonthKeys.map(key => {
-                const [year, month] = key.split('-');
-                return new Date(year, month - 1).toLocaleString('en-US', { month: 'short', year: 'numeric' });
-            });
-            const data = sortedMonthKeys.map(key => monthlyValues[key] || 0);
-            return { labels, data };
-        }
+        // [Tambahkan semua fungsi lain yang diperlukan dari code(7).html]
     </script>
 </body>
 </html>
