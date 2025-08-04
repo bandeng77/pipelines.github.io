@@ -523,42 +523,58 @@
                 });
         }
 
-        // Cek status auth saat halaman dimuat
+// Variabel untuk mencegah multiple redirect
+let isRedirecting = false;
+
 auth.onAuthStateChanged(async (user) => {
     console.log("Auth state changed:", user ? user.email : "no user");
     
-    if (!user) {
-        console.log("No user, redirecting to login");
+    // Jika sudah dalam proses redirect, abaikan
+    if (isRedirecting) return;
+    
+    // Jika tidak ada user DAN kita di app.html
+    if (!user && window.location.pathname.includes('app.html')) {
+        isRedirecting = true;
+        console.log("Redirecting to login from app.html");
         window.location.href = 'login.html';
+        return;
+    }
+    
+    // Jika ada user tapi di login.html
+    if (user && window.location.pathname.includes('login.html')) {
+        isRedirecting = true;
+        console.log("Redirecting to app from login.html");
+        window.location.href = 'app.html';
         return;
     }
 
     try {
-        // Cek role user
-        if (user.email === 'admin@genetek.co.id') {
+        // Cek role admin
+        if (user && user.email === 'admin@genetek.co.id') {
             currentUserRole = 'admin';
             await usersCollection.doc(user.uid).set({ 
                 role: 'admin',
                 email: user.email 
             }, { merge: true });
-        } else {
+        } else if (user) {
             const userDoc = await usersCollection.doc(user.uid).get();
             currentUserRole = userDoc.exists ? userDoc.data().role : 'user';
         }
 
-        console.log("User role determined:", currentUserRole);
+        console.log("Current role:", currentUserRole);
         
-        // Hanya render aplikasi jika sudah di halaman app.html
-        if (window.location.pathname.endsWith('app.html')) {
+        // Jika semua pengecekan passed, render aplikasi
+        if (user && window.location.pathname.includes('app.html')) {
             applyUserPermissions();
             loadDealsFromFirebase();
             loadActivitiesFromFirebase();
-        } else {
-            window.location.href = 'app.html';
         }
     } catch (error) {
-        console.error("Error:", error);
-        window.location.href = 'login.html';
+        console.error("Auth error:", error);
+        if (!isRedirecting) {
+            isRedirecting = true;
+            window.location.href = 'login.html';
+        }
     }
 });
         // Terapkan permissions berdasarkan role
