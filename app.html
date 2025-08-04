@@ -965,35 +965,79 @@
                 }
             });
 
-            // --- START MODIFIKASI UNTUK MEMPERBAIKI BUG DROPDOWN "KETIK BARU" ---
+            // --- START MODIFIKASI UNTUK PERBAIKAN BUG "KETIK BARU" ---
 
-            // Set nilai yang dipilih
-            if (selectedValue && uniqueValues.has(selectedValue)) {
-                selectElement.value = selectedValue;
-                newInputElement.classList.add('hidden'); // Sembunyikan input baru jika nilai sudah ada
-                newInputElement.value = ''; // Pastikan input teks baru kosong
-            } else if (selectedValue) {
-                // Jika nilai yang dipilih tidak ada di daftar unik, pilih opsi kosong dan tampilkan input baru
-                selectElement.value = ''; // Pilih opsi "Ketik Baru"
-                newInputElement.value = selectedValue;
-                newInputElement.classList.remove('hidden'); // Tampilkan input teks baru
-            } else {
-                // Default: pilih opsi kosong dan sembunyikan input teks baru
-                selectElement.value = '';
-                newInputElement.value = '';
-                newInputElement.classList.add('hidden'); // Sembunyikan input teks baru secara default
-            }
-
-            // Tambahkan event listener untuk menampilkan/menyembunyikan input teks baru
-            selectElement.onchange = function() {
-                if (this.value === '') {
+            // Fungsi helper untuk mengatur visibilitas input teks baru
+            const toggleNewInputVisibility = () => {
+                if (selectElement.value === '') {
                     newInputElement.classList.remove('hidden');
-                    newInputElement.focus();
+                    // Fokuskan input teks baru jika baru muncul dan kosong
+                    if (!newInputElement.value) { 
+                        newInputElement.focus();
+                    }
                 } else {
                     newInputElement.classList.add('hidden');
-                    newInputElement.value = ''; // Kosongkan input teks baru jika opsi dipilih
+                    newInputElement.value = ''; // Kosongkan input teks baru jika opsi lain dipilih
                 }
             };
+
+            // Set nilai yang dipilih dan atur visibilitas awal
+            if (selectedValue && uniqueValues.has(selectedValue)) {
+                selectElement.value = selectedValue;
+            } else if (selectedValue) {
+                // Jika nilai yang dipilih tidak ada di daftar unik, pilih opsi kosong
+                selectElement.value = '';
+                newInputElement.value = selectedValue; // Isi input teks baru dengan nilai yang tidak ada di daftar
+            } else {
+                // Default: pilih opsi kosong
+                selectElement.value = '';
+            }
+            // Panggil toggleNewInputVisibility untuk mengatur status awal
+            toggleNewInputVisibility();
+
+
+            // Hapus event listener sebelumnya untuk mencegah duplikasi
+            selectElement.removeEventListener('change', toggleNewInputVisibility);
+            // Tidak perlu menghapus mousedown karena kita akan menambahkannya sekali saja
+
+            // Tambahkan event listener 'change' (untuk perubahan nilai normal)
+            selectElement.addEventListener('change', toggleNewInputVisibility);
+
+            // Tambahkan event listener 'mousedown' untuk menangani kasus "Ketik Baru" yang sudah terpilih
+            // Ini akan terpicu saat pengguna mengklik dropdown, bahkan jika nilai tidak berubah.
+            // Gunakan { once: true } jika Anda ingin listener hanya terpicu sekali per pembukaan modal,
+            // atau pastikan listener dihapus/ditambahkan dengan benar di openDealModal.
+            // Untuk kesederhanaan dan agar selalu responsif, kita bisa biarkan tanpa 'once'
+            // dan pastikan tidak ada duplikasi listener saat populateDropdown dipanggil berulang.
+            // Cara terbaik adalah menghapus listener sebelum menambahkannya, seperti yang dilakukan untuk 'change'.
+            // Namun, karena mousedown ini spesifik untuk bug ini, kita bisa menambahkannya sekali saja
+            // atau memastikan tidak ada duplikasi.
+            // Untuk saat ini, kita akan menambahkan listener ini setiap kali populateDropdown dipanggil,
+            // yang berarti kita perlu memastikan tidak ada duplikasi.
+            // Solusi yang lebih bersih adalah menambahkan listener ini di initEventListeners
+            // dan memicu toggleNewInputVisibility secara manual.
+            // Untuk saat ini, kita akan menambahkan dan menghapus listener mousedown secara eksplisit.
+
+            // Hapus listener mousedown yang mungkin sudah ada
+            const oldMousedownListener = selectElement.dataset.mousedownListener;
+            if (oldMousedownListener) {
+                selectElement.removeEventListener('mousedown', eval(oldMousedownListener));
+            }
+
+            const newMousedownListener = (event) => {
+                // Beri sedikit delay untuk memastikan browser punya waktu untuk memperbarui nilai select
+                // sebelum kita memeriksanya, terutama jika klik mengubah nilai.
+                setTimeout(() => {
+                    if (selectElement.value === '') {
+                        newInputElement.classList.remove('hidden');
+                        if (!newInputElement.value) {
+                            newInputElement.focus();
+                        }
+                    }
+                }, 50); // Delay kecil, bisa disesuaikan
+            };
+            selectElement.addEventListener('mousedown', newMousedownListener);
+            selectElement.dataset.mousedownListener = newMousedownListener.toString(); // Simpan referensi untuk penghapusan
 
             // --- END MODIFIKASI ---
         }
