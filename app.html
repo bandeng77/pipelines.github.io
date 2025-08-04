@@ -56,11 +56,10 @@
             -webkit-overflow-scrolling: touch;
             min-height: 100px;
             height: 100%;
-            /* Perubahan baru: Menggunakan flexbox untuk tata letak horizontal */
             display: flex;
-            flex-wrap: wrap; /* Memungkinkan item untuk membungkus ke baris berikutnya */
-            gap: 1rem; /* Menambahkan jarak antar deal card */
-            align-content: flex-start; /* Memastikan baris baru dimulai dari atas */
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-content: flex-start;
         }
         .deal-card {
             transition: transform 0.2s, box-shadow 0.2s;
@@ -70,13 +69,12 @@
             border: 1px solid #e2e8f0;
             border-radius: 0.5rem;
             padding: 0.75rem;
-            margin-bottom: 0; /* Hapus margin-bottom karena sudah ada gap di parent */
+            margin-bottom: 0;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
             font-size: 0.875rem;
-            /* Perubahan baru: Menetapkan lebar kartu */
-            width: calc(33.333% - 0.666rem); /* Contoh: 3 kartu per baris dengan gap 1rem */
-            min-width: 250px; /* Lebar minimum agar tidak terlalu kecil */
-            box-sizing: border-box; /* Penting untuk perhitungan lebar dengan padding */
+            width: calc(33.333% - 0.666rem);
+            min-width: 250px;
+            box-sizing: border-box;
         }
         .deal-card:hover {
             transform: translateY(-3px);
@@ -219,15 +217,15 @@
         }
 
         /* Media Queries untuk responsivitas */
-        @media (max-width: 1024px) { /* Untuk tablet dan layar menengah */
+        @media (max-width: 1024px) {
             .deal-card {
-                width: calc(50% - 0.5rem); /* 2 kartu per baris */
+                width: calc(50% - 0.5rem);
             }
         }
 
-        @media (max-width: 768px) { /* Untuk mobile dan layar kecil */
+        @media (max-width: 768px) {
             .deal-card {
-                width: 100%; /* 1 kartu per baris */
+                width: 100%;
             }
         }
     </style>
@@ -557,9 +555,17 @@
         let activities = [];
         let charts = {};
         const DEFAULT_STAGE = 'main-pipeline';
-        let currentUserRole = 'user';
+        let currentUserRole = 'user'; // Default role
         let sortableInstances = {};
         let authInitialized = false;
+
+        // Daftar email sales yang akan memiliki role 'user'
+        const salesEmails = [
+            'pamungkas@genetek.co.id',
+            'rory@genetek.co.id',
+            'rangga@genetek.co.id',
+            'dhea@genetek.co.id'
+        ];
 
         // ==================== FUNGSI UTAMA ====================
 
@@ -570,21 +576,18 @@
             
             console.log("Auth state changed:", user ? user.email : "no user");
             
-            // Jika tidak ada user DAN kita di app.html
             if (!user && window.location.pathname.includes('app.html')) {
                 console.log("No user, redirecting to login");
                 window.location.href = 'login.html';
                 return;
             }
             
-            // Jika ada user tapi di login.html
             if (user && window.location.pathname.includes('login.html')) {
                 console.log("User already logged in, redirecting to app");
                 window.location.href = 'app.html';
                 return;
             }
 
-            // Jika user ada dan di app.html
             if (user && window.location.pathname.includes('app.html')) {
                 try {
                     // Cek role admin
@@ -594,7 +597,14 @@
                             role: 'admin',
                             email: user.email 
                         }, { merge: true });
+                    } else if (salesEmails.includes(user.email)) { // Cek apakah email termasuk sales
+                        currentUserRole = 'user'; // Set role sebagai 'user' (sales)
+                        await usersCollection.doc(user.uid).set({ 
+                            role: 'user',
+                            email: user.email 
+                        }, { merge: true });
                     } else {
+                        // Jika bukan admin dan bukan sales yang terdaftar, anggap sebagai user biasa
                         const userDoc = await usersCollection.doc(user.uid).get();
                         currentUserRole = userDoc.exists ? userDoc.data().role : 'user';
                     }
@@ -604,7 +614,6 @@
                     loadDealsFromFirebase();
                     loadActivitiesFromFirebase();
                     
-                    // Inisialisasi event listeners setelah auth selesai
                     initEventListeners();
                 } catch (error) {
                     console.error("Error checking user role:", error);
@@ -634,7 +643,6 @@
                     activities = [];
                     querySnapshot.forEach((doc) => {
                         const activityData = doc.data();
-                        // Pastikan timestamp adalah objek Timestamp Firebase
                         if (activityData.timestamp && typeof activityData.timestamp.toDate !== 'function') {
                             activityData.timestamp = firebase.firestore.Timestamp.fromMillis(activityData.timestamp);
                         }
@@ -677,7 +685,6 @@
                     return;
                 }
                 
-                // Render aktivitas
                 activityFeed.innerHTML = '';
                 
                 if (activities.length === 0) {
@@ -688,11 +695,10 @@
                         </div>
                     `;
                 } else {
-                    // Urutkan aktivitas berdasarkan timestamp terbaru jika belum diurutkan
                     const sortedActivities = [...activities].sort((a, b) => {
                         const tsA = a.timestamp ? (a.timestamp.toDate ? a.timestamp.toDate().getTime() : a.timestamp) : 0;
                         const tsB = b.timestamp ? (b.timestamp.toDate ? b.timestamp.toDate().getTime() : b.timestamp) : 0;
-                        return tsB - tsA; // Urutkan dari terbaru ke terlama
+                        return tsB - tsA;
                     });
 
                     sortedActivities.forEach(activity => {
@@ -713,7 +719,6 @@
                 activityModalContent.classList.remove('modal-content-leave-active');
                 activityModalContent.classList.add('modal-content-enter-active');
                 
-                // Tandai aktivitas sebagai telah dibaca
                 markActivitiesAsRead();
             } catch (error) {
                 console.error("Error opening activity modal:", error);
@@ -841,7 +846,7 @@
                         deals.push({ id: doc.id, ...doc.data() });
                     });
                     console.log("Deals loaded:", deals.length);
-                    renderAllDeals();
+                    renderAllDeals(); // Panggil renderAllDeals setelah deals dimuat
                 })
                 .catch((error) => {
                     console.error("Error loading deals:", error);
@@ -894,25 +899,36 @@
             const pipelineStage = document.getElementById('pipelines-stage');
             if (!pipelineStage) return;
             
-            if (deals.length === 0) {
+            pipelineStage.innerHTML = ''; // Bersihkan konten pipeline
+
+            let dealsToRender = [];
+            if (currentUserRole === 'admin') {
+                dealsToRender = deals; // Admin melihat semua deals
+            } else {
+                // User sales hanya melihat deals yang dibuatnya
+                const currentUserEmail = auth.currentUser?.email;
+                dealsToRender = deals.filter(deal => deal.createdBy === currentUserEmail);
+            }
+
+            if (dealsToRender.length === 0) {
                 pipelineStage.innerHTML = `
-                    <div class="empty-stage-message text-center text-gray-400 p-4 text-sm">
+                    <div class="empty-stage-message text-center text-gray-400 p-4 text-sm w-full">
                         <i class="fas fa-search text-3xl mb-2"></i>
-                        <p>Tidak ada deals yang ditemukan</p>
+                        <p>Tidak ada deals yang ditemukan di pipeline Anda.</p>
+                        <p>Gunakan kolom pencarian untuk mencari deal lainnya.</p>
                     </div>
                 `;
                 return;
             }
 
-            pipelineStage.innerHTML = '';
-            deals.forEach(deal => {
+            dealsToRender.forEach(deal => {
                 const dealCard = renderDeal(deal);
                 if (dealCard) {
                     pipelineStage.appendChild(dealCard);
                 }
             });
 
-            initSortable();
+            initSortable(); // Inisialisasi ulang sortable setelah render
         }
 
         // Fungsi untuk membuka modal deal
@@ -921,7 +937,6 @@
             const modalTitle = document.getElementById('modalTitle');
             const dealForm = document.getElementById('dealForm');
             
-            // Reset form
             dealForm.reset();
             document.getElementById('dealId').value = '';
             document.getElementById('value').value = '';
@@ -1159,12 +1174,17 @@
             const pipelineStage = document.getElementById('pipelines-stage');
             if (!pipelineStage) return;
 
+            // Hancurkan instance Sortable yang ada jika ada
+            if (sortableInstances['pipelines-stage']) {
+                sortableInstances['pipelines-stage'].destroy();
+            }
+
             sortableInstances['pipelines-stage'] = new Sortable(pipelineStage, {
                 animation: 150,
                 ghostClass: 'sortable-ghost',
                 chosenClass: 'sortable-chosen',
                 dragClass: 'sortable-drag',
-                disabled: currentUserRole !== 'admin',
+                disabled: currentUserRole !== 'admin', // Hanya admin yang bisa drag-and-drop
                 onEnd: function(evt) {
                     if (currentUserRole !== 'admin') return;
                     
@@ -1213,7 +1233,6 @@
         // Fungsi untuk merender semua chart (akan diimplementasikan lebih lanjut)
         function renderAllCharts() {
             console.log("Rendering all charts...");
-            // Implementasi chart akan ditambahkan di sini
         }
 
         // ==================== FUNGSI PERMISSIONS ====================
@@ -1222,26 +1241,35 @@
         function applyUserPermissions() {
             try {
                 const isAdmin = currentUserRole === 'admin';
-                const currentUserEmail = auth.currentUser?.email;
                 
-                console.log("Applying permissions for:", currentUserEmail, "Role:", currentUserRole);
+                console.log("Applying permissions for Role:", currentUserRole);
                 
-                // Admin features
                 const viewStatsBtn = document.getElementById('viewStatsBtn');
                 const activityBtn = document.getElementById('activityBtn');
                 const newDealBtn = document.getElementById('newDealBtn');
-                
-                if (viewStatsBtn) viewStatsBtn.classList.toggle('hidden', !isAdmin);
-                if (activityBtn) activityBtn.classList.toggle('hidden', !isAdmin);
-                if (newDealBtn) newDealBtn.classList.toggle('hidden', false);
+                const searchInput = document.getElementById('searchDeals');
+                const filterPriority = document.getElementById('filterPriority');
 
-                // Sortable permissions
+                // Tombol Statistik hanya untuk admin
+                if (viewStatsBtn) viewStatsBtn.classList.toggle('hidden', !isAdmin);
+                
+                // Tombol Aktivitas selalu terlihat
+                if (activityBtn) activityBtn.classList.remove('hidden');
+                
+                // Tombol Deal Baru selalu terlihat
+                if (newDealBtn) newDealBtn.classList.remove('hidden');
+
+                // Search dan Filter selalu terlihat
+                if (searchInput) searchInput.classList.remove('hidden');
+                if (filterPriority) filterPriority.classList.remove('hidden');
+
+                // Atur kemampuan drag-and-drop
                 if (sortableInstances['pipelines-stage']) {
                     sortableInstances['pipelines-stage'].option('disabled', !isAdmin);
                 }
 
-                // Render deals
-                renderAllDeals();
+                // Render deals sesuai role
+                loadDealsFromFirebase(); // Panggil ulang untuk memuat deals sesuai filter role
                 
             } catch (error) {
                 console.error("Error in applyUserPermissions:", error);
@@ -1256,7 +1284,6 @@
             console.log("Initializing event listeners...");
             
             try {
-                // Deal Form
                 const dealForm = document.getElementById('dealForm');
                 if (dealForm) {
                     dealForm.addEventListener('submit', function(e) {
@@ -1265,7 +1292,6 @@
                     });
                 }
 
-                // Buttons
                 const buttons = [
                     { id: 'newDealBtn', func: openDealModal },
                     { id: 'viewStatsBtn', func: showStats },
@@ -1276,19 +1302,22 @@
                 buttons.forEach(btn => {
                     const element = document.getElementById(btn.id);
                     if (element) {
+                        // Hapus listener yang mungkin sudah ada untuk mencegah duplikasi
+                        element.removeEventListener('click', btn.func); 
                         element.addEventListener('click', btn.func);
                         console.log(`Event listener added for ${btn.id}`);
                     }
                 });
 
-                // Search and filter
                 const searchInput = document.getElementById('searchDeals');
                 if (searchInput) {
+                    searchInput.removeEventListener('keyup', filterDeals);
                     searchInput.addEventListener('keyup', filterDeals);
                 }
                 
                 const filterSelect = document.getElementById('filterPriority');
                 if (filterSelect) {
+                    filterSelect.removeEventListener('change', filterDeals);
                     filterSelect.addEventListener('change', filterDeals);
                 }
 
@@ -1334,9 +1363,9 @@
             
             if (filteredDeals.length === 0) {
                 pipelineStage.innerHTML = `
-                    <div class="empty-stage-message text-center text-gray-400 p-4 text-sm">
+                    <div class="empty-stage-message text-center text-gray-400 p-4 text-sm w-full">
                         <i class="fas fa-search text-3xl mb-2"></i>
-                        <p>Tidak ada deals yang sesuai dengan filter</p>
+                        <p>Tidak ada deals yang sesuai dengan filter.</p>
                     </div>
                 `;
                 return;
@@ -1367,7 +1396,7 @@
 
         // Inisialisasi saat DOM siap
         document.addEventListener('DOMContentLoaded', function() {
-            initSortable();
+            initSortable(); // Inisialisasi Sortable saat DOM siap
         });
     </script>
 </body>
