@@ -184,7 +184,7 @@
             auth.signInWithEmailAndPassword(email, password)
                 .then((userCredential) => {
                     // Redirect to main app page
-                    window.location.href = 'code (7).html'; // Replace with your main page filename
+                    window.location.href = 'index.html'; // Replace with your main page filename
                 })
                 .catch((error) => {
                     errorMessage.textContent = error.message;
@@ -208,7 +208,7 @@
             auth.createUserWithEmailAndPassword(email, password)
                 .then((userCredential) => {
                     // Redirect to main app page after successful registration
-                    window.location.href = 'code (7).html'; // Replace with your main page filename
+                    window.location.href = 'index.html'; // Replace with your main page filename
                 })
                 .catch((error) => {
                     regErrorMessage.textContent = error.message;
@@ -220,7 +220,7 @@
         auth.onAuthStateChanged((user) => {
             if (user) {
                 // User is signed in, redirect to main page
-                window.location.href = 'code (7).html'; // Replace with your main page filename
+                window.location.href = 'index.html'; // Replace with your main page filename
             }
         });
     </script>
