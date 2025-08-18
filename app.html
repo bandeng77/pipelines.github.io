@@ -239,6 +239,44 @@
             width: 100% !important; /* Memastikan canvas mengambil lebar penuh dari containernya */
             height: 100% !important; /* Memastikan canvas mengambil tinggi penuh dari containernya */
         }
+
+        /* Penyesuaian untuk modal Tambah/Edit Deal */
+        #dealModalContent {
+            max-height: 95vh; /* Sedikit kurangi tinggi maksimum agar ada ruang di atas/bawah */
+            overflow-y: auto; /* Tetap aktifkan scroll vertikal sebagai fallback, tapi kita akan coba menghilangkannya */
+            -webkit-overflow-scrolling: touch;
+            border-radius: 0.75rem; /* Berikan border-radius agar konsisten dengan elemen lain */
+            width: 95%; /* Atur lebar modal agar tidak terlalu lebar */
+            max-width: 1200px; /* Batasi lebar maksimum */
+            box-sizing: border-box; /* Pastikan padding dan border termasuk dalam lebar/tinggi */
+        }
+
+        /* Menyamakan tinggi input dan select */
+        #dealForm input[type="text"],
+        #dealForm input[type="number"],
+        #dealForm input[type="date"],
+        #dealForm select {
+            height: 48px; /* Tinggi standar untuk input dan select */
+            padding: 0.75rem; /* Sesuaikan padding */
+            box-sizing: border-box; /* Penting untuk konsistensi ukuran */
+        }
+
+        /* Menyesuaikan tinggi textarea remarks */
+        #remarks {
+            height: 120px; /* Sesuaikan tinggi textarea agar pas */
+            resize: vertical; /* Izinkan resize vertikal jika diperlukan, atau 'none' untuk menonaktifkan */
+        }
+
+        /* Menghilangkan scrollbar jika konten pas */
+        #dealModalContent::-webkit-scrollbar {
+            width: 0px; /* Untuk Chrome, Safari, Opera */
+            background: transparent; /* Untuk Chrome, Safari, Opera */
+        }
+
+        #dealModalContent {
+            -ms-overflow-style: none;  /* Untuk IE dan Edge */
+            scrollbar-width: none;  /* Untuk Firefox */
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -322,7 +360,7 @@
 
         <!-- Add/Edit Deal Modal -->
         <div id="dealModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
-            <div class="bg-white rounded-xl p-8 w-full max-w-4xl shadow-2xl modal-content-enter" id="dealModalContent">
+            <div class="bg-white rounded-none p-8 w-full h-full shadow-2xl modal-content-enter" id="dealModalContent">
                 <h2 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900" id="modalTitle">Tambah Deal Baru</h2>
                 <form id="dealForm">
                     <input type="hidden" id="dealId">
@@ -359,6 +397,28 @@
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="value">Nilai (IDR) <span class="text-red-500">*</span></label>
                                 <input type="number" id="value" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" readonly required>
                             </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="projectDate">Tanggal Proyek</label>
+                                <input type="date" id="projectDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="planPO">Plan PO</label>
+                                <select id="planPO" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih Bulan</option>
+                                    <option value="Januari">Januari</option>
+                                    <option value="Februari">Februari</option>
+                                    <option value="Maret">Maret</option>
+                                    <option value="April">April</option>
+                                    <option value="Mei">Mei</option>
+                                    <option value="Juni">Juni</option>
+                                    <option value="Juli">Juli</option>
+                                    <option value="Agustus">Agustus</option>
+                                    <option value="September">September</option>
+                                    <option value="Oktober">Oktober</option>
+                                    <option value="November">November</option>
+                                    <option value="Desember">Desember</option>
+                                </select>
+                            </div>
                         </div>
                         <!-- Kolom 2 -->
                         <div>
@@ -391,28 +451,6 @@
                                     <option value="Other">Other</option>
                                 </select>
                             </div>
-                            <div class="mb-4">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="projectDate">Tanggal Proyek</label>
-                                <input type="date" id="projectDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                            </div>
-                            <div class="mb-4">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="planPO">Plan PO</label>
-                                <select id="planPO" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                    <option value="">Pilih Bulan</option>
-                                    <option value="Januari">Januari</option>
-                                    <option value="Februari">Februari</option>
-                                    <option value="Maret">Maret</option>
-                                    <option value="April">April</option>
-                                    <option value="Mei">Mei</option>
-                                    <option value="Juni">Juni</option>
-                                    <option value="Juli">Juli</option>
-                                    <option value="Agustus">Agustus</option>
-                                    <option value="September">September</option>
-                                    <option value="Oktober">Oktober</option>
-                                    <option value="November">November</option>
-                                    <option value="Desember">Desember</option>
-                                </select>
-                            </div>
                             <div class="mb-4" id="stageFieldContainer">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="stage">Tahap <span class="text-red-500">*</span></label>
                                 <select id="stage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
@@ -421,6 +459,18 @@
                                     <option value="on-hold">On Hold</option>
                                     <option value="lost">Lost</option>
                                 </select>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="priority">Prioritas</label>
+                                <select id="priority" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="cold">Cold</option>
+                                    <option value="warm">Warm</option>
+                                    <option value="hot">Hot</option>
+                                </select>
+                            </div>
+                            <div class="mb-6">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="remarks">Remarks</label>
+                                <textarea id="remarks" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" rows="3" placeholder="Tambahkan catatan atau deskripsi tambahan..."></textarea>
                             </div>
                         </div>
                         <!-- Kolom 3 -->
@@ -453,18 +503,7 @@
                                 </select>
                                 <input type="text" id="newPic" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama PIC baru">
                             </div>
-                            <div class="mb-4">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="priority">Prioritas</label>
-                                <select id="priority" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                    <option value="cold">Cold</option>
-                                    <option value="warm">Warm</option>
-                                    <option value="hot">Hot</option>
-                                </select>
-                            </div>
-                            <div class="mb-6">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="remarks">Remarks</label>
-                                <textarea id="remarks" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" rows="3" placeholder="Tambahkan catatan atau deskripsi tambahan..."></textarea>
-                            </div>
+                            <!-- Remarks dipindahkan ke Kolom 2 -->
                         </div>
                     </div>
                     <div class="flex justify-end space-x-3 mt-6">
