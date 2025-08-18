@@ -294,6 +294,16 @@
             font-size: 1.5rem; /* Disesuaikan */
             margin-bottom: 1rem; /* Disesuaikan */
         }
+
+        /* CSS untuk modal detail deal 2 kolom */
+        #dealDetailModalContent .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem; /* Jarak antar kolom dan baris */
+        }
+        #dealDetailModalContent .detail-item {
+            /* Gaya untuk setiap item detail jika diperlukan */
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -555,60 +565,61 @@
         <div id="dealDetailModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
             <div class="bg-white rounded-xl p-8 w-full max-w-md shadow-2xl modal-content-enter" id="dealDetailModalContent">
                 <h2 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900" id="dealDetailTitle">Detail Deal</h2>
-                <div class="space-y-4 text-sm">
-                    <div>
+                <div class="detail-grid"> <!-- Added detail-grid class for 2-column layout -->
+                    <div class="detail-item">
                         <p class="text-gray-700 font-semibold">Nama Sales:</p>
                         <p id="detailSalesName" class="text-gray-900"></p>
                     </div>
-                    <div>
+                    <div class="detail-item">
                         <p class="text-gray-700 font-semibold">Sebelum Diskon (IDR):</p>
                         <p id="detailBeforeDiscount" class="text-gray-900"></p>
                     </div>
-                    <div>
+                    <div class="detail-item">
                         <p class="text-gray-700 font-semibold">Diskon:</p>
                         <p id="detailDiscount" class="text-gray-900"></p>
                     </div>
-                    <div>
+                    <div class="detail-item">
                         <p class="text-gray-700 font-semibold">Nilai (IDR):</p>
                         <p id="detailValue" class="text-gray-900"></p>
                     </div>
-                    <div>
+                    <div class="detail-item">
                         <p class="text-gray-700 font-semibold">Paket:</p>
                         <p id="detailPackage" class="text-gray-900"></p>
                     </div>
-                    <div>
+                    <div class="detail-item">
                         <p class="text-gray-700 font-semibold">Produk:</p>
                         <p id="detailProduct" class="text-gray-900"></p>
                     </div>
-                    <div>
+                    <div class="detail-item">
                         <p class="text-gray-700 font-semibold">Fasilitas:</p>
                         <p id="detailFacility" class="text-gray-900"></p>
                     </div>
-                    <div>
+                    <div class="detail-item">
                         <p class="text-gray-700 font-semibold">Owner:</p>
                         <p id="detailOwner" class="text-gray-900"></p>
                     </div>
-                    <div>
+                    <div class="detail-item">
                         <p class="text-gray-700 font-semibold">Konsultan:</p>
                         <p id="detailConsultant" class="text-gray-900"></p>
                     </div>
-                    <div>
+                    <div class="detail-item">
                         <p class="text-gray-700 font-semibold">Kontraktor:</p>
                         <p id="detailContractor" class="text-gray-900"></p>
                     </div>
-                    <div>
+                    <div class="detail-item">
                         <p class="text-gray-700 font-semibold">PIC:</p>
                         <p id="detailPIC" class="text-gray-900"></p>
                     </div>
-                    <div>
+                    <div class="detail-item">
                         <p class="text-gray-700 font-semibold">Tanggal Proyek:</p>
                         <p id="detailCreatedDate" class="text-gray-900"></p>
                     </div>
-                    <div>
+                    <div class="detail-item">
                         <p class="text-gray-700 font-semibold">Plan PO:</p>
                         <p id="detailPlanPO" class="text-gray-900"></p>
                     </div>
-                    <div>
+                    <!-- Remarks will take full width -->
+                    <div class="detail-item col-span-2"> 
                         <p class="text-gray-700 font-semibold">Remarks:</p>
                         <p id="detailRemarks" class="text-gray-900"></p>
                     </div>
@@ -1465,11 +1476,7 @@
             document.getElementById('detailPIC').textContent = deal.pic || '-';
             document.getElementById('detailCreatedDate').textContent = formatDate(deal.projectDate) || '-';
             document.getElementById('detailPlanPO').textContent = deal.planPO || '-'; // New: Display Plan PO
-            
-            // Menampilkan remarks dalam 2 baris
-            const remarksElement = document.getElementById('detailRemarks');
-            remarksElement.textContent = deal.remarks || '-';
-            remarksElement.style.whiteSpace = 'pre-wrap'; // Memastikan baris baru dihormati
+            document.getElementById('detailRemarks').textContent = deal.remarks || '-'; // New: Display Remarks
 
             document.getElementById('dealDetailModal').classList.remove('hidden');
             document.getElementById('dealDetailModalContent').classList.remove('modal-content-leave-active');
@@ -1556,8 +1563,8 @@
                 winRateData: [], // Akan diisi dari winRateDataMap
                 dealsBySalesLabels: [],
                 dealsBySalesData: [],
-                dealsByProductLabels: [], // Diubah dari ProductPackage menjadi Product
-                dealsByProductData: [],   // Diubah dari ProductPackage menjadi Product
+                dealsByProductLabels: [], // Changed from dealsByProductPackageLabels
+                dealsByProductData: [],   // Changed from dealsByProductPackageData
                 pipelineValueLabels: [],
                 pipelineValueData: []
             };
@@ -1569,8 +1576,8 @@
                 'Large (> Rp 2 Miliar)': 0
             };
             const dealsBySales = {};
-            const dealsByProduct = {}; // Diubah dari dealsByProductPackage
-            const pipelineValueByDate = {}; // Untuk nilai pipeline seiring waktu, berdasarkan tanggal
+            const dealsByProduct = {}; // Changed from dealsByProductPackage
+            const pipelineValueByMonth = {}; // Untuk nilai pipeline seiring waktu
 
             dealsData.forEach(deal => {
                 // Deal Size
@@ -1596,9 +1603,9 @@
                     dealsBySales[deal.salesName] = (dealsBySales[deal.salesName] || 0) + 1;
                 }
 
-                // Deals By Product (menggunakan deal.product)
-                const productKey = deal.product || 'Unknown Product';
-                dealsByProduct[productKey] = (dealsByProduct[productKey] || 0) + 1;
+                // Deals By Product (menggunakan product)
+                const productKey = deal.product || 'Unknown Product'; // Changed to product
+                dealsByProduct[productKey] = (dealsByProduct[productKey] || 0) + 1; // Changed to product
 
                 // Pipeline Value Over Time (menggunakan projectDate atau createdAt)
                 // Hanya sertakan deal yang belum 'lost' atau 'win' untuk pipeline value
@@ -1606,9 +1613,9 @@
                     const dateSource = deal.projectDate || deal.createdAt;
                     if (dateSource) {
                         const date = dateSource.toDate();
-                        // Format tanggal sebagai YYYY-MM-DD untuk pengurutan yang benar
-                        const dateString = date.toISOString().split('T')[0];
-                        pipelineValueByDate[dateString] = (pipelineValueByDate[dateString] || 0) + deal.value;
+                        // Format tanggal sesuai permintaan: "Bulan Tahun"
+                        const monthYear = date.toLocaleString('id-ID', { month: 'short', year: 'numeric' });
+                        pipelineValueByMonth[monthYear] = (pipelineValueByMonth[monthYear] || 0) + deal.value;
                     }
                 }
             });
@@ -1623,17 +1630,23 @@
             stats.dealsBySalesLabels = Object.keys(dealsBySales);
             stats.dealsBySalesData = Object.values(dealsBySales);
 
-            stats.dealsByProductLabels = Object.keys(dealsByProduct); // Diubah
-            stats.dealsByProductData = Object.values(dealsByProduct);   // Diubah
+            stats.dealsByProductLabels = Object.keys(dealsByProduct); // Changed to product
+            stats.dealsByProductData = Object.values(dealsByProduct);   // Changed to product
 
-            // Urutkan data pipeline value berdasarkan tanggal
-            const sortedDates = Object.keys(pipelineValueByDate).sort((a, b) => new Date(a) - new Date(b));
-
-            stats.pipelineValueLabels = sortedDates.map(dateString => {
-                const date = new Date(dateString);
-                return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+            // Urutkan data pipeline value berdasarkan bulan
+            const sortedMonths = Object.keys(pipelineValueByMonth).sort((a, b) => {
+                // Parse string "Bulan Tahun" menjadi objek Date untuk perbandingan
+                const parseMonthYear = (str) => {
+                    const [monthStr, yearStr] = str.split(' ');
+                    const monthIndex = new Date(Date.parse(monthStr + " 1, 2000")).getMonth(); // Get month index
+                    return new Date(parseInt(yearStr), monthIndex, 1);
+                };
+                const dateA = parseMonthYear(a);
+                const dateB = parseMonthYear(b);
+                return dateA - dateB;
             });
-            stats.pipelineValueData = sortedDates.map(date => pipelineValueByDate[date]);
+            stats.pipelineValueLabels = sortedMonths;
+            stats.pipelineValueData = sortedMonths.map(month => pipelineValueByMonth[month]);
 
             return stats;
         }
@@ -1762,19 +1775,20 @@
                 }
             });
 
-            // 5. Deals By Product Chart (Deal per Produk) - Diubah
-            const dealsByProductCtx = document.getElementById('dealsByProductPackageChart').getContext('2d');
-            if (charts.dealsByProductChart) charts.dealsByProductChart.destroy();
-            charts.dealsByProductChart = new Chart(dealsByProductCtx, {
+            // 5. Deals By Product Chart (Deal per Produk) - Updated
+            const dealsByProductPackageCtx = document.getElementById('dealsByProductPackageChart').getContext('2d');
+            if (charts.dealsByProductPackageChart) charts.dealsByProductPackageChart.destroy();
+            charts.dealsByProductPackageChart = new Chart(dealsByProductPackageCtx, {
                 type: 'pie',
                 data: {
-                    labels: processedStats.dealsByProductLabels, // Menggunakan labels produk
+                    labels: processedStats.dealsByProductLabels, // Changed to dealsByProductLabels
                     datasets: [{
                         label: 'Jumlah Deal',
-                        data: processedStats.dealsByProductData,   // Menggunakan data produk
+                        data: processedStats.dealsByProductData, // Changed to dealsByProductData
                         backgroundColor: [
                             '#F97316', '#14B8A6', '#8B5CF6', '#EC4899', '#FACC15',
-                            '#3B82F6', '#EF4444', '#06B6D4', '#A855F7', '#F43F5E'
+                            '#3B82F6', '#EF4444', '#06B6D4', '#A855F7', '#F43F5E',
+                            '#4CAF50', '#FFC107', '#9C27B0', '#00BCD4', '#FF5722' // More colors
                         ]
                     }]
                 },
@@ -1784,13 +1798,13 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Deal per Produk' // Mengubah judul
+                            text: 'Deal per Produk' // Changed title
                         }
                     }
                 }
             });
 
-            // 6. Pipeline Value Chart (Nilai Pipeline Seiring Waktu)
+            // 6. Pipeline Value Chart (Nilai Pipeline Seiring Waktu) - Updated
             const pipelineValueCtx = document.getElementById('pipelineValueChart').getContext('2d');
             if (charts.pipelineValueChart) charts.pipelineValueChart.destroy();
             charts.pipelineValueChart = new Chart(pipelineValueCtx, {
@@ -1800,14 +1814,14 @@
                     datasets: [{
                         label: 'Nilai Pipeline (IDR)',
                         data: processedStats.pipelineValueData,
-                        borderColor: '#0EA5E9',
-                        tension: 0.3, // Meningkatkan ketegangan untuk garis yang lebih halus
-                        fill: false,
-                        borderWidth: 3, // Memperjelas garis
-                        pointRadius: 5, // Memperbesar titik data
-                        pointBackgroundColor: '#0EA5E9',
-                        pointBorderColor: '#fff',
-                        pointHoverRadius: 7,
+                        borderColor: '#0EA5E9', // Warna garis
+                        backgroundColor: 'rgba(14, 165, 233, 0.2)', // Warna area di bawah garis
+                        tension: 0.3, // Kehalusan garis
+                        fill: true, // Isi area di bawah garis
+                        pointRadius: 5, // Ukuran titik data
+                        pointBackgroundColor: '#0EA5E9', // Warna titik data
+                        pointBorderColor: '#fff', // Warna border titik data
+                        pointHoverRadius: 7, // Ukuran titik saat di-hover
                         pointHoverBackgroundColor: '#0EA5E9',
                         pointHoverBorderColor: '#fff'
                     }]
@@ -1828,14 +1842,6 @@
                                 callback: function(value) {
                                     return 'Rp ' + formatNumber(value);
                                 }
-                            }
-                        },
-                        x: {
-                            // Type 'time' atau 'category' tergantung pada format label
-                            type: 'category', // Karena label sudah diformat string tanggal
-                            title: {
-                                display: true,
-                                text: 'Tanggal'
                             }
                         }
                     }
