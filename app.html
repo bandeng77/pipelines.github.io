@@ -242,13 +242,14 @@
 
         /* Penyesuaian untuk modal Tambah/Edit Deal */
         #dealModalContent {
-            max-height: 95vh; /* Sedikit kurangi tinggi maksimum agar ada ruang di atas/bawah */
-            overflow-y: auto; /* Tetap aktifkan scroll vertikal sebagai fallback, tapi kita akan coba menghilangkannya */
+            max-height: 100vh; /* Disesuaikan menjadi 100% tinggi viewport */
+            overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            border-radius: 0.75rem; /* Berikan border-radius agar konsisten dengan elemen lain */
-            width: 95%; /* Atur lebar modal agar tidak terlalu lebar */
-            max-width: 1200px; /* Batasi lebar maksimum */
-            box-sizing: border-box; /* Pastikan padding dan border termasuk dalam lebar/tinggi */
+            border-radius: 0; /* Menghilangkan border-radius agar terlihat full screen */
+            width: 100%; /* Mengambil lebar penuh */
+            max-width: 100%; /* Menghilangkan batasan lebar maksimum */
+            box-sizing: border-box;
+            padding: 1.5rem; /* Disesuaikan */
         }
 
         /* Menyamakan tinggi input dan select */
@@ -256,26 +257,42 @@
         #dealForm input[type="number"],
         #dealForm input[type="date"],
         #dealForm select {
-            height: 48px; /* Tinggi standar untuk input dan select */
-            padding: 0.75rem; /* Sesuaikan padding */
-            box-sizing: border-box; /* Penting untuk konsistensi ukuran */
+            height: 40px; /* Disesuaikan */
+            padding: 0.5rem 0.75rem; /* Disesuaikan */
+            box-sizing: border-box;
+            font-size: 0.8rem; /* Disesuaikan */
+            border-width: 1px; /* Disesuaikan */
         }
 
         /* Menyesuaikan tinggi textarea remarks */
         #remarks {
-            height: 120px; /* Sesuaikan tinggi textarea agar pas */
-            resize: vertical; /* Izinkan resize vertikal jika diperlukan, atau 'none' untuk menonaktifkan */
+            height: 100px; /* Disesuaikan */
+            resize: vertical;
+            font-size: 0.8rem; /* Disesuaikan */
+            padding: 0.5rem 0.75rem; /* Disesuaikan */
         }
 
         /* Menghilangkan scrollbar jika konten pas */
         #dealModalContent::-webkit-scrollbar {
-            width: 0px; /* Untuk Chrome, Safari, Opera */
-            background: transparent; /* Untuk Chrome, Safari, Opera */
+            width: 0px;
+            background: transparent;
         }
 
         #dealModalContent {
-            -ms-overflow-style: none;  /* Untuk IE dan Edge */
-            scrollbar-width: none;  /* Untuk Firefox */
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Menyesuaikan ukuran font label */
+        #dealForm label {
+            font-size: 0.75rem; /* Disesuaikan */
+            margin-bottom: 0.15rem; /* Disesuaikan */
+        }
+
+        /* Menyesuaikan ukuran font judul modal */
+        #dealModalContent h2 {
+            font-size: 1.5rem; /* Disesuaikan */
+            margin-bottom: 1rem; /* Disesuaikan */
         }
     </style>
 </head>
@@ -364,14 +381,14 @@
                 <h2 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900" id="modalTitle">Tambah Deal Baru</h2>
                 <form id="dealForm">
                     <input type="hidden" id="dealId">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3"> <!-- Changed lg:grid-cols-3 to lg:grid-cols-4 -->
                         <!-- Kolom 1 -->
                         <div>
-                            <div class="mb-4">
+                            <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="dealName">Nama Proyek <span class="text-red-500">*</span></label>
                                 <input type="text" id="dealName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
                             </div>
-                            <div class="mb-4">
+                            <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="salesName">Nama Sales</label>
                                 <select id="salesName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                                     <option value="">Pilih Sales</option>
@@ -385,23 +402,74 @@
                                     <option value="Engineering">Engineering</option>
                                 </select>
                             </div>
-                            <div class="mb-4">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="beforeDiscount">Sebelum Diskon (IDR)</label>
-                                <input type="number" id="beforeDiscount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" oninput="calculateValue()">
+                            <div class="mb-3" id="stageFieldContainer">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="stage">Tahap <span class="text-red-500">*</span></label>
+                                <select id="stage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
+                                    <option value="identified">Identified</option>
+                                    <option value="prospect">Prospect</option>
+                                    <option value="tender-me">Tender Stage M&E</option>
+                                    <option value="tender-main-con">Tender Main Con</option>
+                                    <option value="contract-award">Contract Award</option>
+                                    <option value="win">Win</option>
+                                    <option value="lost">Lost</option>
+                                    <option value="on-hold">On Hold</option>
+                                </select>
                             </div>
-                            <div class="mb-4">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="discount">Diskon (%)</label>
-                                <input type="number" id="discount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" max="100" oninput="calculateValue()">
+                            <div class="mb-3">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="priority">Prioritas</label>
+                                <select id="priority" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="cold">Cold</option>
+                                    <option value="warm">Warm</option>
+                                    <option value="hot">Hot</option>
+                                </select>
                             </div>
-                            <div class="mb-4">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="value">Nilai (IDR) <span class="text-red-500">*</span></label>
-                                <input type="number" id="value" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" readonly required>
+                            <div class="mb-3">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="remarks">Remarks</label>
+                                <textarea id="remarks" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" rows="3" placeholder="Tambahkan catatan atau deskripsi tambahan..."></textarea>
                             </div>
-                            <div class="mb-4">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="projectDate">Tanggal Proyek</label>
-                                <input type="date" id="projectDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                        </div>
+                        <!-- Kolom 2 -->
+                        <div>
+                            <div class="mb-3">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="package">Paket</label>
+                                <select id="package" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih Paket</option>
+                                    <option value="Electronic Package">Electronic Package</option>
+                                    <option value="M&E">M&E</option>
+                                    <option value="Fire Fighting Cont">Fire Fighting Cont</option>
+                                    <option value="Main Kontraktor">Main Kontraktor</option>
+                                </select>
                             </div>
-                            <div class="mb-4">
+                            <div class="mb-3">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="product">Produk</label>
+                                <select id="product" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih Produk</option>
+                                    <option value="Fire">Fire</option>
+                                    <option value="Suppresion">Suppresion</option>
+                                    <option value="Vesda">Vesda</option>
+                                    <option value="Maintenance">Maintenance</option>
+                                    <option value="Fire - Water">Fire - Water</option>
+                                    <option value="Mechanical">Mechanical</option>
+                                    <option value="FAS-FSS-FF">FAS-FSS-FF</option>
+                                    <option value="FAS&FSS">FAS&FSS</option>
+                                </select>
+                                <input type="text" id="newProduct" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama produk baru">
+                            </div>
+                            <div class="mb-3">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="facility">Fasilitas</label>
+                                <select id="facility" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih Fasilitas</option>
+                                    <option value="Industrial">Industrial</option>
+                                    <option value="Office">Office</option>
+                                    <option value="Hotel">Hotel</option>
+                                    <option value="Data Center">Data Center</option>
+                                    <option value="Oil & Gas">Oil & Gas</option>
+                                    <option value="Warehouse">Warehouse</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                                <input type="text" id="newFacility" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama fasilitas baru">
+                            </div>
+                            <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="planPO">Plan PO</label>
                                 <select id="planPO" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                                     <option value="">Pilih Bulan</option>
@@ -420,90 +488,55 @@
                                 </select>
                             </div>
                         </div>
-                        <!-- Kolom 2 -->
-                        <div>
-                            <div class="mb-4">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="package">Paket</label>
-                                <select id="package" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                    <option value="">Pilih Paket</option>
-                                    <option value="Electronic Package">Electronic Package</option>
-                                    <option value="M&E">M&E</option>
-                                    <option value="Fire Fighting Cont">Fire Fighting Cont</option>
-                                </select>
-                            </div>
-                            <div class="mb-4">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="product">Produk</label>
-                                <select id="product" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                    <option value="">Pilih Produk</option>
-                                </select>
-                                <input type="text" id="newProduct" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama produk baru">
-                            </div>
-                            <div class="mb-4">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="facility">Fasilitas</label>
-                                <select id="facility" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                    <option value="">Pilih Fasilitas</option>
-                                    <option value="Industrial">Industrial</option>
-                                    <option value="Office">Office</option>
-                                    <option value="Hotel">Hotel</option>
-                                    <option value="Data Center">Data Center</option>
-                                    <option value="Oil & Gas">Oil & Gas</option>
-                                    <option value="Warehouse">Warehouse</option>
-                                    <option value="Other">Other</option>
-                                </select>
-                            </div>
-                            <div class="mb-4" id="stageFieldContainer">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="stage">Tahap <span class="text-red-500">*</span></label>
-                                <select id="stage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
-                                    <option value="main-pipeline">Main Pipeline</option>
-                                    <option value="identified">Identified</option>
-                                    <option value="on-hold">On Hold</option>
-                                    <option value="lost">Lost</option>
-                                </select>
-                            </div>
-                            <div class="mb-4">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="priority">Prioritas</label>
-                                <select id="priority" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                    <option value="cold">Cold</option>
-                                    <option value="warm">Warm</option>
-                                    <option value="hot">Hot</option>
-                                </select>
-                            </div>
-                            <div class="mb-6">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="remarks">Remarks</label>
-                                <textarea id="remarks" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" rows="3" placeholder="Tambahkan catatan atau deskripsi tambahan..."></textarea>
-                            </div>
-                        </div>
                         <!-- Kolom 3 -->
                         <div>
-                            <div class="mb-4">
+                            <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="owner">Owner</label>
                                 <select id="owner" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                                     <option value="">Pilih Owner</option>
                                 </select>
                                 <input type="text" id="newOwner" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama owner baru">
                             </div>
-                            <div class="mb-4">
+                            <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="consultant">Konsultan</label>
                                 <select id="consultant" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                                     <option value="">Pilih Konsultan</option>
                                 </select>
                                 <input type="text" id="newConsultant" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama konsultan baru">
                             </div>
-                            <div class="mb-4">
+                            <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="contractor">Kontraktor</label>
                                 <select id="contractor" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                                     <option value="">Pilih Kontraktor</option>
                                 </select>
                                 <input type="text" id="newContractor" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama kontraktor baru">
                             </div>
-                            <div class="mb-4">
+                            <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="pic">PIC</label>
                                 <select id="pic" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                                     <option value="">Pilih PIC</option>
                                 </select>
                                 <input type="text" id="newPic" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama PIC baru">
                             </div>
-                            <!-- Remarks dipindahkan ke Kolom 2 -->
+                        </div>
+                        <!-- Kolom 4 -->
+                        <div>
+                            <div class="mb-3">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="beforeDiscount">Sebelum Diskon (IDR)</label>
+                                <input type="number" id="beforeDiscount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" oninput="calculateValue()">
+                            </div>
+                            <div class="mb-3">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="discount">Diskon (%)</label>
+                                <input type="number" id="discount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" max="100" oninput="calculateValue()">
+                            </div>
+                            <div class="mb-3">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="value">Nilai (IDR) <span class="text-red-500">*</span></label>
+                                <input type="number" id="value" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" readonly required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="projectDate">Tanggal Proyek</label>
+                                <input type="date" id="projectDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                            </div>
                         </div>
                     </div>
                     <div class="flex justify-end space-x-3 mt-6">
@@ -649,17 +682,18 @@
         let deals = []; // Variabel ini akan menyimpan SEMUA deals yang bisa diakses oleh user saat ini
         let activities = [];
         let charts = {};
-        const DEFAULT_STAGE = 'main-pipeline';
+        const DEFAULT_STAGE = 'identified'; // Changed default stage
         let currentUserRole = 'user'; // Default role
         let sortableInstances = {};
         let authInitialized = false;
 
-        // Variabel untuk menyimpan daftar unik Konsultan, Kontraktor, PIC, Owner, Produk
+        // Variabel untuk menyimpan daftar unik Konsultan, Kontraktor, PIC, Owner, Produk, Fasilitas
         let uniqueConsultants = new Set();
         let uniqueContractors = new Set();
         let uniquePICs = new Set();
-        let uniqueOwners = new Set(); // New: for Owner
-        let uniqueProducts = new Set(); // Modified: for Product
+        let uniqueOwners = new Set();
+        let uniqueProducts = new Set();
+        let uniqueFacilities = new Set(); // New: for Facility
 
         // Daftar email sales yang akan memiliki role 'user'
         const salesEmails = [
@@ -932,8 +966,9 @@
                     uniqueConsultants.clear();
                     uniqueContractors.clear();
                     uniquePICs.clear();
-                    uniqueOwners.clear(); // Clear for Owner
-                    uniqueProducts.clear(); // Clear for Product
+                    uniqueOwners.clear();
+                    uniqueProducts.clear();
+                    uniqueFacilities.clear(); // Clear for Facility
 
                     querySnapshot.forEach((doc) => {
                         const dealData = doc.data();
@@ -943,8 +978,9 @@
                         if (dealData.consultant) uniqueConsultants.add(dealData.consultant);
                         if (dealData.contractor) uniqueContractors.add(dealData.contractor);
                         if (dealData.pic) uniquePICs.add(dealData.pic);
-                        if (dealData.owner) uniqueOwners.add(dealData.owner); // Add for Owner
-                        if (dealData.product) uniqueProducts.add(dealData.product); // Add for Product
+                        if (dealData.owner) uniqueOwners.add(dealData.owner);
+                        if (dealData.product) uniqueProducts.add(dealData.product);
+                        if (dealData.facility) uniqueFacilities.add(dealData.facility); // Add for Facility
                     });
                     console.log("Total deals loaded (for search/admin view):", deals.length);
                     renderAllDeals(); // Panggil renderAllDeals setelah deals dimuat
@@ -1078,15 +1114,61 @@
             document.getElementById('newConsultant').value = '';
             document.getElementById('newContractor').value = '';
             document.getElementById('newPic').value = '';
-            document.getElementById('newOwner').value = ''; // New: Reset newOwner
-            document.getElementById('newProduct').value = ''; // New: Reset newProduct
+            document.getElementById('newOwner').value = '';
+            document.getElementById('newProduct').value = '';
+            document.getElementById('newFacility').value = ''; // Reset newFacility
 
-            // Isi dropdown Konsultan, Kontraktor, PIC, Owner, Produk
+            // Isi dropdown Konsultan, Kontraktor, PIC, Owner
             populateDropdown('consultant', uniqueConsultants);
             populateDropdown('contractor', uniqueContractors);
             populateDropdown('pic', uniquePICs);
-            populateDropdown('owner', uniqueOwners); // Populate for Owner
-            populateDropdown('product', uniqueProducts); // Populate for Product
+            populateDropdown('owner', uniqueOwners);
+
+            // Isi dropdown Produk dengan opsi awal yang spesifik
+            const productSelect = document.getElementById('product');
+            productSelect.innerHTML = `
+                <option value="">Pilih Produk</option>
+                <option value="Fire">Fire</option>
+                <option value="Suppresion">Suppresion</option>
+                <option value="Vesda">Vesda</option>
+                <option value="Maintenance">Maintenance</option>
+                <option value="Fire - Water">Fire - Water</option>
+                <option value="Mechanical">Mechanical</option>
+                <option value="FAS-FSS-FF">FAS-FSS-FF</option>
+                <option value="FAS&FSS">FAS&FSS</option>
+            `;
+            // Tambahkan produk unik lainnya yang mungkin sudah ada di database
+            Array.from(uniqueProducts).sort().forEach(value => {
+                if (value && !['Fire', 'Suppresion', 'Vesda', 'Maintenance', 'Fire - Water', 'Mechanical', 'FAS-FSS-FF', 'FAS&FSS'].includes(value)) {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = value;
+                    productSelect.appendChild(option);
+                }
+            });
+
+            // Isi dropdown Fasilitas dengan opsi awal yang spesifik
+            const facilitySelect = document.getElementById('facility');
+            facilitySelect.innerHTML = `
+                <option value="">Pilih Fasilitas</option>
+                <option value="Industrial">Industrial</option>
+                <option value="Office">Office</option>
+                <option value="Hotel">Hotel</option>
+                <option value="Data Center">Data Center</option>
+                <option value="Oil & Gas">Oil & Gas</option>
+                <option value="Warehouse">Warehouse</option>
+                <option value="Other">Other</option>
+            `;
+            // Tambahkan fasilitas unik lainnya yang mungkin sudah ada di database
+            Array.from(uniqueFacilities).sort().forEach(value => {
+                if (value && !['Industrial', 'Office', 'Hotel', 'Data Center', 'Oil & Gas', 'Warehouse', 'Other'].includes(value)) {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = value;
+                    facilitySelect.appendChild(option);
+                }
+            });
+
 
             if (dealId) {
                 modalTitle.textContent = 'Edit Deal';
@@ -1101,14 +1183,20 @@
                     document.getElementById('package').value = deal.package || '';
                     
                     // Set nilai untuk dropdown Product
-                    if (deal.product && uniqueProducts.has(deal.product)) {
+                    if (deal.product && Array.from(productSelect.options).some(option => option.value === deal.product)) {
                         document.getElementById('product').value = deal.product;
                     } else {
                         document.getElementById('product').value = '';
                         document.getElementById('newProduct').value = deal.product || '';
                     }
 
-                    document.getElementById('facility').value = deal.facility || '';
+                    // Set nilai untuk dropdown Facility
+                    if (deal.facility && Array.from(facilitySelect.options).some(option => option.value === deal.facility)) {
+                        document.getElementById('facility').value = deal.facility;
+                    } else {
+                        document.getElementById('facility').value = '';
+                        document.getElementById('newFacility').value = deal.facility || '';
+                    }
                     
                     // Set nilai untuk dropdown Owner
                     if (deal.owner && uniqueOwners.has(deal.owner)) {
@@ -1202,7 +1290,11 @@
                 product = document.getElementById('product').value;
             }
 
-            const facility = document.getElementById('facility').value;
+            // Ambil nilai fasilitas dari input teks baru jika ada, jika tidak, ambil dari dropdown
+            let facility = document.getElementById('newFacility').value.trim();
+            if (!facility) {
+                facility = document.getElementById('facility').value;
+            }
             
             // Ambil nilai owner dari input teks baru jika ada, jika tidak, ambil dari dropdown
             let owner = document.getElementById('newOwner').value.trim();
