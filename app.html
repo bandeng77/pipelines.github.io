@@ -1465,7 +1465,11 @@
             document.getElementById('detailPIC').textContent = deal.pic || '-';
             document.getElementById('detailCreatedDate').textContent = formatDate(deal.projectDate) || '-';
             document.getElementById('detailPlanPO').textContent = deal.planPO || '-'; // New: Display Plan PO
-            document.getElementById('detailRemarks').textContent = deal.remarks || '-'; // New: Display Remarks
+            
+            // Menampilkan remarks dalam 2 baris
+            const remarksElement = document.getElementById('detailRemarks');
+            remarksElement.textContent = deal.remarks || '-';
+            remarksElement.style.whiteSpace = 'pre-wrap'; // Memastikan baris baru dihormati
 
             document.getElementById('dealDetailModal').classList.remove('hidden');
             document.getElementById('dealDetailModalContent').classList.remove('modal-content-leave-active');
@@ -1552,8 +1556,8 @@
                 winRateData: [], // Akan diisi dari winRateDataMap
                 dealsBySalesLabels: [],
                 dealsBySalesData: [],
-                dealsByProductPackageLabels: [],
-                dealsByProductPackageData: [],
+                dealsByProductLabels: [], // Diubah dari ProductPackage menjadi Product
+                dealsByProductData: [],   // Diubah dari ProductPackage menjadi Product
                 pipelineValueLabels: [],
                 pipelineValueData: []
             };
@@ -1565,8 +1569,8 @@
                 'Large (> Rp 2 Miliar)': 0
             };
             const dealsBySales = {};
-            const dealsByProductPackage = {};
-            const pipelineValueByMonth = {}; // Untuk nilai pipeline seiring waktu
+            const dealsByProduct = {}; // Diubah dari dealsByProductPackage
+            const pipelineValueByDate = {}; // Untuk nilai pipeline seiring waktu, berdasarkan tanggal
 
             dealsData.forEach(deal => {
                 // Deal Size
@@ -1592,9 +1596,9 @@
                     dealsBySales[deal.salesName] = (dealsBySales[deal.salesName] || 0) + 1;
                 }
 
-                // Deals By Product/Package (menggunakan package sebagai contoh)
-                const productPackageKey = deal.package || 'Unknown Package';
-                dealsByProductPackage[productPackageKey] = (dealsByProductPackage[productPackageKey] || 0) + 1;
+                // Deals By Product (menggunakan deal.product)
+                const productKey = deal.product || 'Unknown Product';
+                dealsByProduct[productKey] = (dealsByProduct[productKey] || 0) + 1;
 
                 // Pipeline Value Over Time (menggunakan projectDate atau createdAt)
                 // Hanya sertakan deal yang belum 'lost' atau 'win' untuk pipeline value
@@ -1602,8 +1606,9 @@
                     const dateSource = deal.projectDate || deal.createdAt;
                     if (dateSource) {
                         const date = dateSource.toDate();
-                        const monthYear = date.toLocaleString('id-ID', { month: 'short', year: 'numeric' });
-                        pipelineValueByMonth[monthYear] = (pipelineValueByMonth[monthYear] || 0) + deal.value;
+                        // Format tanggal sebagai YYYY-MM-DD untuk pengurutan yang benar
+                        const dateString = date.toISOString().split('T')[0];
+                        pipelineValueByDate[dateString] = (pipelineValueByDate[dateString] || 0) + deal.value;
                     }
                 }
             });
@@ -1618,17 +1623,17 @@
             stats.dealsBySalesLabels = Object.keys(dealsBySales);
             stats.dealsBySalesData = Object.values(dealsBySales);
 
-            stats.dealsByProductPackageLabels = Object.keys(dealsByProductPackage);
-            stats.dealsByProductPackageData = Object.values(dealsByProductPackage);
+            stats.dealsByProductLabels = Object.keys(dealsByProduct); // Diubah
+            stats.dealsByProductData = Object.values(dealsByProduct);   // Diubah
 
-            // Urutkan data pipeline value berdasarkan bulan
-            const sortedMonths = Object.keys(pipelineValueByMonth).sort((a, b) => {
-                const dateA = new Date(a.replace(/(\w{3})\s(\d{4})/, '$1 1, $2'));
-                const dateB = new Date(b.replace(/(\w{3})\s(\d{4})/, '$1 1, $2'));
-                return dateA - dateB;
+            // Urutkan data pipeline value berdasarkan tanggal
+            const sortedDates = Object.keys(pipelineValueByDate).sort((a, b) => new Date(a) - new Date(b));
+
+            stats.pipelineValueLabels = sortedDates.map(dateString => {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
             });
-            stats.pipelineValueLabels = sortedMonths;
-            stats.pipelineValueData = sortedMonths.map(month => pipelineValueByMonth[month]);
+            stats.pipelineValueData = sortedDates.map(date => pipelineValueByDate[date]);
 
             return stats;
         }
@@ -1757,16 +1762,16 @@
                 }
             });
 
-            // 5. Deals By Product/Package Chart (Deal per Paket Produk)
-            const dealsByProductPackageCtx = document.getElementById('dealsByProductPackageChart').getContext('2d');
-            if (charts.dealsByProductPackageChart) charts.dealsByProductPackageChart.destroy();
-            charts.dealsByProductPackageChart = new Chart(dealsByProductPackageCtx, {
+            // 5. Deals By Product Chart (Deal per Produk) - Diubah
+            const dealsByProductCtx = document.getElementById('dealsByProductPackageChart').getContext('2d');
+            if (charts.dealsByProductChart) charts.dealsByProductChart.destroy();
+            charts.dealsByProductChart = new Chart(dealsByProductCtx, {
                 type: 'pie',
                 data: {
-                    labels: processedStats.dealsByProductPackageLabels,
+                    labels: processedStats.dealsByProductLabels, // Menggunakan labels produk
                     datasets: [{
                         label: 'Jumlah Deal',
-                        data: processedStats.dealsByProductPackageData,
+                        data: processedStats.dealsByProductData,   // Menggunakan data produk
                         backgroundColor: [
                             '#F97316', '#14B8A6', '#8B5CF6', '#EC4899', '#FACC15',
                             '#3B82F6', '#EF4444', '#06B6D4', '#A855F7', '#F43F5E'
@@ -1779,7 +1784,7 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Deal per Paket Produk'
+                            text: 'Deal per Produk' // Mengubah judul
                         }
                     }
                 }
@@ -1796,8 +1801,15 @@
                         label: 'Nilai Pipeline (IDR)',
                         data: processedStats.pipelineValueData,
                         borderColor: '#0EA5E9',
-                        tension: 0.1,
-                        fill: false
+                        tension: 0.3, // Meningkatkan ketegangan untuk garis yang lebih halus
+                        fill: false,
+                        borderWidth: 3, // Memperjelas garis
+                        pointRadius: 5, // Memperbesar titik data
+                        pointBackgroundColor: '#0EA5E9',
+                        pointBorderColor: '#fff',
+                        pointHoverRadius: 7,
+                        pointHoverBackgroundColor: '#0EA5E9',
+                        pointHoverBorderColor: '#fff'
                     }]
                 },
                 options: {
@@ -1811,12 +1823,19 @@
                     },
                     scales: {
                         y: {
-                            beginAtZero: false, // Tidak selalu mulai dari nol
-                            min: 100000000, // Dimulai dari 100 Juta
+                            beginAtZero: true, // Dimulai dari 0
                             ticks: {
                                 callback: function(value) {
                                     return 'Rp ' + formatNumber(value);
                                 }
+                            }
+                        },
+                        x: {
+                            // Type 'time' atau 'category' tergantung pada format label
+                            type: 'category', // Karena label sudah diformat string tanggal
+                            title: {
+                                display: true,
+                                text: 'Tanggal'
                             }
                         }
                     }
