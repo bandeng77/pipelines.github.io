@@ -228,6 +228,17 @@
                 width: 100%;
             }
         }
+
+        /* CSS untuk membuat canvas melebar */
+        .chart-container {
+            width: 100%; /* Membuat container chart mengambil lebar penuh */
+            height: 400px; /* Tinggi default untuk chart */
+            margin-bottom: 1rem; /* Tambahkan sedikit margin bawah */
+        }
+        .chart-container canvas {
+            width: 100% !important; /* Memastikan canvas mengambil lebar penuh dari containernya */
+            height: 100% !important; /* Memastikan canvas mengambil tinggi penuh dari containernya */
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -290,21 +301,21 @@
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+            <div class="grid grid-cols-1 gap-8"> <!-- Changed to single column for full width -->
+                <div class="bg-gray-50 p-4 rounded-lg shadow-inner chart-container">
                     <canvas id="dealSizeChart"></canvas>
                 </div>
-                <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                <div class="bg-gray-50 p-4 rounded-lg shadow-inner chart-container">
                     <canvas id="winRateChart"></canvas>
                 </div>
-                <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                <div class="bg-gray-50 p-4 rounded-lg shadow-inner chart-container">
                     <canvas id="dealsBySalesChart"></canvas>
                 </div>
-                <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                <div class="bg-gray-50 p-4 rounded-lg shadow-inner chart-container">
                     <canvas id="dealsByProductPackageChart"></canvas>
                 </div>
             </div>
-            <div class="mt-8 bg-gray-50 p-4 rounded-lg shadow-inner">
+            <div class="mt-8 bg-gray-50 p-4 rounded-lg shadow-inner chart-container">
                 <canvas id="pipelineValueChart"></canvas>
             </div>
         </div>
@@ -364,13 +375,8 @@
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="product">Produk</label>
                                 <select id="product" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                                     <option value="">Pilih Produk</option>
-                                    <option value="Fire">Fire</option>
-                                    <option value="Fire & Water">Fire & Water</option>
-                                    <option value="FAS & FSS">FAS & FSS</option>
-                                    <option value="Vesda">Vesda</option>
-                                    <option value="Suppression">Suppression</option>
-                                    <option value="Mechanical">Mechanical</option>
                                 </select>
+                                <input type="text" id="newProduct" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama produk baru">
                             </div>
                             <div class="mb-4">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="facility">Fasilitas</label>
@@ -389,6 +395,24 @@
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="projectDate">Tanggal Proyek</label>
                                 <input type="date" id="projectDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="planPO">Plan PO</label>
+                                <select id="planPO" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih Bulan</option>
+                                    <option value="Januari">Januari</option>
+                                    <option value="Februari">Februari</option>
+                                    <option value="Maret">Maret</option>
+                                    <option value="April">April</option>
+                                    <option value="Mei">Mei</option>
+                                    <option value="Juni">Juni</option>
+                                    <option value="Juli">Juli</option>
+                                    <option value="Agustus">Agustus</option>
+                                    <option value="September">September</option>
+                                    <option value="Oktober">Oktober</option>
+                                    <option value="November">November</option>
+                                    <option value="Desember">Desember</option>
+                                </select>
+                            </div>
                             <div class="mb-4" id="stageFieldContainer">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="stage">Tahap <span class="text-red-500">*</span></label>
                                 <select id="stage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
@@ -401,6 +425,13 @@
                         </div>
                         <!-- Kolom 3 -->
                         <div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="owner">Owner</label>
+                                <select id="owner" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih Owner</option>
+                                </select>
+                                <input type="text" id="newOwner" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama owner baru">
+                            </div>
                             <div class="mb-4">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="consultant">Konsultan</label>
                                 <select id="consultant" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
@@ -422,13 +453,17 @@
                                 </select>
                                 <input type="text" id="newPic" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama PIC baru">
                             </div>
-                            <div class="mb-6">
+                            <div class="mb-4">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="priority">Prioritas</label>
                                 <select id="priority" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                                     <option value="cold">Cold</option>
                                     <option value="warm">Warm</option>
                                     <option value="hot">Hot</option>
                                 </select>
+                            </div>
+                            <div class="mb-6">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="remarks">Remarks</label>
+                                <textarea id="remarks" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" rows="3" placeholder="Tambahkan catatan atau deskripsi tambahan..."></textarea>
                             </div>
                         </div>
                     </div>
@@ -478,6 +513,10 @@
                         <p id="detailFacility" class="text-gray-900"></p>
                     </div>
                     <div>
+                        <p class="text-gray-700 font-semibold">Owner:</p>
+                        <p id="detailOwner" class="text-gray-900"></p>
+                    </div>
+                    <div>
                         <p class="text-gray-700 font-semibold">Konsultan:</p>
                         <p id="detailConsultant" class="text-gray-900"></p>
                     </div>
@@ -492,6 +531,14 @@
                     <div>
                         <p class="text-gray-700 font-semibold">Tanggal Proyek:</p>
                         <p id="detailCreatedDate" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">Plan PO:</p>
+                        <p id="detailPlanPO" class="text-gray-900"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-700 font-semibold">Remarks:</p>
+                        <p id="detailRemarks" class="text-gray-900"></p>
                     </div>
                 </div>
                 <div class="flex justify-end space-x-3 mt-6">
@@ -568,10 +615,12 @@
         let sortableInstances = {};
         let authInitialized = false;
 
-        // Variabel untuk menyimpan daftar unik Konsultan, Kontraktor, PIC
+        // Variabel untuk menyimpan daftar unik Konsultan, Kontraktor, PIC, Owner, Produk
         let uniqueConsultants = new Set();
         let uniqueContractors = new Set();
         let uniquePICs = new Set();
+        let uniqueOwners = new Set(); // New: for Owner
+        let uniqueProducts = new Set(); // Modified: for Product
 
         // Daftar email sales yang akan memiliki role 'user'
         const salesEmails = [
@@ -844,6 +893,8 @@
                     uniqueConsultants.clear();
                     uniqueContractors.clear();
                     uniquePICs.clear();
+                    uniqueOwners.clear(); // Clear for Owner
+                    uniqueProducts.clear(); // Clear for Product
 
                     querySnapshot.forEach((doc) => {
                         const dealData = doc.data();
@@ -853,6 +904,8 @@
                         if (dealData.consultant) uniqueConsultants.add(dealData.consultant);
                         if (dealData.contractor) uniqueContractors.add(dealData.contractor);
                         if (dealData.pic) uniquePICs.add(dealData.pic);
+                        if (dealData.owner) uniqueOwners.add(dealData.owner); // Add for Owner
+                        if (dealData.product) uniqueProducts.add(dealData.product); // Add for Product
                     });
                     console.log("Total deals loaded (for search/admin view):", deals.length);
                     renderAllDeals(); // Panggil renderAllDeals setelah deals dimuat
@@ -951,7 +1004,8 @@
             const defaultOption = document.createElement('option');
             defaultOption.value = '';
             // Mengambil teks label yang terkait dengan selectElement
-            const labelText = selectElement.previousElementSibling.textContent.replace(':', '').trim();
+            const labelElement = selectElement.previousElementSibling;
+            const labelText = labelElement ? labelElement.textContent.replace(':', '').replace('*', '').trim() : '';
             defaultOption.textContent = `Pilih ${labelText}`;
             selectElement.appendChild(defaultOption);
 
@@ -985,11 +1039,15 @@
             document.getElementById('newConsultant').value = '';
             document.getElementById('newContractor').value = '';
             document.getElementById('newPic').value = '';
+            document.getElementById('newOwner').value = ''; // New: Reset newOwner
+            document.getElementById('newProduct').value = ''; // New: Reset newProduct
 
-            // Isi dropdown Konsultan, Kontraktor, PIC
+            // Isi dropdown Konsultan, Kontraktor, PIC, Owner, Produk
             populateDropdown('consultant', uniqueConsultants);
             populateDropdown('contractor', uniqueContractors);
             populateDropdown('pic', uniquePICs);
+            populateDropdown('owner', uniqueOwners); // Populate for Owner
+            populateDropdown('product', uniqueProducts); // Populate for Product
 
             if (dealId) {
                 modalTitle.textContent = 'Edit Deal';
@@ -1002,35 +1060,54 @@
                     document.getElementById('discount').value = deal.discount || '';
                     document.getElementById('value').value = deal.value || '';
                     document.getElementById('package').value = deal.package || '';
-                    document.getElementById('product').value = deal.product || '';
+                    
+                    // Set nilai untuk dropdown Product
+                    if (deal.product && uniqueProducts.has(deal.product)) {
+                        document.getElementById('product').value = deal.product;
+                    } else {
+                        document.getElementById('product').value = '';
+                        document.getElementById('newProduct').value = deal.product || '';
+                    }
+
                     document.getElementById('facility').value = deal.facility || '';
                     
-                    // Set nilai untuk dropdown Konsultan, Kontraktor, PIC
-                    // Jika nilai deal ada di uniqueValues, set dropdown. Jika tidak, set input teks baru.
+                    // Set nilai untuk dropdown Owner
+                    if (deal.owner && uniqueOwners.has(deal.owner)) {
+                        document.getElementById('owner').value = deal.owner;
+                    } else {
+                        document.getElementById('owner').value = '';
+                        document.getElementById('newOwner').value = deal.owner || '';
+                    }
+
+                    // Set nilai untuk dropdown Konsultan
                     if (deal.consultant && uniqueConsultants.has(deal.consultant)) {
                         document.getElementById('consultant').value = deal.consultant;
                     } else {
-                        document.getElementById('consultant').value = ''; // Pastikan dropdown kosong jika nilai tidak ada
+                        document.getElementById('consultant').value = '';
                         document.getElementById('newConsultant').value = deal.consultant || '';
                     }
 
+                    // Set nilai untuk dropdown Kontraktor
                     if (deal.contractor && uniqueContractors.has(deal.contractor)) {
                         document.getElementById('contractor').value = deal.contractor;
                     } else {
-                        document.getElementById('contractor').value = ''; // Pastikan dropdown kosong jika nilai tidak ada
+                        document.getElementById('contractor').value = '';
                         document.getElementById('newContractor').value = deal.contractor || '';
                     }
 
+                    // Set nilai untuk dropdown PIC
                     if (deal.pic && uniquePICs.has(deal.pic)) {
                         document.getElementById('pic').value = deal.pic;
                     } else {
-                        document.getElementById('pic').value = ''; // Pastikan dropdown kosong jika nilai tidak ada
+                        document.getElementById('pic').value = '';
                         document.getElementById('newPic').value = deal.pic || '';
                     }
 
                     document.getElementById('projectDate').value = deal.projectDate ? deal.projectDate.toDate().toISOString().split('T')[0] : '';
+                    document.getElementById('planPO').value = deal.planPO || ''; // New: Set Plan PO
                     document.getElementById('stage').value = deal.stage || DEFAULT_STAGE;
                     document.getElementById('priority').value = deal.priority || 'cold';
+                    document.getElementById('remarks').value = deal.remarks || ''; // New: Set Remarks
                 }
             } else {
                 modalTitle.textContent = 'Tambah Deal Baru';
@@ -1079,28 +1156,44 @@
             const discount = parseFloat(document.getElementById('discount').value) || 0;
             const value = parseFloat(document.getElementById('value').value) || 0;
             const packageType = document.getElementById('package').value;
-            const product = document.getElementById('product').value;
+            
+            // Ambil nilai produk dari input teks baru jika ada, jika tidak, ambil dari dropdown
+            let product = document.getElementById('newProduct').value.trim();
+            if (!product) {
+                product = document.getElementById('product').value;
+            }
+
             const facility = document.getElementById('facility').value;
             
-            // Ambil nilai dari input teks baru jika ada, jika tidak, ambil dari dropdown
+            // Ambil nilai owner dari input teks baru jika ada, jika tidak, ambil dari dropdown
+            let owner = document.getElementById('newOwner').value.trim();
+            if (!owner) {
+                owner = document.getElementById('owner').value;
+            }
+
+            // Ambil nilai konsultan dari input teks baru jika ada, jika tidak, ambil dari dropdown
             let consultant = document.getElementById('newConsultant').value.trim();
-            if (!consultant) { // Jika input teks baru kosong
+            if (!consultant) {
                 consultant = document.getElementById('consultant').value;
             }
 
+            // Ambil nilai kontraktor dari input teks baru jika ada, jika tidak, ambil dari dropdown
             let contractor = document.getElementById('newContractor').value.trim();
-            if (!contractor) { // Jika input teks baru kosong
+            if (!contractor) {
                 contractor = document.getElementById('contractor').value;
             }
 
+            // Ambil nilai PIC dari input teks baru jika ada, jika tidak, ambil dari dropdown
             let pic = document.getElementById('newPic').value.trim();
-            if (!pic) { // Jika input teks baru kosong
+            if (!pic) {
                 pic = document.getElementById('pic').value;
             }
 
             const projectDate = document.getElementById('projectDate').value;
+            const planPO = document.getElementById('planPO').value; // New: Get Plan PO
             const stage = document.getElementById('stage').value;
             const priority = document.getElementById('priority').value;
+            const remarks = document.getElementById('remarks').value; // New: Get Remarks
 
             if (!dealName || !value) {
                 showToast("Nama Proyek dan Nilai harus diisi.", 3000);
@@ -1116,12 +1209,15 @@
                 package: packageType,
                 product: product,
                 facility: facility,
+                owner: owner, // New: Add owner to dealData
                 consultant: consultant,
                 contractor: contractor,
                 pic: pic,
                 projectDate: projectDate ? firebase.firestore.Timestamp.fromDate(new Date(projectDate)) : null,
+                planPO: planPO, // New: Add Plan PO to dealData
                 stage: stage,
                 priority: priority,
+                remarks: remarks, // New: Add Remarks to dealData
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
@@ -1227,10 +1323,13 @@
             document.getElementById('detailPackage').textContent = deal.package || '-';
             document.getElementById('detailProduct').textContent = deal.product || '-';
             document.getElementById('detailFacility').textContent = deal.facility || '-';
+            document.getElementById('detailOwner').textContent = deal.owner || '-'; // New: Display Owner
             document.getElementById('detailConsultant').textContent = deal.consultant || '-';
             document.getElementById('detailContractor').textContent = deal.contractor || '-';
             document.getElementById('detailPIC').textContent = deal.pic || '-';
             document.getElementById('detailCreatedDate').textContent = formatDate(deal.projectDate) || '-';
+            document.getElementById('detailPlanPO').textContent = deal.planPO || '-'; // New: Display Plan PO
+            document.getElementById('detailRemarks').textContent = deal.remarks || '-'; // New: Display Remarks
 
             document.getElementById('dealDetailModal').classList.remove('hidden');
             document.getElementById('dealDetailModalContent').classList.remove('modal-content-leave-active');
@@ -1318,6 +1417,139 @@
         // Fungsi untuk merender semua chart (akan diimplementasikan lebih lanjut)
         function renderAllCharts() {
             console.log("Rendering all charts...");
+            // Contoh sederhana untuk inisialisasi chart agar tidak error
+            // Anda perlu mengisi data dan konfigurasi chart yang sebenarnya di sini
+            const dealSizeCtx = document.getElementById('dealSizeChart').getContext('2d');
+            if (charts.dealSizeChart) charts.dealSizeChart.destroy();
+            charts.dealSizeChart = new Chart(dealSizeCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Small', 'Medium', 'Large'],
+                    datasets: [{
+                        label: 'Deal Size',
+                        data: [10, 20, 30],
+                        backgroundColor: ['#3B82F6', '#60A5FA', '#93C5FD']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, // Penting untuk responsivitas
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Distribusi Ukuran Deal'
+                        }
+                    }
+                }
+            });
+
+            const winRateCtx = document.getElementById('winRateChart').getContext('2d');
+            if (charts.winRateChart) charts.winRateChart.destroy();
+            charts.winRateChart = new Chart(winRateCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Won', 'Lost', 'On Hold'],
+                    datasets: [{
+                        label: 'Win Rate',
+                        data: [50, 30, 20],
+                        backgroundColor: ['#10B981', '#EF4444', '#F59E0B']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, // Penting untuk responsivitas
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Tingkat Kemenangan'
+                        }
+                    }
+                }
+            });
+
+            const dealsBySalesCtx = document.getElementById('dealsBySalesChart').getContext('2d');
+            if (charts.dealsBySalesChart) charts.dealsBySalesChart.destroy();
+            charts.dealsBySalesChart = new Chart(dealsBySalesCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Pamungkas', 'Rory', 'Rangga', 'Dhea'],
+                    datasets: [{
+                        label: 'Jumlah Deal per Sales',
+                        data: [15, 10, 8, 12],
+                        backgroundColor: '#6366F1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, // Penting untuk responsivitas
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Jumlah Deal per Sales'
+                        }
+                    }
+                }
+            });
+
+            const dealsByProductPackageCtx = document.getElementById('dealsByProductPackageChart').getContext('2d');
+            if (charts.dealsByProductPackageChart) charts.dealsByProductPackageChart.destroy();
+            charts.dealsByProductPackageChart = new Chart(dealsByProductPackageCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Electronic Package', 'M&E', 'Fire Fighting Cont'],
+                    datasets: [{
+                        label: 'Deal per Paket Produk',
+                        data: [40, 30, 30],
+                        backgroundColor: ['#F97316', '#14B8A6', '#8B5CF6']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, // Penting untuk responsivitas
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Deal per Paket Produk'
+                        }
+                    }
+                }
+            });
+
+            const pipelineValueCtx = document.getElementById('pipelineValueChart').getContext('2d');
+            if (charts.pipelineValueChart) charts.pipelineValueChart.destroy();
+            charts.pipelineValueChart = new Chart(pipelineValueCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
+                    datasets: [{
+                        label: 'Nilai Pipeline (IDR)',
+                        data: [100000000, 120000000, 150000000, 130000000, 180000000, 200000000],
+                        borderColor: '#0EA5E9',
+                        tension: 0.1,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, // Penting untuk responsivitas
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Nilai Pipeline Seiring Waktu'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return 'Rp ' + formatNumber(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         // ==================== FUNGSI PERMISSIONS ====================
