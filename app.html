@@ -1533,6 +1533,106 @@
 
         // ==================== FUNGSI STATISTIK ====================
 
+        // Fungsi untuk memproses data deals menjadi format yang siap untuk chart
+        function processDealDataForCharts(dealsData) {
+            // Ambil semua opsi tahap dari elemen select#stage
+            const stageSelect = document.getElementById('stage');
+            const allStages = Array.from(stageSelect.options).map(option => option.value).filter(value => value !== ''); // Filter out empty value
+
+            // Inisialisasi winRateData dengan semua tahap yang ada
+            const winRateDataMap = {};
+            allStages.forEach(stage => {
+                winRateDataMap[stage] = 0;
+            });
+
+            const stats = {
+                dealSizeLabels: [],
+                dealSizeData: [],
+                winRateLabels: allStages, // Gunakan semua tahap sebagai label
+                winRateData: [], // Akan diisi dari winRateDataMap
+                dealsBySalesLabels: [],
+                dealsBySalesData: [],
+                dealsByProductPackageLabels: [],
+                dealsByProductPackageData: [],
+                pipelineValueLabels: [],
+                pipelineValueData: []
+            };
+
+            // Helper untuk mengelompokkan data
+            const dealSizes = {
+                'Small (< Rp 500 Juta)': 0,
+                'Medium (Rp 500 Juta - Rp 2 Miliar)': 0,
+                'Large (> Rp 2 Miliar)': 0
+            };
+            const dealsBySales = {};
+            const dealsByProductPackage = {};
+            const pipelineValueByMonth = {}; // Untuk nilai pipeline seiring waktu
+
+            dealsData.forEach(deal => {
+                // Deal Size
+                if (deal.value < 500000000) { // 500 Juta
+                    dealSizes['Small (< Rp 500 Juta)']++;
+                } else if (deal.value >= 500000000 && deal.value <= 2000000000) { // 500 Juta - 2 Miliar
+                    dealSizes['Medium (Rp 500 Juta - Rp 2 Miliar)']++;
+                } else { // Lebih dari 2 Miliar
+                    dealSizes['Large (> Rp 2 Miliar)']++;
+                }
+
+                // Win Rate
+                if (deal.stage && winRateDataMap.hasOwnProperty(deal.stage)) {
+                    winRateDataMap[deal.stage]++;
+                } else {
+                    // Jika ada tahap yang tidak terdaftar di form, bisa ditambahkan ke kategori 'Other' atau diabaikan
+                    // Untuk saat ini, kita akan mengabaikannya jika tidak ada di allStages
+                    console.warn(`Deal with unknown stage: ${deal.stage}`);
+                }
+
+                // Deals By Sales
+                if (deal.salesName) {
+                    dealsBySales[deal.salesName] = (dealsBySales[deal.salesName] || 0) + 1;
+                }
+
+                // Deals By Product/Package (menggunakan package sebagai contoh)
+                const productPackageKey = deal.package || 'Unknown Package';
+                dealsByProductPackage[productPackageKey] = (dealsByProductPackage[productPackageKey] || 0) + 1;
+
+                // Pipeline Value Over Time (menggunakan projectDate atau createdAt)
+                // Hanya sertakan deal yang belum 'lost' atau 'win' untuk pipeline value
+                if (deal.stage !== 'lost' && deal.stage !== 'win') {
+                    const dateSource = deal.projectDate || deal.createdAt;
+                    if (dateSource) {
+                        const date = dateSource.toDate();
+                        const monthYear = date.toLocaleString('id-ID', { month: 'short', year: 'numeric' });
+                        pipelineValueByMonth[monthYear] = (pipelineValueByMonth[monthYear] || 0) + deal.value;
+                    }
+                }
+            });
+
+            // Konversi objek ke array untuk chart
+            stats.dealSizeLabels = Object.keys(dealSizes);
+            stats.dealSizeData = Object.values(dealSizes);
+
+            // Isi winRateData dari map
+            stats.winRateData = stats.winRateLabels.map(stage => winRateDataMap[stage]);
+
+            stats.dealsBySalesLabels = Object.keys(dealsBySales);
+            stats.dealsBySalesData = Object.values(dealsBySales);
+
+            stats.dealsByProductPackageLabels = Object.keys(dealsByProductPackage);
+            stats.dealsByProductPackageData = Object.values(dealsByProductPackage);
+
+            // Urutkan data pipeline value berdasarkan bulan
+            const sortedMonths = Object.keys(pipelineValueByMonth).sort((a, b) => {
+                const dateA = new Date(a.replace(/(\w{3})\s(\d{4})/, '$1 1, $2'));
+                const dateB = new Date(b.replace(/(\w{3})\s(\d{4})/, '$1 1, $2'));
+                return dateA - dateB;
+            });
+            stats.pipelineValueLabels = sortedMonths;
+            stats.pipelineValueData = sortedMonths.map(month => pipelineValueByMonth[month]);
+
+            return stats;
+        }
+
         // Fungsi untuk menampilkan bagian statistik
         function showStats() {
             const statsSection = document.getElementById('stats-section');
@@ -1553,95 +1653,129 @@
         // Fungsi untuk merender semua chart (akan diimplementasikan lebih lanjut)
         function renderAllCharts() {
             console.log("Rendering all charts...");
-            // Contoh sederhana untuk inisialisasi chart agar tidak error
-            // Anda perlu mengisi data dan konfigurasi chart yang sebenarnya di sini
+
+            // 1. Proses Data Deals untuk Statistik
+            const processedStats = processDealDataForCharts(deals);
+
+            // 2. Deal Size Chart (Distribusi Ukuran Deal)
             const dealSizeCtx = document.getElementById('dealSizeChart').getContext('2d');
             if (charts.dealSizeChart) charts.dealSizeChart.destroy();
             charts.dealSizeChart = new Chart(dealSizeCtx, {
                 type: 'bar',
                 data: {
-                    labels: ['Small', 'Medium', 'Large'],
+                    labels: processedStats.dealSizeLabels,
                     datasets: [{
-                        label: 'Deal Size',
-                        data: [10, 20, 30],
-                        backgroundColor: ['#3B82F6', '#60A5FA', '#93C5FD']
+                        label: 'Jumlah Deal',
+                        data: processedStats.dealSizeData,
+                        backgroundColor: ['#3B82F6', '#60A5FA', '#93C5FD', '#22D3EE', '#A78BFA'] // Tambahkan warna jika ada lebih banyak kategori
                     }]
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false, // Penting untuk responsivitas
+                    maintainAspectRatio: false,
                     plugins: {
                         title: {
                             display: true,
                             text: 'Distribusi Ukuran Deal'
                         }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0 // Pastikan tick y-axis adalah bilangan bulat
+                            }
+                        }
                     }
                 }
             });
 
+            // 3. Win Rate Chart (Tingkat Kemenangan Berdasarkan Tahap)
             const winRateCtx = document.getElementById('winRateChart').getContext('2d');
             if (charts.winRateChart) charts.winRateChart.destroy();
             charts.winRateChart = new Chart(winRateCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Won', 'Lost', 'On Hold'],
+                    labels: processedStats.winRateLabels,
                     datasets: [{
-                        label: 'Win Rate',
-                        data: [50, 30, 20],
-                        backgroundColor: ['#10B981', '#EF4444', '#F59E0B']
+                        label: 'Jumlah Deal',
+                        data: processedStats.winRateData,
+                        backgroundColor: [
+                            '#10B981', // win
+                            '#EF4444', // lost
+                            '#F59E0B', // on-hold
+                            '#6B7280', // identified
+                            '#3B82F6', // prospect
+                            '#06B6D4', // tender-me
+                            '#A855F7', // tender-main-con
+                            '#EC4899'  // contract-award
+                        ] // Sesuaikan warna untuk setiap tahap jika perlu
                     }]
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false, // Penting untuk responsivitas
+                    maintainAspectRatio: false,
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Tingkat Kemenangan'
+                            text: 'Tingkat Kemenangan Berdasarkan Tahap'
                         }
                     }
                 }
             });
 
+            // 4. Deals By Sales Chart (Jumlah Deal per Sales)
             const dealsBySalesCtx = document.getElementById('dealsBySalesChart').getContext('2d');
             if (charts.dealsBySalesChart) charts.dealsBySalesChart.destroy();
             charts.dealsBySalesChart = new Chart(dealsBySalesCtx, {
                 type: 'bar',
                 data: {
-                    labels: ['Pamungkas', 'Rory', 'Rangga', 'Dhea'],
+                    labels: processedStats.dealsBySalesLabels,
                     datasets: [{
-                        label: 'Jumlah Deal per Sales',
-                        data: [15, 10, 8, 12],
+                        label: 'Jumlah Deal',
+                        data: processedStats.dealsBySalesData,
                         backgroundColor: '#6366F1'
                     }]
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false, // Penting untuk responsivitas
+                    maintainAspectRatio: false,
                     plugins: {
                         title: {
                             display: true,
                             text: 'Jumlah Deal per Sales'
                         }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
                     }
                 }
             });
 
+            // 5. Deals By Product/Package Chart (Deal per Paket Produk)
             const dealsByProductPackageCtx = document.getElementById('dealsByProductPackageChart').getContext('2d');
             if (charts.dealsByProductPackageChart) charts.dealsByProductPackageChart.destroy();
             charts.dealsByProductPackageChart = new Chart(dealsByProductPackageCtx, {
                 type: 'pie',
                 data: {
-                    labels: ['Electronic Package', 'M&E', 'Fire Fighting Cont'],
+                    labels: processedStats.dealsByProductPackageLabels,
                     datasets: [{
-                        label: 'Deal per Paket Produk',
-                        data: [40, 30, 30],
-                        backgroundColor: ['#F97316', '#14B8A6', '#8B5CF6']
+                        label: 'Jumlah Deal',
+                        data: processedStats.dealsByProductPackageData,
+                        backgroundColor: [
+                            '#F97316', '#14B8A6', '#8B5CF6', '#EC4899', '#FACC15',
+                            '#3B82F6', '#EF4444', '#06B6D4', '#A855F7', '#F43F5E'
+                        ]
                     }]
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false, // Penting untuk responsivitas
+                    maintainAspectRatio: false,
                     plugins: {
                         title: {
                             display: true,
@@ -1651,15 +1785,16 @@
                 }
             });
 
+            // 6. Pipeline Value Chart (Nilai Pipeline Seiring Waktu)
             const pipelineValueCtx = document.getElementById('pipelineValueChart').getContext('2d');
             if (charts.pipelineValueChart) charts.pipelineValueChart.destroy();
             charts.pipelineValueChart = new Chart(pipelineValueCtx, {
                 type: 'line',
                 data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
+                    labels: processedStats.pipelineValueLabels,
                     datasets: [{
                         label: 'Nilai Pipeline (IDR)',
-                        data: [100000000, 120000000, 150000000, 130000000, 180000000, 200000000],
+                        data: processedStats.pipelineValueData,
                         borderColor: '#0EA5E9',
                         tension: 0.1,
                         fill: false
@@ -1667,7 +1802,7 @@
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false, // Penting untuk responsivitas
+                    maintainAspectRatio: false,
                     plugins: {
                         title: {
                             display: true,
@@ -1676,7 +1811,8 @@
                     },
                     scales: {
                         y: {
-                            beginAtZero: true,
+                            beginAtZero: false, // Tidak selalu mulai dari nol
+                            min: 100000000, // Dimulai dari 100 Juta
                             ticks: {
                                 callback: function(value) {
                                     return 'Rp ' + formatNumber(value);
