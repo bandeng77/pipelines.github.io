@@ -528,8 +528,8 @@
                         <!-- Kolom 4 -->
                         <div>
                             <div class="mb-3">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="value">Nilai (IDR) <span class="text-red-500">*</span></label>
-                                <input type="text" id="value" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" required oninput="formatAndCalculateBeforeDiscount()">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="value">Nilai (IDR)</label>
+                                <input type="text" id="value" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" oninput="formatAndCalculateBeforeDiscount()">
                             </div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="discount">Diskon (%)</label>
@@ -1460,8 +1460,8 @@
             const priority = document.getElementById('priority').value;
             const remarks = document.getElementById('remarks').value; // New: Get Remarks
 
-            if (!dealName || !value) {
-                showToast("Nama Proyek dan Nilai harus diisi.", 3000);
+            if (!dealName) { // MODIFIED: Removed !value from validation
+                showToast("Nama Proyek harus diisi.", 3000);
                 return;
             }
 
