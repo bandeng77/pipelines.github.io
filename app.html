@@ -343,6 +343,21 @@
                     <option value="warm">Warm</option>
                     <option value="cold">Cold</option>
                 </select>
+                <select id="filterYear" onchange="filterDeals()" class="w-full sm:w-1/4 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                    <option value="all">Semua Tahun</option>
+                    <!-- Tahun akan diisi secara dinamis oleh JavaScript -->
+                </select>
+                <select id="filterStage" onchange="filterDeals()" class="w-full sm:w-1/4 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                    <option value="all">Semua Tahap</option>
+                    <option value="identified">Identified</option>
+                    <option value="prospect">Prospect</option>
+                    <option value="tender-me">Tender Stage M&E</option>
+                    <option value="tender-main-con">Tender Main Con</option>
+                    <option value="contract-award">Contract Award</option>
+                    <option value="win">Win</option>
+                    <option value="lost">Lost</option>
+                    <option value="on-hold">On Hold</option>
+                </select>
             </div>
         </header>
 
@@ -533,7 +548,7 @@
                         <div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="beforeDiscount">Sebelum Diskon (IDR)</label>
-                                <input type="number" id="beforeDiscount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" oninput="calculateValue()">
+                                <input type="text" id="beforeDiscount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" oninput="formatAndCalculateValue()">
                             </div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="discount">Diskon (%)</label>
@@ -541,7 +556,7 @@
                             </div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="value">Nilai (IDR) <span class="text-red-500">*</span></label>
-                                <input type="number" id="value" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" readonly required>
+                                <input type="text" id="value" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" readonly required oninput="formatNumberInput(this)">
                             </div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="projectDate">Tanggal Proyek</label>
@@ -698,13 +713,14 @@
         let sortableInstances = {};
         let authInitialized = false;
 
-        // Variabel untuk menyimpan daftar unik Konsultan, Kontraktor, PIC, Owner, Produk, Fasilitas
+        // Variabel untuk menyimpan daftar unik Konsultan, Kontraktor, PIC, Owner, Produk, Fasilitas, dan Tahun
         let uniqueConsultants = new Set();
         let uniqueContractors = new Set();
         let uniquePICs = new Set();
         let uniqueOwners = new Set();
         let uniqueProducts = new Set();
-        let uniqueFacilities = new Set(); // New: for Facility
+        let uniqueFacilities = new Set();
+        let uniqueYears = new Set(); // Tambahkan ini
 
         // Daftar email sales yang akan memiliki role 'user'
         const salesEmails = [
@@ -933,7 +949,13 @@
 
         // Fungsi helper untuk format angka
         function formatNumber(num) {
-            return num ? new Intl.NumberFormat('id-ID').format(num) : '0';
+            // Pastikan num adalah angka dan bukan null/undefined
+            if (num === null || num === undefined || isNaN(num)) {
+                return '0';
+            }
+            // Menggunakan Intl.NumberFormat untuk format angka dengan separator ribuan
+            // 'id-ID' akan menggunakan titik sebagai pemisah ribuan dan koma sebagai pemisah desimal
+            return new Intl.NumberFormat('id-ID').format(num);
         }
 
         // Fungsi helper untuk format tanggal
@@ -969,6 +991,25 @@
 
         // ==================== FUNGSI DEALS ====================
 
+        // Fungsi untuk mengisi dropdown tahun
+        function populateYearDropdown() {
+            const filterYearSelect = document.getElementById('filterYear');
+            if (!filterYearSelect) return;
+
+            // Simpan opsi "Semua Tahun"
+            const allYearsOption = filterYearSelect.querySelector('option[value="all"]');
+            filterYearSelect.innerHTML = ''; // Bersihkan opsi yang ada
+            filterYearSelect.appendChild(allYearsOption); // Tambahkan kembali "Semua Tahun"
+
+            const sortedYears = Array.from(uniqueYears).sort((a, b) => parseInt(b) - parseInt(a)); // Urutkan dari terbaru ke terlama
+            sortedYears.forEach(year => {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                filterYearSelect.appendChild(option);
+            });
+        }
+
         // Fungsi untuk memuat deals dari Firebase
         // Fungsi ini akan memuat SEMUA deals ke variabel 'deals' untuk semua user.
         function loadDealsFromFirebase() {
@@ -984,7 +1025,8 @@
                     uniquePICs.clear();
                     uniqueOwners.clear();
                     uniqueProducts.clear();
-                    uniqueFacilities.clear(); // Clear for Facility
+                    uniqueFacilities.clear();
+                    uniqueYears.clear(); // Clear uniqueYears juga
 
                     querySnapshot.forEach((doc) => {
                         const dealData = doc.data();
@@ -996,9 +1038,15 @@
                         if (dealData.pic) uniquePICs.add(dealData.pic);
                         if (dealData.owner) uniqueOwners.add(dealData.owner);
                         if (dealData.product) uniqueProducts.add(dealData.product);
-                        if (dealData.facility) uniqueFacilities.add(dealData.facility); // Add for Facility
+                        if (dealData.facility) uniqueFacilities.add(dealData.facility);
+                        
+                        // Kumpulkan tahun unik dari projectDate
+                        if (dealData.projectDate) {
+                            uniqueYears.add(dealData.projectDate.toDate().getFullYear().toString());
+                        }
                     });
                     console.log("Total deals loaded (for search/admin view):", deals.length);
+                    populateYearDropdown(); // Panggil setelah deals dimuat dan tahun dikumpulkan
                     renderAllDeals(); // Panggil renderAllDeals setelah deals dimuat
                 })
                 .catch((error) => {
@@ -1013,6 +1061,35 @@
             dealCard.className = 'deal-card';
             dealCard.dataset.id = deal.id;
             
+            // Tentukan warna latar belakang untuk badge tahap
+            let stageColorClass = '';
+            switch (deal.stage) {
+                case 'identified':
+                    stageColorClass = 'bg-gray-100 text-gray-800';
+                    break;
+                case 'prospect':
+                    stageColorClass = 'bg-blue-100 text-blue-800';
+                    break;
+                case 'tender-me':
+                case 'tender-main-con':
+                    stageColorClass = 'bg-purple-100 text-purple-800';
+                    break;
+                case 'contract-award':
+                    stageColorClass = 'bg-indigo-100 text-indigo-800';
+                    break;
+                case 'win':
+                    stageColorClass = 'bg-green-100 text-green-800';
+                    break;
+                case 'lost':
+                    stageColorClass = 'bg-red-100 text-red-800';
+                    break;
+                case 'on-hold':
+                    stageColorClass = 'bg-yellow-100 text-yellow-800';
+                    break;
+                default:
+                    stageColorClass = 'bg-gray-100 text-gray-800';
+            }
+
             dealCard.innerHTML = `
                 <div class="flex justify-between items-start">
                     <h3 class="font-bold text-gray-800">${deal.dealName || 'No Name'}</h3>
@@ -1027,6 +1104,11 @@
                 <div class="mt-1 text-sm text-gray-600 deal-details">
                     <p><i class="fas fa-user-tie mr-1"></i> ${deal.salesName || '-'}</p>
                     <p class="font-semibold text-blue-600">Rp ${formatNumber(deal.value) || '0'}</p>
+                    <p class="mt-1">
+                        <span class="priority-badge px-2 py-1 rounded-full ${stageColorClass}">
+                            ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown Stage'}
+                        </span>
+                    </p>
                 </div>
                 <div class="mt-2 flex justify-between items-center deal-footer">
                     <span class="text-xs text-gray-500">${formatDate(deal.projectDate || deal.createdAt)}</span>
@@ -1115,6 +1197,26 @@
             selectElement.value = selectedValue;
         }
 
+        // Fungsi helper untuk memformat input angka secara real-time
+        function formatNumberInput(inputElement) {
+            // Hapus semua karakter non-digit kecuali koma/titik desimal (jika diperlukan)
+            let value = inputElement.value.replace(/[^0-9]/g, ''); // Hanya angka
+            
+            // Konversi ke angka, lalu format dengan Intl.NumberFormat
+            let numberValue = parseInt(value, 10);
+            if (isNaN(numberValue)) {
+                inputElement.value = '';
+                return;
+            }
+            
+            inputElement.value = new Intl.NumberFormat('id-ID').format(numberValue);
+        }
+
+        // Fungsi untuk menghitung nilai deal setelah diskon dan memformat input
+        function formatAndCalculateValue() {
+            formatNumberInput(document.getElementById('beforeDiscount')); // Format input beforeDiscount
+            calculateValue(); // Kemudian hitung nilai dan format input value
+        }
 
         // Fungsi untuk membuka modal deal
         function openDealModal(dealId = null) {
@@ -1125,6 +1227,7 @@
             dealForm.reset();
             document.getElementById('dealId').value = '';
             document.getElementById('value').value = '';
+            document.getElementById('beforeDiscount').value = ''; // Reset juga beforeDiscount
 
             // Reset input teks baru
             document.getElementById('newConsultant').value = '';
@@ -1193,9 +1296,18 @@
                     document.getElementById('dealId').value = deal.id;
                     document.getElementById('salesName').value = deal.salesName || '';
                     document.getElementById('dealName').value = deal.dealName || '';
-                    document.getElementById('beforeDiscount').value = deal.beforeDiscount || '';
+                    
+                    // Set nilai untuk beforeDiscount dan value, lalu format
+                    const beforeDiscountInput = document.getElementById('beforeDiscount');
+                    beforeDiscountInput.value = deal.beforeDiscount || '';
+                    formatNumberInput(beforeDiscountInput); // Format saat mengisi
+
                     document.getElementById('discount').value = deal.discount || '';
-                    document.getElementById('value').value = deal.value || '';
+                    
+                    const valueInput = document.getElementById('value');
+                    valueInput.value = deal.value || '';
+                    formatNumberInput(valueInput); // Format saat mengisi
+
                     document.getElementById('package').value = deal.package || '';
                     
                     // Set nilai untuk dropdown Product
@@ -1280,14 +1392,21 @@
 
         // Fungsi untuk menghitung nilai deal setelah diskon
         function calculateValue() {
-            const beforeDiscount = parseFloat(document.getElementById('beforeDiscount').value) || 0;
+            // Ambil nilai sebelum diskon, hapus separator ribuan terlebih dahulu
+            const beforeDiscountRaw = document.getElementById('beforeDiscount').value.replace(/[^0-9]/g, '');
+            const beforeDiscount = parseFloat(beforeDiscountRaw) || 0;
+            
             const discount = parseFloat(document.getElementById('discount').value) || 0;
             
             let calculatedValue = beforeDiscount;
             if (discount > 0) {
                 calculatedValue = beforeDiscount * (1 - (discount / 100));
             }
-            document.getElementById('value').value = calculatedValue.toFixed(0);
+            
+            // Set nilai ke input 'value' dan format
+            const valueInput = document.getElementById('value');
+            valueInput.value = calculatedValue.toFixed(0); // Tetapkan nilai numerik tanpa format dulu
+            formatNumberInput(valueInput); // Kemudian format untuk tampilan
         }
 
         // Fungsi untuk menyimpan atau memperbarui deal
@@ -1295,9 +1414,17 @@
             const dealId = document.getElementById('dealId').value;
             const dealName = document.getElementById('dealName').value;
             const salesName = document.getElementById('salesName').value;
-            const beforeDiscount = parseFloat(document.getElementById('beforeDiscount').value) || 0;
+            
+            // Ambil nilai numerik murni dari input yang sudah diformat
+            const beforeDiscountRaw = document.getElementById('beforeDiscount').value.replace(/[^0-9]/g, '');
+            const beforeDiscount = parseFloat(beforeDiscountRaw) || 0;
+            
             const discount = parseFloat(document.getElementById('discount').value) || 0;
-            const value = parseFloat(document.getElementById('value').value) || 0;
+            
+            // Ambil nilai numerik murni dari input 'value'
+            const valueRaw = document.getElementById('value').value.replace(/[^0-9]/g, '');
+            const value = parseFloat(valueRaw) || 0;
+
             const packageType = document.getElementById('package').value;
             
             // Ambil nilai produk dari input teks baru jika ada, jika tidak, ambil dari dropdown
@@ -1350,9 +1477,9 @@
             const dealData = {
                 dealName: dealName,
                 salesName: salesName,
-                beforeDiscount: beforeDiscount,
+                beforeDiscount: beforeDiscount, // Ini sudah numerik
                 discount: discount,
-                value: value,
+                value: value, // Ini sudah numerik
                 package: packageType,
                 product: product,
                 facility: facility,
@@ -1863,6 +1990,8 @@
                 const newDealBtn = document.getElementById('newDealBtn');
                 const searchInput = document.getElementById('searchDeals');
                 const filterPriority = document.getElementById('filterPriority');
+                const filterYear = document.getElementById('filterYear'); // Tambahkan ini
+                const filterStage = document.getElementById('filterStage'); // Tambahkan ini
 
                 // Tombol Statistik hanya untuk admin
                 if (viewStatsBtn) viewStatsBtn.classList.toggle('hidden', !isAdmin);
@@ -1876,14 +2005,14 @@
                 // Search dan Filter selalu terlihat
                 if (searchInput) searchInput.classList.remove('hidden');
                 if (filterPriority) filterPriority.classList.remove('hidden');
+                if (filterYear) filterYear.classList.remove('hidden'); // Tambahkan ini
+                if (filterStage) filterStage.classList.remove('hidden'); // Tambahkan ini
 
                 // Atur kemampuan drag-and-drop
                 if (sortableInstances['pipelines-stage']) {
                     sortableInstances['pipelines-stage'].option('disabled', !isAdmin);
                 }
 
-                // Panggil loadDealsFromFirebase di sini untuk memastikan data deals dimuat
-                // sebelum renderAllDeals dipanggil.
                 loadDealsFromFirebase(); 
                 
             } catch (error) {
@@ -1917,7 +2046,6 @@
                 buttons.forEach(btn => {
                     const element = document.getElementById(btn.id);
                     if (element) {
-                        // Hapus listener yang mungkin sudah ada untuk mencegah duplikasi
                         element.removeEventListener('click', btn.func); 
                         element.addEventListener('click', btn.func);
                         console.log(`Event listener added for ${btn.id}`);
@@ -1930,10 +2058,22 @@
                     searchInput.addEventListener('keyup', filterDeals);
                 }
                 
-                const filterSelect = document.getElementById('filterPriority');
-                if (filterSelect) {
-                    filterSelect.removeEventListener('change', filterDeals);
-                    filterSelect.addEventListener('change', filterDeals);
+                const filterPriority = document.getElementById('filterPriority');
+                if (filterPriority) {
+                    filterPriority.removeEventListener('change', filterDeals);
+                    filterPriority.addEventListener('change', filterDeals);
+                }
+
+                const filterYear = document.getElementById('filterYear'); // Tambahkan ini
+                if (filterYear) {
+                    filterYear.removeEventListener('change', filterDeals);
+                    filterYear.addEventListener('change', filterDeals);
+                }
+
+                const filterStage = document.getElementById('filterStage'); // Tambahkan ini
+                if (filterStage) {
+                    filterStage.removeEventListener('change', filterDeals);
+                    filterStage.addEventListener('change', filterDeals);
                 }
 
             } catch (error) {
@@ -1950,15 +2090,15 @@
             try {
                 const searchTerm = document.getElementById('searchDeals').value.toLowerCase();
                 const priorityFilter = document.getElementById('filterPriority').value;
+                const yearFilter = document.getElementById('filterYear').value; // Ambil nilai filter tahun
+                const stageFilter = document.getElementById('filterStage').value; // Ambil nilai filter tahap
                 
-                // Jika kolom pencarian kosong dan filter prioritas adalah 'all',
-                // kembalikan ke tampilan default (kosong untuk sales, semua untuk admin)
-                if (searchTerm === '' && priorityFilter === 'all') {
+                // Jika semua filter kosong, kembalikan ke tampilan default
+                if (searchTerm === '' && priorityFilter === 'all' && yearFilter === 'all' && stageFilter === 'all') {
                     renderAllDeals();
                     return;
                 }
 
-                // Filter dari SEMUA deals yang sudah dimuat
                 const filteredDeals = deals.filter(deal => {
                     const matchesSearch = 
                         (deal.dealName && deal.dealName.toLowerCase().includes(searchTerm)) ||
@@ -1969,7 +2109,15 @@
                         priorityFilter === 'all' || 
                         (deal.priority && deal.priority === priorityFilter);
                     
-                    return matchesSearch && matchesPriority;
+                    // Filter berdasarkan tahun proyek
+                    const matchesYear = yearFilter === 'all' || 
+                                        (deal.projectDate && deal.projectDate.toDate().getFullYear().toString() === yearFilter);
+
+                    // Filter berdasarkan tahap
+                    const matchesStage = stageFilter === 'all' || 
+                                         (deal.stage && deal.stage === stageFilter);
+                    
+                    return matchesSearch && matchesPriority && matchesYear && matchesStage;
                 });
                 
                 renderFilteredDeals(filteredDeals);
