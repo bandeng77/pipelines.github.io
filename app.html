@@ -557,10 +557,11 @@
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="value">Nilai (IDR) <span class="text-red-500">*</span></label>
                                 <input type="text" id="value" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" readonly required oninput="formatNumberInput(this)">
                             </div>
-                            <div class="mb-3">
+                            <!-- Tanggal Proyek dihilangkan dari form input -->
+                            <!-- <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="projectDate">Tanggal Proyek</label>
                                 <input type="date" id="projectDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                            </div>
+                            </div> -->
                         </div>
                     </div>
                     <div class="flex justify-end space-x-3 mt-6">
@@ -625,12 +626,12 @@
                         <p id="detailPIC" class="text-gray-900"></p>
                     </div>
                     <div class="detail-item">
-                        <p class="text-gray-700 font-semibold">Tanggal Proyek:</p>
-                        <p id="detailCreatedDate" class="text-gray-900"></p>
-                    </div>
-                    <div class="detail-item">
                         <p class="text-gray-700 font-semibold">Plan PO:</p>
                         <p id="detailPlanPO" class="text-gray-900"></p>
+                    </div>
+                    <div class="detail-item">
+                        <p class="text-gray-700 font-semibold">Tanggal Dibuat:</p>
+                        <p id="detailCreatedDate" class="text-gray-900"></p>
                     </div>
                     <!-- Remarks will take full width -->
                     <div class="detail-item col-span-2"> 
@@ -1039,9 +1040,9 @@
                         if (dealData.product) uniqueProducts.add(dealData.product);
                         if (dealData.facility) uniqueFacilities.add(dealData.facility);
                         
-                        // Kumpulkan tahun unik dari projectDate
-                        if (dealData.projectDate) {
-                            uniqueYears.add(dealData.projectDate.toDate().getFullYear().toString());
+                        // Kumpulkan tahun unik dari createdAt
+                        if (dealData.createdAt) {
+                            uniqueYears.add(dealData.createdAt.toDate().getFullYear().toString());
                         }
                     });
                     console.log("Total deals loaded (for search/admin view):", deals.length);
@@ -1112,7 +1113,8 @@
                     </p>
                 </div>
                 <div class="mt-2 flex justify-between items-center deal-footer">
-                    <span class="text-xs text-gray-500">${formatDate(deal.projectDate || deal.createdAt)}</span>
+                    <span class="text-xs text-gray-500">Plan PO: ${deal.planPO || '-'}</span>
+                    <span class="text-xs text-gray-500">Dibuat: ${formatDate(deal.createdAt)}</span>
                     <div class="flex space-x-1 deal-actions">
                         <button onclick="openDealDetailModal('${deal.id}')" class="text-blue-600 hover:text-blue-800">
                             <i class="fas fa-eye"></i>
@@ -1359,7 +1361,7 @@
                         document.getElementById('newPic').value = deal.pic || '';
                     }
 
-                    document.getElementById('projectDate').value = deal.projectDate ? deal.projectDate.toDate().toISOString().split('T')[0] : '';
+                    // document.getElementById('projectDate').value = deal.projectDate ? deal.projectDate.toDate().toISOString().split('T')[0] : ''; // Dihapus
                     document.getElementById('planPO').value = deal.planPO || ''; // New: Set Plan PO
                     document.getElementById('stage').value = deal.stage || DEFAULT_STAGE;
                     document.getElementById('priority').value = deal.priority || 'cold';
@@ -1464,7 +1466,7 @@
                 pic = document.getElementById('pic').value;
             }
 
-            const projectDate = document.getElementById('projectDate').value;
+            // const projectDate = document.getElementById('projectDate').value; // Dihapus
             const planPO = document.getElementById('planPO').value; // New: Get Plan PO
             const stage = document.getElementById('stage').value;
             const priority = document.getElementById('priority').value;
@@ -1488,7 +1490,7 @@
                 consultant: consultant,
                 contractor: contractor,
                 pic: pic,
-                projectDate: projectDate ? firebase.firestore.Timestamp.fromDate(new Date(projectDate)) : null,
+                // projectDate: projectDate ? firebase.firestore.Timestamp.fromDate(new Date(projectDate)) : null, // Dihapus
                 planPO: planPO, // New: Add Plan PO to dealData
                 stage: stage,
                 priority: priority,
@@ -1602,8 +1604,8 @@
             document.getElementById('detailConsultant').textContent = deal.consultant || '-';
             document.getElementById('detailContractor').textContent = deal.contractor || '-';
             document.getElementById('detailPIC').textContent = deal.pic || '-';
-            document.getElementById('detailCreatedDate').textContent = formatDate(deal.projectDate) || '-';
-            document.getElementById('detailPlanPO').textContent = deal.planPO || '-'; // New: Display Plan PO
+            document.getElementById('detailPlanPO').textContent = deal.planPO || '-'; // Menampilkan Plan PO
+            document.getElementById('detailCreatedDate').textContent = formatDate(deal.createdAt) || '-'; // Menampilkan tanggal dibuat
             document.getElementById('detailRemarks').textContent = deal.remarks || '-'; // New: Display Remarks
 
             document.getElementById('dealDetailModal').classList.remove('hidden');
@@ -1735,10 +1737,10 @@
                 const productKey = deal.product || 'Unknown Product'; // Changed to product
                 dealsByProduct[productKey] = (dealsByProduct[productKey] || 0) + 1; // Changed to product
 
-                // Pipeline Value Over Time (menggunakan projectDate atau createdAt)
+                // Pipeline Value Over Time (menggunakan createdAt)
                 // Hanya sertakan deal yang belum 'lost' atau 'win' untuk pipeline value
                 if (deal.stage !== 'lost' && deal.stage !== 'win') {
-                    const dateSource = deal.projectDate || deal.createdAt;
+                    const dateSource = deal.createdAt; // Gunakan createdAt sebagai sumber tanggal
                     if (dateSource) {
                         const date = dateSource.toDate();
                         // Format tanggal sesuai permintaan: "Bulan Tahun"
@@ -1764,13 +1766,12 @@
             // Urutkan data pipeline value berdasarkan bulan
             const sortedMonths = Object.keys(pipelineValueByMonth).sort((a, b) => {
                 // Parse string "Bulan Tahun" menjadi objek Date untuk perbandingan
-                const parseMonthYear = (str) => {
-                    const [monthStr, yearStr] = str.split(' ');
-                    const monthIndex = new Date(Date.parse(monthStr + " 1, 2000")).getMonth(); // Get month index
-                    return new Date(parseInt(yearStr), monthIndex, 1);
-                };
-                const dateA = parseMonthYear(a);
-                const dateB = parseMonthYear(b);
+                const [monthStrA, yearStrA] = a.split(' ');
+                const [monthStrB, yearStrB] = b.split(' ');
+                const monthIndexA = new Date(Date.parse(monthStrA + " 1, 2000")).getMonth(); // Get month index
+                const monthIndexB = new Date(Date.parse(monthStrB + " 1, 2000")).getMonth(); // Get month index
+                const dateA = new Date(parseInt(yearStrA), monthIndexA, 1);
+                const dateB = new Date(parseInt(yearStrB), monthIndexB, 1);
                 return dateA - dateB;
             });
             stats.pipelineValueLabels = sortedMonths;
@@ -2110,9 +2111,9 @@
                         priorityFilter === 'all' || 
                         (deal.priority && deal.priority === priorityFilter);
                     
-                    // Filter berdasarkan tahun proyek
+                    // Filter berdasarkan tahun dibuat
                     const matchesYear = yearFilter === 'all' || 
-                                        (deal.projectDate && deal.projectDate.toDate().getFullYear().toString() === yearFilter);
+                                        (deal.createdAt && deal.createdAt.toDate().getFullYear().toString() === yearFilter);
 
                     // Filter berdasarkan tahap
                     const matchesStage = stageFilter === 'all' || 
