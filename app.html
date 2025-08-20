@@ -493,24 +493,6 @@
                                 </select>
                                 <input type="text" id="newFacility" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama fasilitas baru">
                             </div>
-                            <div class="mb-3">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="planPO">Plan PO</label>
-                                <select id="planPO" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                    <option value="">Pilih Bulan</option>
-                                    <option value="Januari">Januari</option>
-                                    <option value="Februari">Februari</option>
-                                    <option value="Maret">Maret</option>
-                                    <option value="April">April</option>
-                                    <option value="Mei">Mei</option>
-                                    <option value="Juni">Juni</option>
-                                    <option value="Juli">Juli</option>
-                                    <option value="Agustus">Agustus</option>
-                                    <option value="September">September</option>
-                                    <option value="Oktober">Oktober</option>
-                                    <option value="November">November</option>
-                                    <option value="Desember">Desember</option>
-                                </select>
-                            </div>
                         </div>
                         <!-- Kolom 3 -->
                         <div>
@@ -546,22 +528,35 @@
                         <!-- Kolom 4 -->
                         <div>
                             <div class="mb-3">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="beforeDiscount">Sebelum Diskon (IDR)</label>
-                                <input type="text" id="beforeDiscount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" oninput="formatAndCalculateValue()">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="value">Nilai (IDR) <span class="text-red-500">*</span></label>
+                                <input type="text" id="value" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" required oninput="formatAndCalculateBeforeDiscount()">
                             </div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="discount">Diskon (%)</label>
-                                <input type="number" id="discount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" max="100" oninput="calculateValue()">
+                                <input type="number" id="discount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" max="100" oninput="formatAndCalculateBeforeDiscount()">
                             </div>
                             <div class="mb-3">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="value">Nilai (IDR) <span class="text-red-500">*</span></label>
-                                <input type="text" id="value" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" readonly required oninput="formatNumberInput(this)">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="beforeDiscount">Sebelum Diskon (IDR)</label>
+                                <input type="text" id="beforeDiscount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" min="0" readonly>
                             </div>
-                            <!-- Tanggal Proyek dihilangkan dari form input -->
-                            <!-- <div class="mb-3">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="projectDate">Tanggal Proyek</label>
-                                <input type="date" id="projectDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                            </div> -->
+                            <div class="mb-3">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="planPO">Plan PO</label>
+                                <select id="planPO" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih Bulan</option>
+                                    <option value="Januari">Januari</option>
+                                    <option value="Februari">Februari</option>
+                                    <option value="Maret">Maret</option>
+                                    <option value="April">April</option>
+                                    <option value="Mei">Mei</option>
+                                    <option value="Juni">Juni</option>
+                                    <option value="Juli">Juli</option>
+                                    <option value="Agustus">Agustus</option>
+                                    <option value="September">September</option>
+                                    <option value="Oktober">Oktober</option>
+                                    <option value="November">November</option>
+                                    <option value="Desember">Desember</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                     <div class="flex justify-end space-x-3 mt-6">
@@ -586,16 +581,16 @@
                         <p id="detailSalesName" class="text-gray-900"></p>
                     </div>
                     <div class="detail-item">
-                        <p class="text-gray-700 font-semibold">Sebelum Diskon (IDR):</p>
-                        <p id="detailBeforeDiscount" class="text-gray-900"></p>
+                        <p class="text-gray-700 font-semibold">Nilai (IDR):</p>
+                        <p id="detailValue" class="text-gray-900"></p>
                     </div>
                     <div class="detail-item">
                         <p class="text-gray-700 font-semibold">Diskon:</p>
                         <p id="detailDiscount" class="text-gray-900"></p>
                     </div>
                     <div class="detail-item">
-                        <p class="text-gray-700 font-semibold">Nilai (IDR):</p>
-                        <p id="detailValue" class="text-gray-900"></p>
+                        <p class="text-gray-700 font-semibold">Sebelum Diskon (IDR):</p>
+                        <p id="detailBeforeDiscount" class="text-gray-900"></p>
                     </div>
                     <div class="detail-item">
                         <p class="text-gray-700 font-semibold">Paket:</p>
@@ -1113,7 +1108,6 @@
                     </p>
                 </div>
                 <div class="mt-2 flex justify-between items-center deal-footer">
-                    <span class="text-xs text-gray-500">Plan PO: ${deal.planPO || '-'}</span>
                     <span class="text-xs text-gray-500">Dibuat: ${formatDate(deal.createdAt)}</span>
                     <div class="flex space-x-1 deal-actions">
                         <button onclick="openDealDetailModal('${deal.id}')" class="text-blue-600 hover:text-blue-800">
@@ -1215,10 +1209,28 @@
             inputElement.value = new Intl.NumberFormat('id-ID').format(numberValue);
         }
 
-        // Fungsi untuk menghitung nilai deal setelah diskon dan memformat input
-        function formatAndCalculateValue() {
-            formatNumberInput(document.getElementById('beforeDiscount')); // Format input beforeDiscount
-            calculateValue(); // Kemudian hitung nilai dan format input value
+        // Fungsi untuk menghitung nilai sebelum diskon berdasarkan nilai dan diskon
+        function calculateBeforeDiscount() {
+            const valueRaw = document.getElementById('value').value.replace(/[^0-9]/g, '');
+            const value = parseFloat(valueRaw) || 0;
+            
+            const discount = parseFloat(document.getElementById('discount').value) || 0;
+            
+            let calculatedBeforeDiscount = value;
+            if (discount > 0 && discount <= 100) {
+                calculatedBeforeDiscount = value / (1 - (discount / 100));
+            }
+            
+            // Set nilai ke input 'beforeDiscount' dan format
+            const beforeDiscountInput = document.getElementById('beforeDiscount');
+            beforeDiscountInput.value = calculatedBeforeDiscount.toFixed(0); // Tetapkan nilai numerik tanpa format dulu
+            formatNumberInput(beforeDiscountInput); // Kemudian format untuk tampilan
+        }
+
+        // Fungsi untuk memformat input nilai dan menghitung sebelum diskon
+        function formatAndCalculateBeforeDiscount() {
+            formatNumberInput(document.getElementById('value')); // Format input value
+            calculateBeforeDiscount(); // Kemudian hitung nilai beforeDiscount
         }
 
         // Fungsi untuk membuka modal deal
@@ -1300,17 +1312,14 @@
                     document.getElementById('salesName').value = deal.salesName || '';
                     document.getElementById('dealName').value = deal.dealName || '';
                     
-                    // Set nilai untuk beforeDiscount dan value, lalu format
-                    const beforeDiscountInput = document.getElementById('beforeDiscount');
-                    beforeDiscountInput.value = deal.beforeDiscount || '';
-                    formatNumberInput(beforeDiscountInput); // Format saat mengisi
-
-                    document.getElementById('discount').value = deal.discount || '';
-                    
+                    // Set nilai untuk value dan discount, lalu hitung beforeDiscount
                     const valueInput = document.getElementById('value');
                     valueInput.value = deal.value || '';
                     formatNumberInput(valueInput); // Format saat mengisi
 
+                    document.getElementById('discount').value = deal.discount || '';
+                    calculateBeforeDiscount(); // Hitung beforeDiscount setelah value dan discount diisi
+                    
                     document.getElementById('package').value = deal.package || '';
                     
                     // Set nilai untuk dropdown Product
@@ -1361,7 +1370,6 @@
                         document.getElementById('newPic').value = deal.pic || '';
                     }
 
-                    // document.getElementById('projectDate').value = deal.projectDate ? deal.projectDate.toDate().toISOString().split('T')[0] : ''; // Dihapus
                     document.getElementById('planPO').value = deal.planPO || ''; // New: Set Plan PO
                     document.getElementById('stage').value = deal.stage || DEFAULT_STAGE;
                     document.getElementById('priority').value = deal.priority || 'cold';
@@ -1393,25 +1401,6 @@
             }, { once: true });
         }
 
-        // Fungsi untuk menghitung nilai deal setelah diskon
-        function calculateValue() {
-            // Ambil nilai sebelum diskon, hapus separator ribuan terlebih dahulu
-            const beforeDiscountRaw = document.getElementById('beforeDiscount').value.replace(/[^0-9]/g, '');
-            const beforeDiscount = parseFloat(beforeDiscountRaw) || 0;
-            
-            const discount = parseFloat(document.getElementById('discount').value) || 0;
-            
-            let calculatedValue = beforeDiscount;
-            if (discount > 0) {
-                calculatedValue = beforeDiscount * (1 - (discount / 100));
-            }
-            
-            // Set nilai ke input 'value' dan format
-            const valueInput = document.getElementById('value');
-            valueInput.value = calculatedValue.toFixed(0); // Tetapkan nilai numerik tanpa format dulu
-            formatNumberInput(valueInput); // Kemudian format untuk tampilan
-        }
-
         // Fungsi untuk menyimpan atau memperbarui deal
         async function saveDeal() {
             const dealId = document.getElementById('dealId').value;
@@ -1419,14 +1408,14 @@
             const salesName = document.getElementById('salesName').value;
             
             // Ambil nilai numerik murni dari input yang sudah diformat
-            const beforeDiscountRaw = document.getElementById('beforeDiscount').value.replace(/[^0-9]/g, '');
-            const beforeDiscount = parseFloat(beforeDiscountRaw) || 0;
-            
-            const discount = parseFloat(document.getElementById('discount').value) || 0;
-            
-            // Ambil nilai numerik murni dari input 'value'
             const valueRaw = document.getElementById('value').value.replace(/[^0-9]/g, '');
             const value = parseFloat(valueRaw) || 0;
+
+            const discount = parseFloat(document.getElementById('discount').value) || 0;
+            
+            // Ambil nilai numerik murni dari input 'beforeDiscount' (yang sekarang dihitung)
+            const beforeDiscountRaw = document.getElementById('beforeDiscount').value.replace(/[^0-9]/g, '');
+            const beforeDiscount = parseFloat(beforeDiscountRaw) || 0;
 
             const packageType = document.getElementById('package').value;
             
@@ -1466,7 +1455,6 @@
                 pic = document.getElementById('pic').value;
             }
 
-            // const projectDate = document.getElementById('projectDate').value; // Dihapus
             const planPO = document.getElementById('planPO').value; // New: Get Plan PO
             const stage = document.getElementById('stage').value;
             const priority = document.getElementById('priority').value;
@@ -1490,7 +1478,6 @@
                 consultant: consultant,
                 contractor: contractor,
                 pic: pic,
-                // projectDate: projectDate ? firebase.firestore.Timestamp.fromDate(new Date(projectDate)) : null, // Dihapus
                 planPO: planPO, // New: Add Plan PO to dealData
                 stage: stage,
                 priority: priority,
@@ -1594,9 +1581,9 @@
 
             document.getElementById('dealDetailTitle').textContent = deal.dealName || 'Detail Deal';
             document.getElementById('detailSalesName').textContent = deal.salesName || '-';
-            document.getElementById('detailBeforeDiscount').textContent = `Rp ${formatNumber(deal.beforeDiscount) || '0'}`;
-            document.getElementById('detailDiscount').textContent = `${deal.discount || '0'}%`;
             document.getElementById('detailValue').textContent = `Rp ${formatNumber(deal.value) || '0'}`;
+            document.getElementById('detailDiscount').textContent = `${deal.discount || '0'}%`;
+            document.getElementById('detailBeforeDiscount').textContent = `Rp ${formatNumber(deal.beforeDiscount) || '0'}`;
             document.getElementById('detailPackage').textContent = deal.package || '-';
             document.getElementById('detailProduct').textContent = deal.product || '-';
             document.getElementById('detailFacility').textContent = deal.facility || '-';
