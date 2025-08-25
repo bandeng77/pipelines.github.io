@@ -1781,6 +1781,10 @@
 
         // ==================== FUNGSI STATISTIK ====================
 
+        // Variabel global untuk menyimpan data agregat sales
+        let salesValue = {};
+        let salesWinCount = {};
+
         // Fungsi untuk memproses data deals menjadi format yang siap untuk chart
         function processDealDataForCharts(dealsData) {
             // Ambil semua opsi tahap dari elemen select#stage
@@ -1800,8 +1804,8 @@
                 winRateData: [], // Akan diisi dari winRateDataMap
                 dealsBySalesLabels: [],
                 dealsBySalesData: [],
-                dealsByProductLabels: [], // Changed from dealsByProductPackageLabels
-                dealsByProductData: [],   // Changed from dealsByProductPackageData
+                dealsByProductLabels: [],
+                dealsByProductData: [],
                 pipelineValueLabels: [],
                 pipelineValueData: []
             };
@@ -1813,10 +1817,10 @@
                 'Large (> Rp 2 Miliar)': 0
             };
             const dealsBySales = {};
-            const salesValue = {}; // New: To store total value per sales
-            const salesWinCount = {}; // New: To store win count per sales
-            const dealsByProduct = {}; // Changed from dealsByProductPackage
-            const pipelineValueByMonth = {}; // Untuk nilai pipeline seiring waktu
+            salesValue = {}; // Reset global salesValue
+            salesWinCount = {}; // Reset global salesWinCount
+            const dealsByProduct = {};
+            const pipelineValueByMonth = {};
 
             dealsData.forEach(deal => {
                 // Deal Size
@@ -1847,13 +1851,13 @@
                 }
 
                 // Deals By Product (menggunakan product)
-                const productKey = deal.product || 'Unknown Product'; // Changed to product
-                dealsByProduct[productKey] = (dealsByProduct[productKey] || 0) + 1; // Changed to product
+                const productKey = deal.product || 'Unknown Product';
+                dealsByProduct[productKey] = (dealsByProduct[productKey] || 0) + 1;
 
                 // Pipeline Value Over Time (menggunakan createdAt)
                 // Hanya sertakan deal yang belum 'lost' atau 'win' untuk pipeline value
                 if (deal.stage !== 'lost' && deal.stage !== 'win') {
-                    const dateSource = deal.createdAt; // Gunakan createdAt sebagai sumber tanggal
+                    const dateSource = deal.createdAt;
                     if (dateSource && typeof dateSource.toDate === 'function') {
                         const date = dateSource.toDate();
                         // Format tanggal sesuai permintaan: "Bulan Tahun"
@@ -1873,11 +1877,11 @@
             stats.winRateData = stats.winRateLabels.map(stage => winRateDataMap[stage]);
 
             // Update dealsBySalesLabels dan dealsBySalesData untuk menyertakan nilai dan win count
-            stats.dealsBySalesLabels = Object.keys(dealsBySales); // Hanya nama sales
+            stats.dealsBySalesLabels = Object.keys(dealsBySales);
             stats.dealsBySalesData = Object.values(dealsBySales);
 
-            stats.dealsByProductLabels = Object.keys(dealsByProduct); // Changed to product
-            stats.dealsByProductData = Object.values(dealsByProduct);   // Changed to product
+            stats.dealsByProductLabels = Object.keys(dealsByProduct);
+            stats.dealsByProductData = Object.values(dealsByProduct);
 
             // Urutkan data pipeline value berdasarkan bulan
             const sortedMonths = Object.keys(pipelineValueByMonth).sort((a, b) => {
@@ -2018,7 +2022,7 @@
                                     const salesName = processedStats.dealsBySalesLabels[context.dataIndex];
                                     const totalValue = salesValue[salesName] || 0;
                                     const winCount = salesWinCount[salesName] || 0;
-                                    return `${label}${context.raw} (Rp ${formatNumber(totalValue)} / Win: ${winCount})`;
+                                    return `${label}${context.raw} (Total IDR: Rp ${formatNumber(totalValue)} / Win: ${winCount})`;
                                 }
                             }
                         }
@@ -2040,10 +2044,10 @@
             charts.dealsByProductPackageChart = new Chart(dealsByProductPackageCtx, {
                 type: 'pie',
                 data: {
-                    labels: processedStats.dealsByProductLabels, // Changed to dealsByProductLabels
+                    labels: processedStats.dealsByProductLabels,
                     datasets: [{
                         label: 'Jumlah Deal',
-                        data: processedStats.dealsByProductData, // Changed to dealsByProductData
+                        data: processedStats.dealsByProductData,
                         backgroundColor: [
                             '#F97316', '#14B8A6', '#8B5CF6', '#EC4899', '#FACC15',
                             '#3B82F6', '#EF4444', '#06B6D4', '#A855F7', '#F43F5E',
