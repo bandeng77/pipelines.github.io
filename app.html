@@ -410,9 +410,10 @@
                                     <option value="Engineering">Engineering</option>
                                 </select>
                                 <!-- Tambahkan filter sales di sini -->
-                                <select id="filterSales" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm hidden">
+                                <!-- Elemen ini tidak lagi hidden karena akan digunakan untuk filter -->
+                                <!-- <select id="filterSales" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm hidden">
                                     <option value="all">Semua Sales</option>
-                                </select>
+                                </select> -->
                             </div>
                             <div class="mb-3" id="stageFieldContainer">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="stage">Tahap <span class="text-red-500">*</span></label>
@@ -1277,6 +1278,11 @@
         // Fungsi untuk mengisi dropdown dengan opsi unik
         function populateDropdown(selectElementId, uniqueValues, selectedValue = 'all') { // Default selectedValue changed to 'all'
             const selectElement = document.getElementById(selectElementId);
+            if (!selectElement) { // Tambahkan pengecekan null/undefined
+                console.warn(`Element with ID '${selectElementId}' not found.`);
+                return;
+            }
+
             selectElement.innerHTML = ''; // Bersihkan opsi yang ada
 
             // Tambahkan opsi default "Semua X"
@@ -2250,7 +2256,7 @@
                     const matchesStage = stageFilter === 'all' || 
                                          (deal.stage && deal.stage === stageFilter);
 
-                    const matchesSales = salesFilter === 'all' || // Tambahkan ini
+                    const matchesSales = salesFilter === 'all' || 
                                          (deal.salesName && deal.salesName === salesFilter); // Tambahkan ini
 
                     const matchesConsultant = consultantFilter === 'all' || 
