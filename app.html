@@ -723,11 +723,16 @@
             'rory@genetek.co.id',
             'rangga@genetek.co.id',
             'dhea@genetek.co.id',
-            'david@genetek.co.id',
-            'hadi@genetek.co.id',
-            'engineering@genetek.co.id',
             'yib_wahyu@genetek.co.id',
+        ];
+
+        // Daftar email manager yang akan memiliki role 'manager'
+        const managerEmails = [
+            'hadi@genetek.co.id',
+            'david@genetek.co.id',
             'crenata@genetek.co.id',
+            'agoesdh@genetek.co.id',
+            'satriopk@genetek.co.id',
         ];
 
         // ==================== FUNGSI UTAMA ====================
@@ -760,6 +765,12 @@
                             role: 'admin',
                             email: user.email 
                         }, { merge: true });
+                    } else if (managerEmails.includes(user.email)) { // Cek apakah email termasuk manager
+                        currentUserRole = 'manager'; // Set role sebagai 'manager'
+                        await usersCollection.doc(user.uid).set({ 
+                            role: 'manager',
+                            email: user.email 
+                        }, { merge: true });
                     } else if (salesEmails.includes(user.email)) { // Cek apakah email termasuk sales
                         currentUserRole = 'user'; // Set role sebagai 'user' (sales)
                         await usersCollection.doc(user.uid).set({ 
@@ -767,7 +778,7 @@
                             email: user.email 
                         }, { merge: true });
                     } else {
-                        // Jika bukan admin dan bukan sales yang terdaftar, anggap sebagai user biasa
+                        // Jika bukan admin, manager, atau sales yang terdaftar, anggap sebagai user biasa
                         const userDoc = await usersCollection.doc(user.uid).get();
                         currentUserRole = userDoc.exists ? userDoc.data().role : 'user';
                     }
@@ -1025,6 +1036,14 @@
 
                     querySnapshot.forEach((doc) => {
                         const dealData = doc.data();
+                        // Pastikan createdAt adalah objek Timestamp yang benar
+                        if (dealData.createdAt && typeof dealData.createdAt.toDate !== 'function') {
+                            if (dealData.createdAt.seconds !== undefined && dealData.createdAt.nanoseconds !== undefined) {
+                                dealData.createdAt = new firebase.firestore.Timestamp(dealData.createdAt.seconds, dealData.createdAt.nanoseconds);
+                            } else {
+                                dealData.createdAt = null; 
+                            }
+                        }
                         deals.push({ id: doc.id, ...dealData });
 
                         // Kumpulkan nilai unik untuk dropdown
@@ -1728,11 +1747,13 @@
                 // Hanya sertakan deal yang belum 'lost' atau 'win' untuk pipeline value
                 if (deal.stage !== 'lost' && deal.stage !== 'win') {
                     const dateSource = deal.createdAt; // Gunakan createdAt sebagai sumber tanggal
-                    if (dateSource) {
+                    if (dateSource && typeof dateSource.toDate === 'function') {
                         const date = dateSource.toDate();
                         // Format tanggal sesuai permintaan: "Bulan Tahun"
                         const monthYear = date.toLocaleString('id-ID', { month: 'short', year: 'numeric' });
                         pipelineValueByMonth[monthYear] = (pipelineValueByMonth[monthYear] || 0) + deal.value;
+                    } else {
+                        console.warn(`Deal ID: ${deal.id} has invalid or missing createdAt timestamp for pipeline value calculation.`);
                     }
                 }
             });
@@ -1971,6 +1992,7 @@
         function applyUserPermissions() {
             try {
                 const isAdmin = currentUserRole === 'admin';
+                const isManager = currentUserRole === 'manager';
                 
                 console.log("Applying permissions for Role:", currentUserRole);
                 
@@ -1982,8 +2004,8 @@
                 const filterYear = document.getElementById('filterYear'); // Tambahkan ini
                 const filterStage = document.getElementById('filterStage'); // Tambahkan ini
 
-                // Tombol Statistik hanya untuk admin
-                if (viewStatsBtn) viewStatsBtn.classList.toggle('hidden', !isAdmin);
+                // Tombol Statistik hanya untuk admin dan manager
+                if (viewStatsBtn) viewStatsBtn.classList.toggle('hidden', !(isAdmin || isManager));
                 
                 // Tombol Aktivitas selalu terlihat
                 if (activityBtn) activityBtn.classList.remove('hidden');
