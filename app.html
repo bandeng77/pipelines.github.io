@@ -409,6 +409,10 @@
                                     <option value="Hadi">Hadi</option>
                                     <option value="Engineering">Engineering</option>
                                 </select>
+                                <!-- Tambahkan filter sales di sini -->
+                                <select id="filterSales" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm hidden">
+                                    <option value="all">Semua Sales</option>
+                                </select>
                             </div>
                             <div class="mb-3" id="stageFieldContainer">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="stage">Tahap <span class="text-red-500">*</span></label>
@@ -672,6 +676,7 @@
                     </button>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Kolom 1 -->
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterPriority">Prioritas</label>
                         <select id="filterPriority" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
@@ -679,13 +684,6 @@
                             <option value="hot">Hot</option>
                             <option value="warm">Warm</option>
                             <option value="cold">Cold</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterYear">Tahun</label>
-                        <select id="filterYear" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                            <option value="all">Semua Tahun</option>
-                            <!-- Tahun akan diisi secara dinamis oleh JavaScript -->
                         </select>
                     </div>
                     <div>
@@ -703,6 +701,13 @@
                         </select>
                     </div>
                     <div>
+                        <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterSales">Sales</label>
+                        <select id="filterSales" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                            <option value="all">Semua Sales</option>
+                            <!-- Opsi akan diisi secara dinamis oleh JavaScript -->
+                        </select>
+                    </div>
+                    <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterConsultant">Konsultan</label>
                         <select id="filterConsultant" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Konsultan</option>
@@ -716,17 +721,18 @@
                             <!-- Opsi akan diisi secara dinamis oleh JavaScript -->
                         </select>
                     </div>
-                    <div>
-                        <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterFacility">Fasilitas</label>
-                        <select id="filterFacility" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                            <option value="all">Semua Fasilitas</option>
-                            <!-- Opsi akan diisi secara dinamis oleh JavaScript -->
-                        </select>
-                    </div>
+                    <!-- Kolom 2 -->
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterProduct">Produk</label>
                         <select id="filterProduct" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Produk</option>
+                            <!-- Opsi akan diisi secara dinamis oleh JavaScript -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterFacility">Fasilitas</label>
+                        <select id="filterFacility" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                            <option value="all">Semua Fasilitas</option>
                             <!-- Opsi akan diisi secara dinamis oleh JavaScript -->
                         </select>
                     </div>
@@ -738,6 +744,13 @@
                             <option value="M&E">M&E</option>
                             <option value="Fire Fighting Cont">Fire Fighting Cont</option>
                             <option value="Main Kontraktor">Main Kontraktor</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterYear">Tahun</label>
+                        <select id="filterYear" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                            <option value="all">Semua Tahun</option>
+                            <!-- Tahun akan diisi secara dinamis oleh JavaScript -->
                         </select>
                     </div>
                 </div>
@@ -789,7 +802,8 @@
         let uniqueOwners = new Set();
         let uniqueProducts = new Set();
         let uniqueFacilities = new Set();
-        let uniqueYears = new Set(); // Tambahkan ini
+        let uniqueYears = new Set();
+        let uniqueSales = new Set(); // Tambahkan ini
 
         // Daftar email sales yang akan memiliki role 'user'
         const salesEmails = [
@@ -1106,7 +1120,8 @@
                     uniqueOwners.clear();
                     uniqueProducts.clear();
                     uniqueFacilities.clear();
-                    uniqueYears.clear(); // Clear uniqueYears juga
+                    uniqueYears.clear();
+                    uniqueSales.clear(); // Clear uniqueSales juga
 
                     querySnapshot.forEach((doc) => {
                         const dealData = doc.data();
@@ -1127,6 +1142,7 @@
                         if (dealData.owner) uniqueOwners.add(dealData.owner);
                         if (dealData.product) uniqueProducts.add(dealData.product);
                         if (dealData.facility) uniqueFacilities.add(dealData.facility);
+                        if (dealData.salesName) uniqueSales.add(dealData.salesName); // Tambahkan ini
                         
                         // Kumpulkan tahun unik dari createdAt
                         if (dealData.createdAt) {
@@ -1288,6 +1304,9 @@
 
         // Fungsi untuk mengisi dropdown filter tambahan
         function populateFilterDropdowns() {
+            populateDropdown('filterPriority', ['hot', 'warm', 'cold'], document.getElementById('filterPriority').value); // Pastikan ini juga dipanggil
+            populateDropdown('filterStage', ['identified', 'prospect', 'tender-me', 'tender-main-con', 'contract-award', 'win', 'lost', 'on-hold'], document.getElementById('filterStage').value); // Pastikan ini juga dipanggil
+            populateDropdown('filterSales', uniqueSales, document.getElementById('filterSales').value); // Tambahkan ini
             populateDropdown('filterConsultant', uniqueConsultants, document.getElementById('filterConsultant').value);
             populateDropdown('filterContractor', uniqueContractors, document.getElementById('filterContractor').value);
             populateDropdown('filterFacility', uniqueFacilities, document.getElementById('filterFacility').value);
@@ -1854,11 +1873,7 @@
             stats.winRateData = stats.winRateLabels.map(stage => winRateDataMap[stage]);
 
             // Update dealsBySalesLabels dan dealsBySalesData untuk menyertakan nilai dan win count
-            stats.dealsBySalesLabels = Object.keys(dealsBySales).map(sales => {
-                const totalValue = salesValue[sales] || 0;
-                const winCount = salesWinCount[sales] || 0;
-                return `${sales} (Rp ${formatNumber(totalValue)} / Win: ${winCount})`;
-            });
+            stats.dealsBySalesLabels = Object.keys(dealsBySales); // Hanya nama sales
             stats.dealsBySalesData = Object.values(dealsBySales);
 
             stats.dealsByProductLabels = Object.keys(dealsByProduct); // Changed to product
@@ -1991,7 +2006,21 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Jumlah Deal per Sales (Nilai Total / Win Count)'
+                            text: 'Jumlah Deal per Sales' // Ubah judul
+                        },
+                        tooltip: { // Tambahkan konfigurasi tooltip
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    const salesName = processedStats.dealsBySalesLabels[context.dataIndex];
+                                    const totalValue = salesValue[salesName] || 0;
+                                    const winCount = salesWinCount[salesName] || 0;
+                                    return `${label}${context.raw} (Rp ${formatNumber(totalValue)} / Win: ${winCount})`;
+                                }
+                            }
                         }
                     },
                     scales: {
@@ -2186,6 +2215,7 @@
                 const priorityFilter = document.getElementById('filterPriority').value;
                 const yearFilter = document.getElementById('filterYear').value;
                 const stageFilter = document.getElementById('filterStage').value;
+                const salesFilter = document.getElementById('filterSales').value; // Tambahkan ini
                 const consultantFilter = document.getElementById('filterConsultant').value;
                 const contractorFilter = document.getElementById('filterContractor').value;
                 const facilityFilter = document.getElementById('filterFacility').value;
@@ -2193,7 +2223,7 @@
                 const packageFilter = document.getElementById('filterPackage').value;
                 
                 // Jika semua filter kosong, kembalikan ke tampilan default
-                if (searchTerm === '' && priorityFilter === 'all' && yearFilter === 'all' && stageFilter === 'all' &&
+                if (searchTerm === '' && priorityFilter === 'all' && yearFilter === 'all' && stageFilter === 'all' && salesFilter === 'all' && // Tambahkan salesFilter
                     consultantFilter === 'all' && contractorFilter === 'all' && facilityFilter === 'all' &&
                     productFilter === 'all' && packageFilter === 'all') {
                     renderAllDeals();
@@ -2216,6 +2246,9 @@
                     const matchesStage = stageFilter === 'all' || 
                                          (deal.stage && deal.stage === stageFilter);
 
+                    const matchesSales = salesFilter === 'all' || // Tambahkan ini
+                                         (deal.salesName && deal.salesName === salesFilter); // Tambahkan ini
+
                     const matchesConsultant = consultantFilter === 'all' || 
                                               (deal.consultant && deal.consultant === consultantFilter);
                     
@@ -2231,7 +2264,7 @@
                     const matchesPackage = packageFilter === 'all' || 
                                            (deal.package && deal.package === packageFilter);
                     
-                    return matchesSearch && matchesPriority && matchesYear && matchesStage &&
+                    return matchesSearch && matchesPriority && matchesYear && matchesStage && matchesSales && // Tambahkan matchesSales
                            matchesConsultant && matchesContractor && matchesFacility && matchesProduct && matchesPackage;
                 });
                 
@@ -2328,6 +2361,7 @@
             document.getElementById('filterPriority').value = 'all';
             document.getElementById('filterYear').value = 'all';
             document.getElementById('filterStage').value = 'all';
+            document.getElementById('filterSales').value = 'all'; // Tambahkan ini
             document.getElementById('filterConsultant').value = 'all';
             document.getElementById('filterContractor').value = 'all';
             document.getElementById('filterFacility').value = 'all';
