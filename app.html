@@ -1153,7 +1153,7 @@
                     console.log("Total deals loaded (for search/admin view):", deals.length);
                     populateYearDropdown(); // Panggil setelah deals dimuat dan tahun dikumpulkan
                     populateFilterDropdowns(); // Panggil fungsi baru untuk mengisi dropdown filter
-                    renderAllDeals(); // Panggil renderAllDeals setelah deals dimuat
+                    filterDeals(); // Panggil filterDeals() setelah deals dimuat untuk menerapkan filter awal
                 })
                 .catch((error) => {
                     console.error("Error loading deals:", error);
@@ -1238,41 +1238,36 @@
         }
 
         // Fungsi untuk render semua deals (untuk tampilan default pipeline)
+        // Fungsi ini sekarang hanya akan dipanggil jika tidak ada filter yang diterapkan
         function renderAllDeals() {
             const pipelineStage = document.getElementById('pipelines-stage');
             if (!pipelineStage) return;
             
             pipelineStage.innerHTML = ''; // Bersihkan konten pipeline
 
-            if (currentUserRole === 'admin') {
-                // Admin melihat semua deals
-                if (deals.length === 0) {
-                    pipelineStage.innerHTML = `
-                        <div class="empty-stage-message text-center text-gray-400 p-4 text-sm w-full">
-                            <i class="fas fa-inbox text-3xl mb-2"></i>
-                            <p>Tidak ada deals di pipeline.</p>
-                        </div>
-                    `;
-                } else {
-                    deals.forEach(deal => {
-                        const dealCard = renderDeal(deal);
-                        if (dealCard) {
-                            pipelineStage.appendChild(dealCard);
-                        }
-                    });
-                }
-            } else {
-                // User sales tidak melihat deal apapun secara default di tampilan utama
+            // Tentukan deals yang akan ditampilkan berdasarkan role
+            let dealsToDisplay = deals;
+            if (currentUserRole !== 'admin') {
+                dealsToDisplay = deals.filter(deal => deal.stage !== 'lost');
+            }
+
+            if (dealsToDisplay.length === 0) {
                 pipelineStage.innerHTML = `
                     <div class="empty-stage-message text-center text-gray-400 p-4 text-sm w-full">
                         <i class="fas fa-inbox text-3xl mb-2"></i>
-                        <p>Tidak ada data pipeline yang ditampilkan secara default.</p>
-                        <p>Gunakan kolom pencarian di atas untuk mencari deal.</p>
+                        <p>Tidak ada deals di pipeline.</p>
                     </div>
                 `;
+            } else {
+                dealsToDisplay.forEach(deal => {
+                    const dealCard = renderDeal(deal);
+                    if (dealCard) {
+                        pipelineStage.appendChild(dealCard);
+                    }
+                });
             }
 
-            initSortable(); // Inisialisasi ulang SortableJS setelah DOM diperbarui
+            initSortable();
         }
 
         // Fungsi untuk mengisi dropdown dengan opsi unik
@@ -2218,29 +2213,50 @@
         // ==================== FUNGSI LAINNYA ====================
 
         // Fungsi untuk filter deals
-        // Fungsi ini sekarang akan mencari di SEMUA deals yang dimuat ke variabel 'deals'
         function filterDeals() {
             try {
                 const searchTerm = document.getElementById('searchDeals').value.toLowerCase();
                 const priorityFilter = document.getElementById('filterPriority').value;
                 const yearFilter = document.getElementById('filterYear').value;
                 const stageFilter = document.getElementById('filterStage').value;
-                const salesFilter = document.getElementById('filterSales').value; // Tambahkan ini
+                const salesFilter = document.getElementById('filterSales').value;
                 const consultantFilter = document.getElementById('filterConsultant').value;
                 const contractorFilter = document.getElementById('filterContractor').value;
                 const facilityFilter = document.getElementById('filterFacility').value;
                 const productFilter = document.getElementById('filterProduct').value;
                 const packageFilter = document.getElementById('filterPackage').value;
                 
-                // Jika semua filter kosong, kembalikan ke tampilan default
-                if (searchTerm === '' && priorityFilter === 'all' && yearFilter === 'all' && stageFilter === 'all' && salesFilter === 'all' && // Tambahkan salesFilter
-                    consultantFilter === 'all' && contractorFilter === 'all' && facilityFilter === 'all' &&
-                    productFilter === 'all' && packageFilter === 'all') {
-                    renderAllDeals();
-                    return;
+                // Tentukan deals dasar yang akan difilter berdasarkan role
+                let baseDeals = deals;
+                if (currentUserRole !== 'admin') {
+                    baseDeals = deals.filter(deal => deal.stage !== 'lost');
                 }
 
-                const filteredDeals = deals.filter(deal => {
+                // Jika semua filter kosong, dan user bukan admin, tampilkan pesan default
+                if (searchTerm === '' && priorityFilter === 'all' && yearFilter === 'all' && stageFilter === 'all' && salesFilter === 'all' &&
+                    consultantFilter === 'all' && contractorFilter === 'all' && facilityFilter === 'all' &&
+                    productFilter === 'all' && packageFilter === 'all') {
+                    
+                    if (currentUserRole !== 'admin') {
+                        const pipelineStage = document.getElementById('pipelines-stage');
+                        if (pipelineStage) {
+                            pipelineStage.innerHTML = `
+                                <div class="empty-stage-message text-center text-gray-400 p-4 text-sm w-full">
+                                    <i class="fas fa-inbox text-3xl mb-2"></i>
+                                    <p>Tidak ada data pipeline yang ditampilkan secara default.</p>
+                                    <p>Gunakan kolom pencarian di atas untuk mencari deal.</p>
+                                </div>
+                            `;
+                        }
+                        return; // Keluar dari fungsi karena tidak ada filter yang diterapkan dan tampilan default sudah diatur
+                    } else {
+                        // Jika admin dan tidak ada filter, render semua deals (termasuk yang lost)
+                        renderFilteredDeals(baseDeals); // Panggil renderFilteredDeals dengan baseDeals (semua deals untuk admin)
+                        return;
+                    }
+                }
+
+                const filteredDeals = baseDeals.filter(deal => {
                     const matchesSearch = 
                         (deal.dealName && deal.dealName.toLowerCase().includes(searchTerm)) ||
                         (deal.company && deal.company.toLowerCase().includes(searchTerm)) || 
@@ -2257,7 +2273,7 @@
                                          (deal.stage && deal.stage === stageFilter);
 
                     const matchesSales = salesFilter === 'all' || 
-                                         (deal.salesName && deal.salesName === salesFilter); // Tambahkan ini
+                                         (deal.salesName && deal.salesName === salesFilter);
 
                     const matchesConsultant = consultantFilter === 'all' || 
                                               (deal.consultant && deal.consultant === consultantFilter);
@@ -2274,7 +2290,7 @@
                     const matchesPackage = packageFilter === 'all' || 
                                            (deal.package && deal.package === packageFilter);
                     
-                    return matchesSearch && matchesPriority && matchesYear && matchesStage && matchesSales && // Tambahkan matchesSales
+                    return matchesSearch && matchesPriority && matchesYear && matchesStage && matchesSales &&
                            matchesConsultant && matchesContractor && matchesFacility && matchesProduct && matchesPackage;
                 });
                 
