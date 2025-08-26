@@ -94,7 +94,7 @@
             
             if (user && window.location.pathname.includes('login.html')) {
                 console.log("User already logged in, redirecting...");
-                window.location.replace('app');
+                window.location.replace('app.html');
             }
         });
 
@@ -120,7 +120,7 @@
                 await firebase.auth().signInWithEmailAndPassword(email, password);
                 
                 // Redirect ke app.html
-                window.location.replace('app');
+                window.location.replace('app.html');
             } catch (error) {
                 console.error("Login error:", error);
                 let errorMsg = "Email atau password salah";
