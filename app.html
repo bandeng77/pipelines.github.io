@@ -503,7 +503,7 @@
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="contractor">Kontraktor</label>
                                 <div id="contractorList" class="space-y-2 mb-2">
-                                    <!-- Kontraktor yang dipilih akan ditambahkan di sini secara dinamis -->
+                                    <!-- Kontraktor yang dipilih akan ditambahkan di sini secara dinamis oleh JS -->
                                 </div>
                                 <button type="button" onclick="addContractorField()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded-lg text-xs flex items-center">
                                     <i class="fas fa-plus mr-1"></i> Tambah Kontraktor
@@ -1371,10 +1371,10 @@
         function addContractorField(initialValue = '') {
             const contractorListDiv = document.getElementById('contractorList');
             const newContractorDiv = document.createElement('div');
-            newContractorDiv.className = 'flex items-center space-x-2';
+            newContractorDiv.className = 'flex items-center space-x-2 mb-2'; // Tambahkan mb-2 untuk jarak antar field
 
-            const selectId = `contractor-${Date.now()}`; // ID unik untuk setiap select
-            const inputId = `newContractor-${Date.now()}`; // ID unik untuk setiap input
+            const selectId = `contractor-select-${Date.now()}`; // ID unik untuk setiap select
+            const inputId = `contractor-input-${Date.now()}`; // ID unik untuk setiap input
 
             newContractorDiv.innerHTML = `
                 <select id="${selectId}" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
@@ -1576,7 +1576,7 @@
                 document.getElementById('stage').value = DEFAULT_STAGE;
                 document.getElementById('priority').value = 'cold';
                 // MODIFIKASI: Pastikan satu field kontraktor kosong ditambahkan untuk deal baru
-                addContractorField(); 
+                addContractorField(); // Panggil ini untuk menambahkan field kontraktor awal
             }
             
             dealModal.classList.remove('hidden');
@@ -1645,7 +1645,8 @@
             const contractorInputs = document.querySelectorAll('#contractorList select, #contractorList input[type="text"]');
             const collectedContractors = new Set(); // Gunakan Set untuk menghindari duplikasi
 
-            for (let i = 0; i < contractorInputs.length; i += 2) { // Iterasi 2 per 2 (select dan input)
+            // Iterasi melalui setiap pasangan select dan input teks
+            for (let i = 0; i < contractorInputs.length; i += 2) {
                 const selectElement = contractorInputs[i];
                 const textInputElement = contractorInputs[i + 1];
 
