@@ -1886,6 +1886,8 @@
         // Variabel global untuk menyimpan data agregat sales
         let salesValue = {};
         let salesWinCount = {};
+        // Variabel global untuk menyimpan data agregat produk
+        let productValue = {}; // Tambahkan variabel global ini
 
         // Fungsi untuk memproses data deals menjadi format yang siap untuk chart
         function processDealDataForCharts(dealsData) {
@@ -1922,6 +1924,7 @@
             salesValue = {}; // Reset global salesValue
             salesWinCount = {}; // Reset global salesWinCount
             const dealsByProduct = {};
+            productValue = {}; // Reset global productValue
             const pipelineValueByMonth = {};
 
             dealsData.forEach(deal => {
@@ -1955,6 +1958,7 @@
                 // Deals By Product (menggunakan product)
                 const productKey = deal.product || 'Unknown Product';
                 dealsByProduct[productKey] = (dealsByProduct[productKey] || 0) + 1;
+                productValue[productKey] = (productValue[productKey] || 0) + (deal.value || 0); // Akumulasi nilai per produk
 
                 // Pipeline Value Over Time (menggunakan createdAt)
                 // Hanya sertakan deal yang belum 'lost' atau 'win' untuk pipeline value
@@ -2164,6 +2168,19 @@
                         title: {
                             display: true,
                             text: 'Deal per Produk' // Changed title
+                        },
+                        tooltip: { // Tambahkan konfigurasi tooltip
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || ''; // Label produk
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    const product = processedStats.dealsByProductLabels[context.dataIndex];
+                                    const totalValue = productValue[product] || 0; // Ambil total nilai produk
+                                    return `${label}${context.raw} (Total IDR: Rp ${formatNumber(totalValue)})`;
+                                }
+                            }
                         }
                     }
                 }
