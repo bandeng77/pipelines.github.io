@@ -806,6 +806,7 @@
         const dealsCollection = db.collection('deals');
         const activitiesCollection = db.collection('activities');
         const usersCollection = db.collection('users');
+        // const consultantsCollection = db.collection('consultants'); // NEW: Koleksi terpisah untuk konsultan - DIKOMENTARI KARENA MENGAMBIL DARI GITHUB JSON
 
         let deals = []; // Variabel ini akan menyimpan SEMUA deals yang bisa diakses oleh user saat ini
         let activities = [];
@@ -816,7 +817,7 @@
         let authInitialized = false;
 
         // Variabel untuk menyimpan daftar unik Konsultan, Kontraktor, PIC, Owner, Produk, Fasilitas, dan Tahun
-        let uniqueConsultants = new Set();
+        let uniqueConsultants = new Set(); // Akan diisi dari consultants.json
         let uniqueContractors = new Set();
         let uniquePICs = new Set();
         let uniqueOwners = new Set();
@@ -900,6 +901,9 @@
                     applyUserPermissions();
                     // loadDealsFromFirebase() akan dipanggil di applyUserPermissions()
                     loadActivitiesFromFirebase(); // Memuat semua aktivitas untuk semua role
+                    
+                    // NEW: Muat konsultan dari GitHub JSON
+                    await loadConsultantsFromFirebase(); 
                     
                     initEventListeners(); // Panggil ini setelah elemen DOM dipastikan ada
                 } catch (error) {
@@ -1129,78 +1133,101 @@
             });
         }
 
+        // NEW: Fungsi untuk memuat konsultan dari GitHub JSON
+        async function loadConsultantsFromFirebase() {
+            console.log("Loading consultants from GitHub JSON...");
+            uniqueConsultants.clear(); // Bersihkan set yang ada
+            try {
+                // GANTI URL INI DENGAN URL MENTAH (RAW) DARI FILE consultants.json DI GITHUB ANDA
+                // Contoh: https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME/main/consultants.json
+                const response = await fetch('https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME/main/consultants.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                data.forEach(consultantName => {
+                    if (consultantName) {
+                        uniqueConsultants.add(consultantName);
+                    }
+                });
+                console.log("Consultants loaded from JSON:", uniqueConsultants.size);
+            } catch (error) {
+                console.error("Error loading consultants from JSON:", error);
+                showToast("Gagal memuat daftar konsultan dari GitHub.", 3000);
+            }
+        }
+
         // Fungsi untuk memuat deals dari Firebase
         // Fungsi ini akan memuat SEMUA deals ke variabel 'deals' untuk semua user.
-        function loadDealsFromFirebase() {
+        async function loadDealsFromFirebase() {
             console.log("Loading deals from Firebase...");
             
             let query = dealsCollection.orderBy("createdAt", "desc");
             
-            query.get()
-                .then((querySnapshot) => {
-                    deals = []; // Reset array deals
-                    uniqueConsultants.clear();
-                    uniqueContractors.clear();
-                    uniquePICs.clear();
-                    uniqueOwners.clear();
-                    uniqueProducts.clear();
-                    uniqueFacilities.clear();
-                    uniqueYears.clear();
-                    uniqueSales.clear(); // Clear uniqueSales juga
+            try {
+                const querySnapshot = await query.get();
+                deals = []; // Reset array deals
+                // uniqueConsultants.clear(); // Tidak lagi dibersihkan di sini, karena diisi dari loadConsultantsFromFirebase
+                uniqueContractors.clear();
+                uniquePICs.clear();
+                uniqueOwners.clear();
+                uniqueProducts.clear();
+                uniqueFacilities.clear();
+                uniqueYears.clear();
+                uniqueSales.clear(); // Clear uniqueSales juga
 
-                    querySnapshot.forEach((doc) => {
-                        const dealData = doc.data();
-                        // Pastikan createdAt adalah objek Timestamp yang benar
-                        if (dealData.createdAt && typeof dealData.createdAt.toDate !== 'function') {
-                            if (dealData.createdAt.seconds !== undefined && dealData.createdAt.nanoseconds !== undefined) {
-                                dealData.createdAt = new firebase.firestore.Timestamp(dealData.createdAt.seconds, dealData.createdAt.nanoseconds);
-                            } else {
-                                dealData.createdAt = null; 
-                            }
+                querySnapshot.forEach((doc) => {
+                    const dealData = doc.data();
+                    // Pastikan createdAt adalah objek Timestamp yang benar
+                    if (dealData.createdAt && typeof dealData.createdAt.toDate !== 'function') {
+                        if (dealData.createdAt.seconds !== undefined && dealData.createdAt.nanoseconds !== undefined) {
+                            dealData.createdAt = new firebase.firestore.Timestamp(dealData.createdAt.seconds, dealData.createdAt.nanoseconds);
+                        } else {
+                            dealData.createdAt = null; 
                         }
-                        deals.push({ id: doc.id, ...dealData });
+                    }
+                    deals.push({ id: doc.id, ...dealData });
 
-                        // Kumpulkan nilai unik untuk dropdown
-                        if (dealData.consultant) uniqueConsultants.add(dealData.consultant);
-                        // MODIFIKASI: Kumpulkan nilai unik untuk kontraktor (mendukung array dan string)
-                        if (dealData.contractor) {
-                            if (Array.isArray(dealData.contractor)) {
-                                dealData.contractor.forEach(c => {
-                                    if (c) uniqueContractors.add(c);
-                                });
-                            } else { // Untuk kompatibilitas mundur dengan data lama (string)
-                                uniqueContractors.add(dealData.contractor);
-                            }
+                    // Kumpulkan nilai unik untuk dropdown (selain konsultan)
+                    // if (dealData.consultant) uniqueConsultants.add(dealData.consultant); // Tidak lagi diisi dari deals
+                    // MODIFIKASI: Kumpulkan nilai unik untuk kontraktor (mendukung array dan string)
+                    if (dealData.contractor) {
+                        if (Array.isArray(dealData.contractor)) {
+                            dealData.contractor.forEach(c => {
+                                if (c) uniqueContractors.add(c);
+                            });
+                        } else { // Untuk kompatibilitas mundur dengan data lama (string)
+                            uniqueContractors.add(dealData.contractor);
                         }
-                        if (dealData.pic) uniquePICs.add(dealData.pic);
-                        if (dealData.owner) uniqueOwners.add(dealData.owner);
-                        // MODIFIKASI: Kumpulkan nilai unik untuk produk (mendukung array dan string)
-                        if (dealData.product) {
-                            if (Array.isArray(dealData.product)) {
-                                dealData.product.forEach(p => {
-                                    if (p) uniqueProducts.add(p);
-                                });
-                            } else { // Untuk kompatibilitas mundur dengan data lama (string)
-                                uniqueProducts.add(dealData.product);
-                            }
+                    }
+                    if (dealData.pic) uniquePICs.add(dealData.pic);
+                    if (dealData.owner) uniqueOwners.add(dealData.owner);
+                    // MODIFIKASI: Kumpulkan nilai unik untuk produk (mendukung array dan string)
+                    if (dealData.product) {
+                        if (Array.isArray(dealData.product)) {
+                            dealData.product.forEach(p => {
+                                if (p) uniqueProducts.add(p);
+                            });
+                        } else { // Untuk kompatibilitas mundur dengan data lama (string)
+                            uniqueProducts.add(dealData.product);
                         }
-                        if (dealData.facility) uniqueFacilities.add(dealData.facility);
-                        if (dealData.salesName) uniqueSales.add(dealData.salesName); // Tambahkan ini
-                        
-                        // Kumpulkan tahun unik dari createdAt
-                        if (dealData.createdAt) {
-                            uniqueYears.add(dealData.createdAt.toDate().getFullYear().toString());
-                        }
-                    });
-                    console.log("Total deals loaded (for search/admin view):", deals.length);
-                    populateYearDropdown(); // Panggil setelah deals dimuat dan tahun dikumpulkan
-                    populateFilterDropdowns(); // Panggil fungsi baru untuk mengisi dropdown filter
-                    filterDeals(); // Panggil filterDeals() setelah deals dimuat untuk menerapkan filter awal
-                })
-                .catch((error) => {
-                    console.error("Error loading deals:", error);
-                    showToast("Gagal memuat data deals", 3000);
+                    }
+                    if (dealData.facility) uniqueFacilities.add(dealData.facility);
+                    if (dealData.salesName) uniqueSales.add(dealData.salesName); // Tambahkan ini
+                    
+                    // Kumpulkan tahun unik dari createdAt
+                    if (dealData.createdAt) {
+                        uniqueYears.add(dealData.createdAt.toDate().getFullYear().toString());
+                    }
                 });
+                console.log("Total deals loaded (for search/admin view):", deals.length);
+                populateYearDropdown(); // Panggil setelah deals dimuat dan tahun dikumpulkan
+                populateFilterDropdowns(); // Panggil fungsi baru untuk mengisi dropdown filter
+                filterDeals(); // Panggil filterDeals() setelah deals dimuat untuk menerapkan filter awal
+            } catch (error) {
+                console.error("Error loading deals:", error);
+                showToast("Gagal memuat data deals", 3000);
+            }
         }
 
         // Fungsi untuk render deal card (tidak berubah)
@@ -1738,6 +1765,16 @@
 
             // Ambil nilai konsultan dari hidden input
             let consultant = consultantHiddenInput.value.trim();
+            // NEW: Tambahkan konsultan baru ke daftar unik di memori jika belum ada
+            // Tidak lagi menambahkan ke Firestore 'consultantsCollection' di sini
+            if (consultant && !uniqueConsultants.has(consultant)) {
+                uniqueConsultants.add(consultant); // Tambahkan ke set di memori
+                console.log(`New consultant "${consultant}" added to local list.`);
+                // Jika Anda ingin menyimpan konsultan baru ini secara persisten,
+                // Anda perlu menambahkan logika untuk menyimpannya ke file JSON di GitHub
+                // atau ke database lain yang Anda kelola.
+            }
+
 
             // MODIFIKASI: Kumpulkan semua nilai kontraktor dari field yang ada
             const contractorInputs = document.querySelectorAll('#contractorList select, #contractorList input[type="text"]');
@@ -2538,9 +2575,6 @@
                                                 deal.contractor.includes(contractorFilter) : 
                                                 deal.contractor === contractorFilter));
 
-                    const matchesFacility = facilityFilter === 'all' || 
-                                            (deal.facility && deal.facility === facilityFilter);
-
                     // NEW: Filter untuk multiple produk
                     const matchesProduct = productFilter === 'all' || 
                                            (deal.product && 
@@ -2689,7 +2723,7 @@
                 return;
             }
 
-            // Menggunakan uniqueConsultants yang sudah diisi dari data deals
+            // Menggunakan uniqueConsultants yang sudah diisi dari data consultantsCollection
             const filteredSuggestions = Array.from(uniqueConsultants)
                 .filter(consultant => consultant.toLowerCase().includes(searchTerm))
                 .sort(); // Sort alphabetically
@@ -2716,8 +2750,14 @@
         function handleConsultantSearchBlur() {
             // Use a small delay to allow click event on suggestion to fire first
             setTimeout(() => {
-                if (!consultantHiddenInput.value || consultantHiddenInput.value !== consultantSearchInput.value) {
-                    consultantHiddenInput.value = consultantSearchInput.value.trim();
+                // Jika input teks tidak kosong dan tidak ada di daftar saran yang sudah ada,
+                // maka nilai di input teks akan dianggap sebagai konsultan baru.
+                // Nilai ini akan disimpan ke hidden input dan kemudian ditambahkan ke database saat deal disimpan.
+                const currentInputValue = consultantSearchInput.value.trim();
+                if (currentInputValue !== '') {
+                    consultantHiddenInput.value = currentInputValue;
+                } else {
+                    consultantHiddenInput.value = ''; // Kosongkan jika input teks kosong
                 }
                 consultantSuggestionsDiv.classList.add('hidden'); // Hide suggestions on blur
             }, 100);
