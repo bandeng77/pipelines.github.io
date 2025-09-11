@@ -806,7 +806,7 @@
         const dealsCollection = db.collection('deals');
         const activitiesCollection = db.collection('activities');
         const usersCollection = db.collection('users');
-        // const consultantsCollection = db.collection('consultants'); // NEW: Koleksi terpisah untuk konsultan - DIKOMENTARI KARENA MENGAMBIL DARI GITHUB JSON
+        // const consultantsCollection = db.collection('consultants'); // DIKOMENTARI: Data konsultan sekarang diambil dari GitHub JSON
 
         let deals = []; // Variabel ini akan menyimpan SEMUA deals yang bisa diakses oleh user saat ini
         let activities = [];
@@ -1140,7 +1140,7 @@
             try {
                 // GANTI URL INI DENGAN URL MENTAH (RAW) DARI FILE consultants.json DI GITHUB ANDA
                 // Contoh: https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME/main/consultants.json
-                const response = await fetch('https://raw.githubusercontent.com/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME/main/consultants.json');
+                const response = await fetch('https://raw.githubusercontent.com/bandeng77/pipelines.github.io/main/consultants.json');
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -2508,7 +2508,7 @@
                 const salesFilter = document.getElementById('filterSales').value;
                 const consultantFilter = document.getElementById('filterConsultant').value;
                 const contractorFilter = document.getElementById('filterContractor').value;
-                const facilityFilter = document.getElementById('filterFacility').value;
+                const facilityFilter = document.getElementById('filterFacility').value; 
                 const productFilter = document.getElementById('filterProduct').value;
                 const packageFilter = document.getElementById('filterPackage').value;
                 
@@ -2526,7 +2526,7 @@
                                           salesFilter !== 'all' ||
                                           consultantFilter !== 'all' ||
                                           contractorFilter !== 'all' ||
-                                          facilityFilter !== 'all' ||
+                                          facilityFilter !== 'all' || 
                                           productFilter !== 'all' ||
                                           packageFilter !== 'all';
 
@@ -2581,6 +2581,9 @@
                                             (Array.isArray(deal.product) ? 
                                              deal.product.includes(productFilter) : 
                                              deal.product === productFilter));
+
+                    const matchesFacility = facilityFilter === 'all' || 
+                                            (deal.facility && deal.facility === facilityFilter);
 
                     const matchesPackage = packageFilter === 'all' || 
                                            (deal.package && deal.package === packageFilter);
