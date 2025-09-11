@@ -477,18 +477,12 @@
                             </div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="product">Produk</label>
-                                <select id="product" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                    <option value="">Pilih Produk</option>
-                                    <option value="Fire">Fire</option>
-                                    <option value="Suppresion">Suppresion</option>
-                                    <option value="Vesda">Vesda</option>
-                                    <option value="Maintenance">Maintenance</option>
-                                    <option value="Fire - Water">Fire - Water</option>
-                                    <option value="Mechanical">Mechanical</option>
-                                    <option value="FAS-FSS-FF">FAS-FSS-FF</option>
-                                    <option value="FAS&FSS">FAS&FSS</option>
-                                </select>
-                                <input type="text" id="newProduct" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama produk baru">
+                                <div id="productList" class="space-y-2 mb-2">
+                                    <!-- Produk yang dipilih akan ditambahkan di sini secara dinamis oleh JS -->
+                                </div>
+                                <button type="button" onclick="addProductField()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded-lg text-xs flex items-center">
+                                    <i class="fas fa-plus mr-1"></i> Tambah Produk
+                                </button>
                             </div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="facility">Fasilitas</label>
@@ -831,6 +825,11 @@
         let uniqueYears = new Set();
         let uniqueSales = new Set(); // Tambahkan ini
 
+        // Deklarasi variabel elemen DOM di scope global agar tidak dideklarasikan ulang
+        let facilitySelect, newFacilityInput;
+        let consultantSearchInput, consultantHiddenInput, consultantSuggestionsDiv;
+
+
         // Daftar email sales yang akan memiliki role 'user'
         const salesEmails = [
             'pamungkas@genetek.co.id',
@@ -902,7 +901,7 @@
                     // loadDealsFromFirebase() akan dipanggil di applyUserPermissions()
                     loadActivitiesFromFirebase(); // Memuat semua aktivitas untuk semua role
                     
-                    initEventListeners();
+                    initEventListeners(); // Panggil ini setelah elemen DOM dipastikan ada
                 } catch (error) {
                     console.error("Error checking user role:", error);
                     showToast("Gagal memuat data pengguna. Silakan refresh halaman.", 5000);
@@ -1175,7 +1174,16 @@
                         }
                         if (dealData.pic) uniquePICs.add(dealData.pic);
                         if (dealData.owner) uniqueOwners.add(dealData.owner);
-                        if (dealData.product) uniqueProducts.add(dealData.product);
+                        // MODIFIKASI: Kumpulkan nilai unik untuk produk (mendukung array dan string)
+                        if (dealData.product) {
+                            if (Array.isArray(dealData.product)) {
+                                dealData.product.forEach(p => {
+                                    if (p) uniqueProducts.add(p);
+                                });
+                            } else { // Untuk kompatibilitas mundur dengan data lama (string)
+                                uniqueProducts.add(dealData.product);
+                            }
+                        }
                         if (dealData.facility) uniqueFacilities.add(dealData.facility);
                         if (dealData.salesName) uniqueSales.add(dealData.salesName); // Tambahkan ini
                         
@@ -1301,7 +1309,7 @@
                 });
             }
 
-            initSortable();
+            initSortable(); // Pastikan sortable diinisialisasi ulang
         }
 
         // Fungsi untuk mengisi dropdown dengan opsi unik
@@ -1446,6 +1454,78 @@
             buttonElement.closest('.flex').remove();
         }
 
+        // NEW: Fungsi untuk menambahkan field produk baru
+        function addProductField(initialValue = '') {
+            const productListDiv = document.getElementById('productList');
+            const newProductDiv = document.createElement('div');
+            newProductDiv.className = 'flex items-center space-x-2 mb-2';
+
+            const selectId = `product-select-${Date.now()}`;
+            const inputId = `product-input-${Date.now()}`;
+
+            newProductDiv.innerHTML = `
+                <select id="${selectId}" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                    <option value="">Pilih Produk</option>
+                    <option value="Fire">Fire</option>
+                    <option value="Suppresion">Suppresion</option>
+                    <option value="Vesda">Vesda</option>
+                    <option value="Maintenance">Maintenance</option>
+                    <option value="Fire - Water">Fire - Water</option>
+                    <option value="Mechanical">Mechanical</option>
+                    <option value="FAS-FSS-FF">FAS-FSS-FF</option>
+                    <option value="FAS&FSS">FAS&FSS</option>
+                </select>
+                <input type="text" id="${inputId}" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" placeholder="Atau ketik nama produk baru">
+                <button type="button" onclick="removeProductField(this)" class="text-red-500 hover:text-red-700 p-1">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            productListDiv.appendChild(newProductDiv);
+
+            // Isi dropdown produk yang baru ditambahkan dengan opsi unik
+            const newSelect = document.getElementById(selectId);
+            const newTextInput = document.getElementById(inputId);
+
+            // Tambahkan produk unik lainnya yang mungkin sudah ada di database
+            Array.from(uniqueProducts).sort().forEach(value => {
+                if (value && !['Fire', 'Suppresion', 'Vesda', 'Maintenance', 'Fire - Water', 'Mechanical', 'FAS-FSS-FF', 'FAS&FSS'].includes(value)) {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = value;
+                    newSelect.appendChild(option);
+                }
+            });
+
+            // Set nilai awal jika ada (untuk mode edit)
+            if (initialValue) {
+                if (Array.from(newSelect.options).some(option => option.value === initialValue)) {
+                    newSelect.value = initialValue;
+                    newTextInput.value = '';
+                } else {
+                    newSelect.value = '';
+                    newTextInput.value = initialValue;
+                }
+            }
+
+            // Tambahkan event listener untuk memastikan hanya satu input yang aktif
+            newSelect.addEventListener('change', () => {
+                if (newSelect.value !== '') {
+                    newTextInput.value = '';
+                }
+            });
+
+            newTextInput.addEventListener('input', () => {
+                if (newTextInput.value.trim() !== '') {
+                    newSelect.value = '';
+                }
+            });
+        }
+
+        // NEW: Fungsi untuk menghapus field produk
+        function removeProductField(buttonElement) {
+            buttonElement.closest('.flex').remove();
+        }
+
         // Fungsi untuk membuka modal deal
         function openDealModal(dealId = null) {
             const dealModal = document.getElementById('dealModal');
@@ -1458,42 +1538,24 @@
             document.getElementById('beforeDiscount').value = ''; // Reset juga beforeDiscount
 
             // Reset input teks baru
-            document.getElementById('newConsultant').value = '';
-            document.getElementById('newPic').value = '';
             document.getElementById('newOwner').value = '';
-            document.getElementById('newProduct').value = '';
-            document.getElementById('newFacility').value = ''; // Reset newFacility
+            document.getElementById('newPic').value = '';
+            
+            // Kosongkan input konsultan dan hidden inputnya
+            consultantSearchInput.value = '';
+            consultantHiddenInput.value = '';
+            consultantSuggestionsDiv.innerHTML = '';
+            consultantSuggestionsDiv.classList.add('hidden');
 
-            // Isi dropdown Konsultan, PIC, Owner
-            // populateDropdown('consultant', uniqueConsultants); // Ini tidak lagi digunakan untuk konsultan
+
+            // Isi dropdown PIC, Owner
             populateDropdown('pic', uniquePICs);
             populateDropdown('owner', uniqueOwners);
 
-            // Isi dropdown Produk dengan opsi awal yang spesifik
-            const productSelect = document.getElementById('product');
-            productSelect.innerHTML = `
-                <option value="">Pilih Produk</option>
-                <option value="Fire">Fire</option>
-                <option value="Suppresion">Suppresion</option>
-                <option value="Vesda">Vesda</option>
-                <option value="Maintenance">Maintenance</option>
-                <option value="Fire - Water">Fire - Water</option>
-                <option value="Mechanical">Mechanical</option>
-                <option value="FAS-FSS-FF">FAS-FSS-FF</option>
-                <option value="FAS&FSS">FAS&FSS</option>
-            `;
-            // Tambahkan produk unik lainnya yang mungkin sudah ada di database
-            Array.from(uniqueProducts).sort().forEach(value => {
-                if (value && !['Fire', 'Suppresion', 'Vesda', 'Maintenance', 'Fire - Water', 'Mechanical', 'FAS-FSS-FF', 'FAS&FSS'].includes(value)) {
-                    const option = document.createElement('option');
-                    option.value = value;
-                    option.textContent = value;
-                    productSelect.appendChild(option);
-                }
-            });
+            // MODIFIKASI: Bersihkan daftar produk yang ada sebelum mengisi ulang
+            document.getElementById('productList').innerHTML = '';
 
             // Isi dropdown Fasilitas dengan opsi awal yang spesifik
-            const facilitySelect = document.getElementById('facility');
             facilitySelect.innerHTML = `
                 <option value="">Pilih Fasilitas</option>
                 <option value="Industrial">Industrial</option>
@@ -1513,6 +1575,7 @@
                     facilitySelect.appendChild(option);
                 }
             });
+            newFacilityInput.value = ''; // Kosongkan input teks baru fasilitas
 
             // MODIFIKASI: Bersihkan daftar kontraktor yang ada sebelum mengisi ulang
             document.getElementById('contractorList').innerHTML = '';
@@ -1535,22 +1598,25 @@
                     
                     document.getElementById('package').value = deal.package || '';
                     
-                    // Set nilai untuk dropdown Product
-                    if (deal.product && Array.from(productSelect.options).some(option => option.value === deal.product)) {
-                        document.getElementById('product').value = deal.product;
-                        document.getElementById('newProduct').value = ''; // Kosongkan input teks baru
+                    // MODIFIKASI: Muat multiple produk
+                    if (deal.product && Array.isArray(deal.product) && deal.product.length > 0) {
+                        deal.product.forEach(product => {
+                            addProductField(product);
+                        });
+                    } else if (deal.product) { // Jika masih ada deal lama dengan single produk (string)
+                        addProductField(deal.product);
                     } else {
-                        document.getElementById('product').value = ''; // Pilih opsi default
-                        document.getElementById('newProduct').value = deal.product || ''; // Isi input teks baru
+                        // Jika tidak ada produk sama sekali, tambahkan satu field kosong
+                        addProductField(); 
                     }
 
                     // Set nilai untuk dropdown Facility
                     if (deal.facility && Array.from(facilitySelect.options).some(option => option.value === deal.facility)) {
-                        document.getElementById('facility').value = deal.facility;
-                        document.getElementById('newFacility').value = ''; // Kosongkan input teks baru
+                        facilitySelect.value = deal.facility;
+                        newFacilityInput.value = ''; // Kosongkan input teks baru
                     } else {
-                        document.getElementById('facility').value = ''; // Pilih opsi default
-                        document.getElementById('newFacility').value = deal.facility || ''; // Isi input teks baru
+                        facilitySelect.value = ''; // Pilih opsi default
+                        newFacilityInput.value = deal.facility || ''; // Isi input teks baru
                     }
                     
                     // Set nilai untuk dropdown Owner
@@ -1562,8 +1628,8 @@
                     }
 
                     // Set nilai untuk Konsultan (search input)
-                    document.getElementById('consultantSearch').value = deal.consultant || '';
-                    document.getElementById('consultant').value = deal.consultant || ''; // Set hidden input
+                    consultantSearchInput.value = deal.consultant || '';
+                    consultantHiddenInput.value = deal.consultant || ''; // Set hidden input
 
                     // MODIFIKASI: Muat multiple kontraktor
                     if (deal.contractor && Array.isArray(deal.contractor) && deal.contractor.length > 0) {
@@ -1594,43 +1660,14 @@
                 modalTitle.textContent = 'Tambah Deal Baru';
                 document.getElementById('stage').value = DEFAULT_STAGE;
                 document.getElementById('priority').value = 'cold';
-                document.getElementById('consultantSearch').value = ''; // Kosongkan search input konsultan
-                document.getElementById('consultant').value = ''; // Kosongkan hidden input konsultan
                 // MODIFIKASI: Pastikan satu field kontraktor kosong ditambahkan untuk deal baru
                 addContractorField(); // Panggil ini untuk menambahkan field kontraktor awal
+                addProductField(); // Panggil ini untuk menambahkan field produk awal
             }
             
             dealModal.classList.remove('hidden');
             document.getElementById('dealModalContent').classList.remove('modal-content-leave-active');
             document.getElementById('dealModalContent').classList.add('modal-content-enter-active');
-
-            // Tambahkan event listener untuk produk dan fasilitas
-            const productSelect = document.getElementById('product');
-            const newProductInput = document.getElementById('newProduct');
-            const facilitySelect = document.getElementById('facility');
-            const newFacilityInput = document.getElementById('newFacility');
-
-            productSelect.onchange = () => {
-                if (productSelect.value !== '') {
-                    newProductInput.value = '';
-                }
-            };
-            newProductInput.oninput = () => {
-                if (newProductInput.value.trim() !== '') {
-                    productSelect.value = '';
-                }
-            };
-
-            facilitySelect.onchange = () => {
-                if (facilitySelect.value !== '') {
-                    newFacilityInput.value = '';
-                }
-            };
-            newFacilityInput.oninput = () => {
-                if (newFacilityInput.value.trim() !== '') {
-                    facilitySelect.value = '';
-                }
-            };
         }
 
         // Fungsi untuk menutup modal deal
@@ -1666,16 +1703,31 @@
 
             const packageType = document.getElementById('package').value;
             
-            // Ambil nilai produk dari input teks baru jika ada, jika tidak, ambil dari dropdown
-            let product = document.getElementById('newProduct').value.trim();
-            if (!product) {
-                product = document.getElementById('product').value;
+            // NEW: Kumpulkan semua nilai produk dari field yang ada
+            const productInputs = document.querySelectorAll('#productList select, #productList input[type="text"]');
+            const collectedProducts = new Set(); // Gunakan Set untuk menghindari duplikasi
+
+            for (let i = 0; i < productInputs.length; i += 2) {
+                const selectElement = productInputs[i];
+                const textInputElement = productInputs[i + 1];
+
+                let productValue = '';
+                if (textInputElement.value.trim() !== '') {
+                    productValue = textInputElement.value.trim();
+                } else if (selectElement.value !== '') {
+                    productValue = selectElement.value;
+                }
+
+                if (productValue) {
+                    collectedProducts.add(productValue);
+                }
             }
+            const productsToSave = Array.from(collectedProducts); // Konversi ke array
 
             // Ambil nilai fasilitas dari input teks baru jika ada, jika tidak, ambil dari dropdown
-            let facility = document.getElementById('newFacility').value.trim();
+            let facility = newFacilityInput.value.trim();
             if (!facility) {
-                facility = document.getElementById('facility').value;
+                facility = facilitySelect.value;
             }
             
             // Ambil nilai owner dari input teks baru jika ada, jika tidak, ambil dari dropdown
@@ -1685,7 +1737,7 @@
             }
 
             // Ambil nilai konsultan dari hidden input
-            let consultant = document.getElementById('consultant').value.trim();
+            let consultant = consultantHiddenInput.value.trim();
 
             // MODIFIKASI: Kumpulkan semua nilai kontraktor dari field yang ada
             const contractorInputs = document.querySelectorAll('#contractorList select, #contractorList input[type="text"]');
@@ -1732,7 +1784,7 @@
                 discount: discount,
                 value: value, // Ini sudah numerik
                 package: packageType,
-                product: product,
+                product: productsToSave, // NEW: Simpan sebagai array
                 facility: facility,
                 owner: owner, // New: Add owner to dealData
                 consultant: consultant,
@@ -1845,7 +1897,15 @@
             document.getElementById('detailDiscount').textContent = `${deal.discount || '0'}%`;
             document.getElementById('detailBeforeDiscount').textContent = `Rp ${formatNumber(deal.beforeDiscount) || '0'}`;
             document.getElementById('detailPackage').textContent = deal.package || '-';
-            document.getElementById('detailProduct').textContent = deal.product || '-';
+            // NEW: Menampilkan multiple produk
+            const detailProductElement = document.getElementById('detailProduct');
+            if (deal.product && Array.isArray(deal.product) && deal.product.length > 0) {
+                detailProductElement.textContent = deal.product.join(', ');
+            } else if (deal.product) { // Untuk kompatibilitas mundur dengan data lama (string)
+                detailProductElement.textContent = deal.product;
+            } else {
+                detailProductElement.textContent = '-';
+            }
             document.getElementById('detailFacility').textContent = deal.facility || '-';
             document.getElementById('detailOwner').textContent = deal.owner || '-'; // New: Display Owner
             document.getElementById('detailConsultant').textContent = deal.consultant || '-';
@@ -1905,7 +1965,9 @@
                     if (currentUserRole !== 'admin') return;
                     
                     const dealId = evt.item.dataset.id;
-                    const newStage = 'main-pipeline'; // Karena hanya ada satu stage utama
+                    // Asumsi stage selalu 'main-pipeline' karena hanya ada satu kolom
+                    // Jika ada banyak kolom, Anda perlu mendapatkan ID kolom tujuan dari evt.to.id
+                    const newStage = 'main-pipeline'; 
                     
                     updateDealStage(dealId, newStage);
                 }
@@ -1955,7 +2017,7 @@
                 dealsBySalesLabels: [],
                 dealsBySalesData: [],
                 dealsByProductLabels: [],
-                dealsByProductData: [],
+                    dealsByProductData: [],
                 pipelineValueLabels: [],
                 pipelineValueData: []
             };
@@ -2002,9 +2064,13 @@
                 }
 
                 // Deals By Product (menggunakan product)
-                const productKey = deal.product || 'Unknown Product';
-                dealsByProduct[productKey] = (dealsByProduct[productKey] || 0) + 1;
-                productValue[productKey] = (productValue[productKey] || 0) + (deal.value || 0); // Akumulasi nilai per produk
+                // NEW: Handle multiple products
+                const productsInDeal = Array.isArray(deal.product) ? deal.product : (deal.product ? [deal.product] : []);
+                productsInDeal.forEach(product => {
+                    const productKey = product || 'Unknown Product';
+                    dealsByProduct[productKey] = (dealsByProduct[productKey] || 0) + 1;
+                    productValue[productKey] = (productValue[productKey] || 0) + (deal.value || 0); // Akumulasi nilai per produk
+                });
 
                 // Pipeline Value Over Time (menggunakan createdAt)
                 // Hanya sertakan deal yang belum 'lost' atau 'win' untuk pipeline value
@@ -2332,6 +2398,7 @@
             try {
                 const dealForm = document.getElementById('dealForm');
                 if (dealForm) {
+                    dealForm.removeEventListener('submit', saveDeal); // Hapus listener lama
                     dealForm.addEventListener('submit', function(e) {
                         e.preventDefault();
                         saveDeal();
@@ -2343,12 +2410,13 @@
                     { id: 'viewStatsBtn', func: showStats },
                     { id: 'activityBtn', func: openActivityModal },
                     { id: 'authButton', func: logout },
-                    { id: 'openFilterPanelBtn', func: openFilterPanel } // New: Event listener for the filter button
+                    { id: 'openFilterPanelBtn', func: openFilterPanel }
                 ];
                 
                 buttons.forEach(btn => {
                     const element = document.getElementById(btn.id);
                     if (element) {
+                        // Hapus event listener lama sebelum menambahkan yang baru untuk menghindari duplikasi
                         element.removeEventListener('click', btn.func); 
                         element.addEventListener('click', btn.func);
                         console.log(`Event listener added for ${btn.id}`);
@@ -2361,12 +2429,13 @@
                     searchInput.addEventListener('keyup', filterDeals);
                 }
                 
-                // No longer need individual change listeners for filter dropdowns,
-                // as filterDeals() will be called by applyFiltersAndClosePanel()
-                // or resetFilters().
-                // However, you want real-time filtering as user changes dropdowns inside the panel,
-                // you can re-add them here and call filterDeals() directly.
-                // For a "Terapkan Filter" button, it's better to call filterDeals() only once.
+                // Event listeners untuk fasilitas
+                if (facilitySelect && newFacilityInput) {
+                    facilitySelect.removeEventListener('change', handleFacilitySelectChange);
+                    facilitySelect.addEventListener('change', handleFacilitySelectChange);
+                    newFacilityInput.removeEventListener('input', handleNewFacilityInput);
+                    newFacilityInput.addEventListener('input', handleNewFacilityInput);
+                }
 
                 // Setup consultant search
                 setupConsultantSearch();
@@ -2374,6 +2443,19 @@
             } catch (error) {
                 console.error("Error initializing event listeners:", error);
                 showToast("Gagal memuat beberapa fungsi", 3000);
+            }
+        }
+
+        // Handler functions for facility to avoid inline functions
+        function handleFacilitySelectChange() {
+            if (facilitySelect.value !== '') {
+                newFacilityInput.value = '';
+            }
+        }
+
+        function handleNewFacilityInput() {
+            if (newFacilityInput.value.trim() !== '') {
+                facilitySelect.value = '';
             }
         }
 
@@ -2399,28 +2481,32 @@
                     baseDeals = deals.filter(deal => deal.stage !== 'lost');
                 }
 
-                // Jika semua filter kosong, dan user bukan admin, tampilkan pesan default
-                if (searchTerm === '' && priorityFilter === 'all' && yearFilter === 'all' && stageFilter === 'all' && salesFilter === 'all' &&
-                    consultantFilter === 'all' && contractorFilter === 'all' && facilityFilter === 'all' &&
-                    productFilter === 'all' && packageFilter === 'all') {
-                    
-                    if (currentUserRole !== 'admin') {
-                        const pipelineStage = document.getElementById('pipelines-stage');
-                        if (pipelineStage) {
-                            pipelineStage.innerHTML = `
-                                <div class="empty-stage-message text-center text-gray-400 p-4 text-sm w-full">
-                                    <i class="fas fa-inbox text-3xl mb-2"></i>
-                                    <p>Tidak ada data pipeline yang ditampilkan secara default.</p>
-                                    <p>Gunakan kolom pencarian di atas untuk mencari deal.</p>
-                                </div>
-                            `;
-                        }
-                        return; // Keluar dari fungsi karena tidak ada filter yang diterapkan dan tampilan default sudah diatur
-                    } else {
-                        // Jika admin dan tidak ada filter, render semua deals (termasuk yang lost)
-                        renderFilteredDeals(baseDeals); // Panggil renderFilteredDeals dengan baseDeals (semua deals untuk admin)
-                        return;
+                // Cek apakah ada filter yang aktif (termasuk search term)
+                const isAnyFilterActive = searchTerm !== '' ||
+                                          priorityFilter !== 'all' ||
+                                          yearFilter !== 'all' ||
+                                          stageFilter !== 'all' ||
+                                          salesFilter !== 'all' ||
+                                          consultantFilter !== 'all' ||
+                                          contractorFilter !== 'all' ||
+                                          facilityFilter !== 'all' ||
+                                          productFilter !== 'all' ||
+                                          packageFilter !== 'all';
+
+                // Jika tidak ada filter yang aktif dan user bukan admin, tampilkan pesan default
+                if (!isAnyFilterActive && currentUserRole !== 'admin') {
+                    const pipelineStage = document.getElementById('pipelines-stage');
+                    if (pipelineStage) {
+                        pipelineStage.innerHTML = `
+                            <div class="empty-stage-message text-center text-gray-400 p-4 text-sm w-full">
+                                <i class="fas fa-inbox text-3xl mb-2"></i>
+                                <p>Tidak ada data pipeline yang ditampilkan secara default.</p>
+                                <p>Gunakan kolom pencarian atau filter di atas untuk mencari deal.</p>
+                            </div>
+                        `;
                     }
+                    initSortable(); // Pastikan sortable diinisialisasi ulang meskipun kosong
+                    return; 
                 }
 
                 const filteredDeals = baseDeals.filter(deal => {
@@ -2455,8 +2541,12 @@
                     const matchesFacility = facilityFilter === 'all' || 
                                             (deal.facility && deal.facility === facilityFilter);
 
+                    // NEW: Filter untuk multiple produk
                     const matchesProduct = productFilter === 'all' || 
-                                           (deal.product && deal.product === productFilter);
+                                           (deal.product && 
+                                            (Array.isArray(deal.product) ? 
+                                             deal.product.includes(productFilter) : 
+                                             deal.product === productFilter));
 
                     const matchesPackage = packageFilter === 'all' || 
                                            (deal.package && deal.package === packageFilter);
@@ -2492,6 +2582,7 @@
                 const dealCard = renderDeal(deal);
                 pipelineStage.appendChild(dealCard);
             });
+            initSortable(); // Pastikan sortable diinisialisasi ulang
         }
 
         // Fungsi logout
@@ -2571,68 +2662,79 @@
 
         // ==================== FUNGSI SEARCH KONSULTAN ====================
         function setupConsultantSearch() {
-            const consultantSearchInput = document.getElementById('consultantSearch');
-            const consultantHiddenInput = document.getElementById('consultant');
-            const consultantSuggestionsDiv = document.getElementById('consultantSuggestions');
+            // Pastikan elemen sudah ada sebelum menambahkan event listener
+            if (!consultantSearchInput || !consultantHiddenInput || !consultantSuggestionsDiv) {
+                console.warn("Consultant search elements not found. Skipping setup.");
+                return;
+            }
 
-            consultantSearchInput.addEventListener('input', () => {
-                const searchTerm = consultantSearchInput.value.toLowerCase();
-                consultantSuggestionsDiv.innerHTML = ''; // Clear previous suggestions
+            // Hapus event listener lama sebelum menambahkan yang baru untuk menghindari duplikasi
+            consultantSearchInput.removeEventListener('input', handleConsultantSearchInput);
+            consultantSearchInput.removeEventListener('blur', handleConsultantSearchBlur);
+            consultantSearchInput.removeEventListener('focus', handleConsultantSearchFocus);
+            document.removeEventListener('click', handleDocumentClick); // Hapus juga listener global
 
-                if (searchTerm.length === 0) {
-                    consultantSuggestionsDiv.classList.add('hidden');
-                    return;
-                }
+            consultantSearchInput.addEventListener('input', handleConsultantSearchInput);
+            consultantSearchInput.addEventListener('blur', handleConsultantSearchBlur);
+            consultantSearchInput.addEventListener('focus', handleConsultantSearchFocus);
+            document.addEventListener('click', handleDocumentClick); // Tambahkan kembali listener global
+        }
 
-                const filteredSuggestions = Array.from(uniqueConsultants)
-                    .filter(consultant => consultant.toLowerCase().includes(searchTerm))
-                    .sort(); // Sort alphabetically
+        function handleConsultantSearchInput() {
+            const searchTerm = consultantSearchInput.value.toLowerCase();
+            consultantSuggestionsDiv.innerHTML = ''; // Clear previous suggestions
 
-                if (filteredSuggestions.length > 0) {
-                    filteredSuggestions.forEach(consultant => {
-                        const suggestionItem = document.createElement('div');
-                        suggestionItem.className = 'suggestion-item';
-                        suggestionItem.textContent = consultant;
-                        suggestionItem.addEventListener('click', () => {
-                            consultantSearchInput.value = consultant;
-                            consultantHiddenInput.value = consultant;
-                            consultantSuggestionsDiv.classList.add('hidden');
-                        });
-                        consultantSuggestionsDiv.appendChild(suggestionItem);
+            if (searchTerm.length === 0) {
+                consultantSuggestionsDiv.classList.add('hidden');
+                return;
+            }
+
+            // Menggunakan uniqueConsultants yang sudah diisi dari data deals
+            const filteredSuggestions = Array.from(uniqueConsultants)
+                .filter(consultant => consultant.toLowerCase().includes(searchTerm))
+                .sort(); // Sort alphabetically
+
+            if (filteredSuggestions.length > 0) {
+                filteredSuggestions.forEach(consultant => {
+                    const suggestionItem = document.createElement('div');
+                    suggestionItem.className = 'suggestion-item';
+                    suggestionItem.textContent = consultant;
+                    suggestionItem.addEventListener('click', (e) => {
+                        e.stopPropagation(); // Prevent blur from hiding suggestions immediately
+                        consultantSearchInput.value = consultant;
+                        consultantHiddenInput.value = consultant;
+                        consultantSuggestionsDiv.classList.add('hidden');
                     });
-                    consultantSuggestionsDiv.classList.remove('hidden');
-                } else {
-                    consultantSuggestionsDiv.classList.add('hidden');
-                }
-            });
+                    consultantSuggestionsDiv.appendChild(suggestionItem);
+                });
+                consultantSuggestionsDiv.classList.remove('hidden');
+            } else {
+                consultantSuggestionsDiv.classList.add('hidden');
+            }
+        }
 
-            // Hide suggestions when clicking outside
-            document.addEventListener('click', (event) => {
-                if (!consultantSearchInput.contains(event.target) && !consultantSuggestionsDiv.contains(event.target)) {
-                    consultantSuggestionsDiv.classList.add('hidden');
+        function handleConsultantSearchBlur() {
+            // Use a small delay to allow click event on suggestion to fire first
+            setTimeout(() => {
+                if (!consultantHiddenInput.value || consultantHiddenInput.value !== consultantSearchInput.value) {
+                    consultantHiddenInput.value = consultantSearchInput.value.trim();
                 }
-            });
+                consultantSuggestionsDiv.classList.add('hidden'); // Hide suggestions on blur
+            }, 100);
+        }
 
-            // When the search input loses focus, if no suggestion was selected,
-            // set the hidden input to the current value of the search input.
-            consultantSearchInput.addEventListener('blur', () => {
-                // Use a small delay to allow click event on suggestion to fire first
-                setTimeout(() => {
-                    if (!consultantHiddenInput.value || consultantHiddenInput.value !== consultantSearchInput.value) {
-                        consultantHiddenInput.value = consultantSearchInput.value.trim();
-                    }
-                    consultantSuggestionsDiv.classList.add('hidden'); // Hide suggestions on blur
-                }, 100);
-            });
+        function handleConsultantSearchFocus() {
+            if (consultantSearchInput.value.length > 0) {
+                // Re-trigger input event to show suggestions based on current text
+                const event = new Event('input');
+                consultantSearchInput.dispatchEvent(event);
+            }
+        }
 
-            // When the search input gains focus, show suggestions if there's text
-            consultantSearchInput.addEventListener('focus', () => {
-                if (consultantSearchInput.value.length > 0) {
-                    // Re-trigger input event to show suggestions based on current text
-                    const event = new Event('input');
-                    consultantSearchInput.dispatchEvent(event);
-                }
-            });
+        function handleDocumentClick(event) {
+            if (!consultantSearchInput.contains(event.target) && !consultantSuggestionsDiv.contains(event.target)) {
+                consultantSuggestionsDiv.classList.add('hidden');
+            }
         }
 
 
@@ -2640,7 +2742,15 @@
 
         // Inisialisasi saat DOM siap
         document.addEventListener('DOMContentLoaded', function() {
-            initSortable();
+            // Dapatkan referensi elemen DOM di sini, sekali saja
+            facilitySelect = document.getElementById('facility');
+            newFacilityInput = document.getElementById('newFacility');
+            consultantSearchInput = document.getElementById('consultantSearch');
+            consultantHiddenInput = document.getElementById('consultant');
+            consultantSuggestionsDiv = document.getElementById('consultantSuggestions');
+
+            initSortable(); // Inisialisasi SortableJS
+            // initEventListeners() akan dipanggil setelah autentikasi selesai
         });
     </script>
 </body>
