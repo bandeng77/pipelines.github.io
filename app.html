@@ -304,6 +304,28 @@
         #dealDetailModalContent .detail-item {
             /* Gaya untuk setiap item detail jika diperlukan */
         }
+
+        /* Styles for search suggestions */
+        .suggestions-list {
+            border: 1px solid #e2e8f0;
+            border-top: none;
+            max-height: 150px;
+            overflow-y: auto;
+            background-color: #ffffff;
+            position: absolute; /* Make it absolute to overlay other elements */
+            width: calc(100% - 0px); /* Adjust width to match input */
+            z-index: 10; /* Ensure it's above other elements */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border-radius: 0 0 0.5rem 0.5rem;
+        }
+        .suggestion-item {
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .suggestion-item:hover {
+            background-color: #f1f5f9;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -493,11 +515,10 @@
                                 <input type="text" id="newOwner" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama owner baru">
                             </div>
                             <div class="mb-3">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="consultant">Konsultan</label>
-                                <select id="consultant" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                    <option value="">Pilih Konsultan</option>
-                                </select>
-                                <input type="text" id="newConsultant" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama konsultan baru">
+                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="consultantSearch">Konsultan</label>
+                                <input type="text" id="consultantSearch" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" placeholder="Cari atau ketik konsultan">
+                                <input type="hidden" id="consultant"> <!-- Hidden input to store the actual value -->
+                                <div id="consultantSuggestions" class="suggestions-list absolute bg-white border border-gray-300 rounded-lg shadow-lg mt-1 w-full z-10 hidden"></div>
                             </div>
                             <!-- MODIFIKASI HTML UNTUK KONTRAKTOR -->
                             <div class="mb-3">
@@ -1444,7 +1465,7 @@
             document.getElementById('newFacility').value = ''; // Reset newFacility
 
             // Isi dropdown Konsultan, PIC, Owner
-            populateDropdown('consultant', uniqueConsultants);
+            // populateDropdown('consultant', uniqueConsultants); // Ini tidak lagi digunakan untuk konsultan
             populateDropdown('pic', uniquePICs);
             populateDropdown('owner', uniqueOwners);
 
@@ -1517,17 +1538,19 @@
                     // Set nilai untuk dropdown Product
                     if (deal.product && Array.from(productSelect.options).some(option => option.value === deal.product)) {
                         document.getElementById('product').value = deal.product;
+                        document.getElementById('newProduct').value = ''; // Kosongkan input teks baru
                     } else {
-                        document.getElementById('product').value = '';
-                        document.getElementById('newProduct').value = deal.product || '';
+                        document.getElementById('product').value = ''; // Pilih opsi default
+                        document.getElementById('newProduct').value = deal.product || ''; // Isi input teks baru
                     }
 
                     // Set nilai untuk dropdown Facility
                     if (deal.facility && Array.from(facilitySelect.options).some(option => option.value === deal.facility)) {
                         document.getElementById('facility').value = deal.facility;
+                        document.getElementById('newFacility').value = ''; // Kosongkan input teks baru
                     } else {
-                        document.getElementById('facility').value = '';
-                        document.getElementById('newFacility').value = deal.facility || '';
+                        document.getElementById('facility').value = ''; // Pilih opsi default
+                        document.getElementById('newFacility').value = deal.facility || ''; // Isi input teks baru
                     }
                     
                     // Set nilai untuk dropdown Owner
@@ -1538,13 +1561,9 @@
                         document.getElementById('newOwner').value = deal.owner || '';
                     }
 
-                    // Set nilai untuk dropdown Konsultan
-                    if (deal.consultant && uniqueConsultants.has(deal.consultant)) {
-                        document.getElementById('consultant').value = deal.consultant;
-                    } else {
-                        document.getElementById('consultant').value = '';
-                        document.getElementById('newConsultant').value = deal.consultant || '';
-                    }
+                    // Set nilai untuk Konsultan (search input)
+                    document.getElementById('consultantSearch').value = deal.consultant || '';
+                    document.getElementById('consultant').value = deal.consultant || ''; // Set hidden input
 
                     // MODIFIKASI: Muat multiple kontraktor
                     if (deal.contractor && Array.isArray(deal.contractor) && deal.contractor.length > 0) {
@@ -1575,6 +1594,8 @@
                 modalTitle.textContent = 'Tambah Deal Baru';
                 document.getElementById('stage').value = DEFAULT_STAGE;
                 document.getElementById('priority').value = 'cold';
+                document.getElementById('consultantSearch').value = ''; // Kosongkan search input konsultan
+                document.getElementById('consultant').value = ''; // Kosongkan hidden input konsultan
                 // MODIFIKASI: Pastikan satu field kontraktor kosong ditambahkan untuk deal baru
                 addContractorField(); // Panggil ini untuk menambahkan field kontraktor awal
             }
@@ -1582,6 +1603,34 @@
             dealModal.classList.remove('hidden');
             document.getElementById('dealModalContent').classList.remove('modal-content-leave-active');
             document.getElementById('dealModalContent').classList.add('modal-content-enter-active');
+
+            // Tambahkan event listener untuk produk dan fasilitas
+            const productSelect = document.getElementById('product');
+            const newProductInput = document.getElementById('newProduct');
+            const facilitySelect = document.getElementById('facility');
+            const newFacilityInput = document.getElementById('newFacility');
+
+            productSelect.onchange = () => {
+                if (productSelect.value !== '') {
+                    newProductInput.value = '';
+                }
+            };
+            newProductInput.oninput = () => {
+                if (newProductInput.value.trim() !== '') {
+                    productSelect.value = '';
+                }
+            };
+
+            facilitySelect.onchange = () => {
+                if (facilitySelect.value !== '') {
+                    newFacilityInput.value = '';
+                }
+            };
+            newFacilityInput.oninput = () => {
+                if (newFacilityInput.value.trim() !== '') {
+                    facilitySelect.value = '';
+                }
+            };
         }
 
         // Fungsi untuk menutup modal deal
@@ -1635,11 +1684,8 @@
                 owner = document.getElementById('owner').value;
             }
 
-            // Ambil nilai konsultan dari input teks baru jika ada, jika tidak, ambil dari dropdown
-            let consultant = document.getElementById('newConsultant').value.trim();
-            if (!consultant) {
-                consultant = document.getElementById('consultant').value;
-            }
+            // Ambil nilai konsultan dari hidden input
+            let consultant = document.getElementById('consultant').value.trim();
 
             // MODIFIKASI: Kumpulkan semua nilai kontraktor dari field yang ada
             const contractorInputs = document.querySelectorAll('#contractorList select, #contractorList input[type="text"]');
@@ -2322,6 +2368,9 @@
                 // you can re-add them here and call filterDeals() directly.
                 // For a "Terapkan Filter" button, it's better to call filterDeals() only once.
 
+                // Setup consultant search
+                setupConsultantSearch();
+
             } catch (error) {
                 console.error("Error initializing event listeners:", error);
                 showToast("Gagal memuat beberapa fungsi", 3000);
@@ -2519,6 +2568,73 @@
             filterDeals(); // Terapkan filter setelah reset
             // Tidak perlu menutup panel secara otomatis setelah reset, biarkan user melihat bahwa filter sudah direset
         }
+
+        // ==================== FUNGSI SEARCH KONSULTAN ====================
+        function setupConsultantSearch() {
+            const consultantSearchInput = document.getElementById('consultantSearch');
+            const consultantHiddenInput = document.getElementById('consultant');
+            const consultantSuggestionsDiv = document.getElementById('consultantSuggestions');
+
+            consultantSearchInput.addEventListener('input', () => {
+                const searchTerm = consultantSearchInput.value.toLowerCase();
+                consultantSuggestionsDiv.innerHTML = ''; // Clear previous suggestions
+
+                if (searchTerm.length === 0) {
+                    consultantSuggestionsDiv.classList.add('hidden');
+                    return;
+                }
+
+                const filteredSuggestions = Array.from(uniqueConsultants)
+                    .filter(consultant => consultant.toLowerCase().includes(searchTerm))
+                    .sort(); // Sort alphabetically
+
+                if (filteredSuggestions.length > 0) {
+                    filteredSuggestions.forEach(consultant => {
+                        const suggestionItem = document.createElement('div');
+                        suggestionItem.className = 'suggestion-item';
+                        suggestionItem.textContent = consultant;
+                        suggestionItem.addEventListener('click', () => {
+                            consultantSearchInput.value = consultant;
+                            consultantHiddenInput.value = consultant;
+                            consultantSuggestionsDiv.classList.add('hidden');
+                        });
+                        consultantSuggestionsDiv.appendChild(suggestionItem);
+                    });
+                    consultantSuggestionsDiv.classList.remove('hidden');
+                } else {
+                    consultantSuggestionsDiv.classList.add('hidden');
+                }
+            });
+
+            // Hide suggestions when clicking outside
+            document.addEventListener('click', (event) => {
+                if (!consultantSearchInput.contains(event.target) && !consultantSuggestionsDiv.contains(event.target)) {
+                    consultantSuggestionsDiv.classList.add('hidden');
+                }
+            });
+
+            // When the search input loses focus, if no suggestion was selected,
+            // set the hidden input to the current value of the search input.
+            consultantSearchInput.addEventListener('blur', () => {
+                // Use a small delay to allow click event on suggestion to fire first
+                setTimeout(() => {
+                    if (!consultantHiddenInput.value || consultantHiddenInput.value !== consultantSearchInput.value) {
+                        consultantHiddenInput.value = consultantSearchInput.value.trim();
+                    }
+                    consultantSuggestionsDiv.classList.add('hidden'); // Hide suggestions on blur
+                }, 100);
+            });
+
+            // When the search input gains focus, show suggestions if there's text
+            consultantSearchInput.addEventListener('focus', () => {
+                if (consultantSearchInput.value.length > 0) {
+                    // Re-trigger input event to show suggestions based on current text
+                    const event = new Event('input');
+                    consultantSearchInput.dispatchEvent(event);
+                }
+            });
+        }
+
 
         // ==================== INISIALISASI ====================
 
