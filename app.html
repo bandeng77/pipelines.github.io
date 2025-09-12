@@ -453,9 +453,12 @@
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="priority">Prioritas</label>
                                 <select id="priority" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                    <option value="cold">Cold</option>
-                                    <option value="warm">Warm</option>
-                                    <option value="hot">Hot</option>
+                                    <option value="Priority">Priority</option>
+                                    <option value="Win">Win</option>
+                                    <option value="Lost">Lost</option>
+                                    <option value="Behind">Behind</option>
+                                    <option value="On Track">On Track</option>
+                                    <option value="Completed">Completed</option>
                                 </select>
                             </div>
                             <div class="mb-3">
@@ -701,9 +704,12 @@
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterPriority">Prioritas</label>
                         <select id="filterPriority" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Prioritas</option>
-                            <option value="hot">Hot</option>
-                            <option value="warm">Warm</option>
-                            <option value="cold">Cold</option>
+                            <option value="Priority">Priority</option>
+                            <option value="Win">Win</option>
+                            <option value="Lost">Lost</option>
+                            <option value="Behind">Behind</option>
+                            <option value="On Track">On Track</option>
+                            <option value="Completed">Completed</option>
                         </select>
                     </div>
                     <div>
@@ -1267,15 +1273,36 @@
                     stageColorClass = 'bg-gray-100 text-gray-800';
             }
 
+            // Tentukan warna latar belakang untuk badge prioritas yang baru
+            let priorityColorClass = '';
+            switch (deal.priority) {
+                case 'Priority':
+                    priorityColorClass = 'bg-red-100 text-red-800'; // Contoh: Merah untuk Priority
+                    break;
+                case 'Win':
+                    priorityColorClass = 'bg-green-100 text-green-800'; // Contoh: Hijau untuk Win
+                    break;
+                case 'Lost':
+                    priorityColorClass = 'bg-gray-300 text-gray-800'; // Contoh: Abu-abu untuk Lost
+                    break;
+                case 'Behind':
+                    priorityColorClass = 'bg-orange-100 text-orange-800'; // Contoh: Oranye untuk Behind
+                    break;
+                case 'On Track':
+                    priorityColorClass = 'bg-blue-100 text-blue-800'; // Contoh: Biru untuk On Track
+                    break;
+                case 'Completed':
+                    priorityColorClass = 'bg-purple-100 text-purple-800'; // Contoh: Ungu untuk Completed
+                    break;
+                default:
+                    priorityColorClass = 'bg-gray-100 text-gray-800'; // Default jika tidak ada yang cocok
+            }
+
             dealCard.innerHTML = `
                 <div class="flex justify-between items-start">
                     <h3 class="font-bold text-gray-800">${deal.dealName || 'No Name'}</h3>
-                    <span class="priority-badge px-2 py-1 rounded-full ${
-                        deal.priority === 'hot' ? 'bg-red-100 text-red-800' : 
-                        deal.priority === 'warm' ? 'bg-yellow-100 text-yellow-800' : 
-                        'bg-blue-100 text-blue-800'
-                    }">
-                        ${deal.priority || 'cold'}
+                    <span class="priority-badge px-2 py-1 rounded-full ${priorityColorClass}">
+                        ${deal.priority || 'Priority'}
                     </span>
                 </div>
                 <div class="mt-1 text-sm text-gray-600 deal-details">
@@ -1374,7 +1401,7 @@
 
         // Fungsi untuk mengisi dropdown filter tambahan
         function populateFilterDropdowns() {
-            populateDropdown('filterPriority', ['hot', 'warm', 'cold'], document.getElementById('filterPriority').value); // Pastikan ini juga dipanggil
+            populateDropdown('filterPriority', ['Priority', 'Win', 'Lost', 'Behind', 'On Track', 'Completed'], document.getElementById('filterPriority').value); // UBAH OPSI PRIORITAS DI SINI
             populateDropdown('filterStage', ['identified', 'prospect', 'tender-me', 'tender-main-con', 'contract-award', 'win', 'lost', 'on-hold'], document.getElementById('filterStage').value); // Pastikan ini juga dipanggil
             populateDropdown('filterSales', uniqueSales, document.getElementById('filterSales').value); // Tambahkan ini
             populateDropdown('filterConsultant', uniqueConsultants, document.getElementById('filterConsultant').value);
@@ -1680,13 +1707,13 @@
 
                     document.getElementById('planPO').value = deal.planPO || ''; // New: Set Plan PO
                     document.getElementById('stage').value = deal.stage || DEFAULT_STAGE;
-                    document.getElementById('priority').value = deal.priority || 'cold';
+                    document.getElementById('priority').value = deal.priority || 'Priority'; // UBAH DEFAULT PRIORITAS DI SINI
                     document.getElementById('remarks').value = deal.remarks || ''; // New: Set Remarks
                 }
             } else {
                 modalTitle.textContent = 'Tambah Deal Baru';
                 document.getElementById('stage').value = DEFAULT_STAGE;
-                document.getElementById('priority').value = 'cold';
+                document.getElementById('priority').value = 'Priority'; // UBAH DEFAULT PRIORITAS DI SINI
                 // MODIFIKASI: Pastikan satu field kontraktor kosong ditambahkan untuk deal baru
                 addContractorField(); // Panggil ini untuk menambahkan field kontraktor awal
                 addProductField(); // Panggil ini untuk menambahkan field produk awal
