@@ -1414,7 +1414,7 @@
         // Fungsi helper untuk memformat input angka secara real-time
         function formatNumberInput(inputElement) {
             // Hapus semua karakter non-digit kecuali koma/titik desimal (jika diperlukan)
-            let value = inputElement.value.replace(/[^0-9]/g, ''); // Hanya angka
+            let value = inputElement.value.replace(/[^0-9]/g, '');
             
             // Konversi ke angka, lalu format dengan Intl.NumberFormat
             let numberValue = parseInt(value, 10);
@@ -1440,24 +1440,24 @@
             
             // Set nilai ke input 'beforeDiscount' dan format
             const beforeDiscountInput = document.getElementById('beforeDiscount');
-            beforeDiscountInput.value = calculatedBeforeDiscount.toFixed(0); // Tetapkan nilai numerik tanpa format dulu
-            formatNumberInput(beforeDiscountInput); // Kemudian format untuk tampilan
+            beforeDiscountInput.value = calculatedBeforeDiscount.toFixed(0);
+            formatNumberInput(beforeDiscountInput);
         }
 
         // Fungsi untuk memformat input nilai dan menghitung sebelum diskon
         function formatAndCalculateBeforeDiscount() {
-            formatNumberInput(document.getElementById('value')); // Format input value
-            calculateBeforeDiscount(); // Kemudian hitung nilai beforeDiscount
+            formatNumberInput(document.getElementById('value'));
+            calculateBeforeDiscount();
         }
 
         // MODIFIKASI: Fungsi untuk menambahkan field kontraktor baru
         function addContractorField(initialValue = '') {
             const contractorListDiv = document.getElementById('contractorList');
             const newContractorDiv = document.createElement('div');
-            newContractorDiv.className = 'flex items-center space-x-2 mb-2'; // Tambahkan mb-2 untuk jarak antar field
+            newContractorDiv.className = 'flex items-center space-x-2 mb-2';
 
-            const selectId = `contractor-select-${Date.now()}`; // ID unik untuk setiap select
-            const inputId = `contractor-input-${Date.now()}`; // ID unik untuk setiap input
+            const selectId = `contractor-select-${Date.now()}`;
+            const inputId = `contractor-input-${Date.now()}`;
 
             newContractorDiv.innerHTML = `
                 <select id="${selectId}" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
@@ -1479,10 +1479,10 @@
                 const newTextInput = document.getElementById(inputId);
                 if (uniqueContractors.has(initialValue)) {
                     newSelect.value = initialValue;
-                    newTextInput.value = ''; // Kosongkan input teks jika dipilih dari dropdown
+                    newTextInput.value = '';
                 } else {
-                    newSelect.value = ''; // Pilih opsi default
-                    newTextInput.value = initialValue; // Isi input teks
+                    newSelect.value = '';
+                    newTextInput.value = initialValue;
                 }
             }
 
@@ -1492,13 +1492,13 @@
 
             newSelect.addEventListener('change', () => {
                 if (newSelect.value !== '') {
-                    newTextInput.value = ''; // Kosongkan input teks jika dropdown dipilih
+                    newTextInput.value = '';
                 }
             });
 
             newTextInput.addEventListener('input', () => {
                 if (newTextInput.value.trim() !== '') {
-                    newSelect.value = ''; // Kosongkan dropdown jika input teks diisi
+                    newSelect.value = '';
                 }
             });
         }
@@ -1589,7 +1589,7 @@
             dealForm.reset();
             document.getElementById('dealId').value = '';
             document.getElementById('value').value = '';
-            document.getElementById('beforeDiscount').value = ''; // Reset juga beforeDiscount
+            document.getElementById('beforeDiscount').value = '';
 
             // Reset input teks baru
             document.getElementById('newOwner').value = '';
@@ -1629,7 +1629,7 @@
                     facilitySelect.appendChild(option);
                 }
             });
-            newFacilityInput.value = ''; // Kosongkan input teks baru fasilitas
+            newFacilityInput.value = '';
 
             // MODIFIKASI: Bersihkan daftar kontraktor yang ada sebelum mengisi ulang
             document.getElementById('contractorList').innerHTML = '';
@@ -1645,10 +1645,10 @@
                     // Set nilai untuk value dan discount, lalu hitung beforeDiscount
                     const valueInput = document.getElementById('value');
                     valueInput.value = deal.value || '';
-                    formatNumberInput(valueInput); // Format saat mengisi
+                    formatNumberInput(valueInput);
 
                     document.getElementById('discount').value = deal.discount || '';
-                    calculateBeforeDiscount(); // Hitung beforeDiscount setelah value dan discount diisi
+                    calculateBeforeDiscount();
                     
                     document.getElementById('package').value = deal.package || '';
                     
@@ -1657,20 +1657,19 @@
                         deal.product.forEach(product => {
                             addProductField(product);
                         });
-                    } else if (deal.product) { // Jika masih ada deal lama dengan single produk (string)
+                    } else if (deal.product) {
                         addProductField(deal.product);
                     } else {
-                        // Jika tidak ada produk sama sekali, tambahkan satu field kosong
                         addProductField(); 
                     }
 
                     // Set nilai untuk dropdown Facility
                     if (deal.facility && Array.from(facilitySelect.options).some(option => option.value === deal.facility)) {
                         facilitySelect.value = deal.facility;
-                        newFacilityInput.value = ''; // Kosongkan input teks baru
+                        newFacilityInput.value = '';
                     } else {
-                        facilitySelect.value = ''; // Pilih opsi default
-                        newFacilityInput.value = deal.facility || ''; // Isi input teks baru
+                        facilitySelect.value = '';
+                        newFacilityInput.value = deal.facility || '';
                     }
                     
                     // Set nilai untuk dropdown Owner
@@ -1683,17 +1682,16 @@
 
                     // Set nilai untuk Konsultan (search input)
                     consultantSearchInput.value = deal.consultant || '';
-                    consultantHiddenInput.value = deal.consultant || ''; // Set hidden input
+                    consultantHiddenInput.value = deal.consultant || '';
 
                     // MODIFIKASI: Muat multiple kontraktor
                     if (deal.contractor && Array.isArray(deal.contractor) && deal.contractor.length > 0) {
                         deal.contractor.forEach(contractor => {
                             addContractorField(contractor);
                         });
-                    } else if (deal.contractor) { // Jika masih ada deal lama dengan single kontraktor (string)
+                    } else if (deal.contractor) {
                         addContractorField(deal.contractor);
                     } else {
-                        // Jika tidak ada kontraktor sama sekali, tambahkan satu field kosong
                         addContractorField(); 
                     }
 
@@ -1705,18 +1703,17 @@
                         document.getElementById('newPic').value = deal.pic || '';
                     }
 
-                    document.getElementById('planPO').value = deal.planPO || ''; // New: Set Plan PO
+                    document.getElementById('planPO').value = deal.planPO || '';
                     document.getElementById('stage').value = deal.stage || DEFAULT_STAGE;
-                    document.getElementById('priority').value = deal.priority || 'Priority'; // UBAH DEFAULT PRIORITAS DI SINI
-                    document.getElementById('remarks').value = deal.remarks || ''; // New: Set Remarks
+                    document.getElementById('priority').value = deal.priority || 'Priority';
+                    document.getElementById('remarks').value = deal.remarks || '';
                 }
             } else {
                 modalTitle.textContent = 'Tambah Deal Baru';
                 document.getElementById('stage').value = DEFAULT_STAGE;
-                document.getElementById('priority').value = 'Priority'; // UBAH DEFAULT PRIORITAS DI SINI
-                // MODIFIKASI: Pastikan satu field kontraktor kosong ditambahkan untuk deal baru
-                addContractorField(); // Panggil ini untuk menambahkan field kontraktor awal
-                addProductField(); // Panggil ini untuk menambahkan field produk awal
+                document.getElementById('priority').value = 'Priority';
+                addContractorField();
+                addProductField();
             }
             
             dealModal.classList.remove('hidden');
@@ -1745,21 +1742,18 @@
             const dealName = document.getElementById('dealName').value;
             const salesName = document.getElementById('salesName').value;
             
-            // Ambil nilai numerik murni dari input yang sudah diformat
             const valueRaw = document.getElementById('value').value.replace(/[^0-9]/g, '');
             const value = parseFloat(valueRaw) || 0;
 
             const discount = parseFloat(document.getElementById('discount').value) || 0;
             
-            // Ambil nilai numerik murni dari input 'beforeDiscount' (yang sekarang dihitung)
             const beforeDiscountRaw = document.getElementById('beforeDiscount').value.replace(/[^0-9]/g, '');
             const beforeDiscount = parseFloat(beforeDiscountRaw) || 0;
 
             const packageType = document.getElementById('package').value;
             
-            // NEW: Kumpulkan semua nilai produk dari field yang ada
             const productInputs = document.querySelectorAll('#productList select, #productList input[type="text"]');
-            const collectedProducts = new Set(); // Gunakan Set untuk menghindari duplikasi
+            const collectedProducts = new Set();
 
             for (let i = 0; i < productInputs.length; i += 2) {
                 const selectElement = productInputs[i];
@@ -1776,15 +1770,13 @@
                     collectedProducts.add(productValue);
                 }
             }
-            const productsToSave = Array.from(collectedProducts); // Konversi ke array
+            const productsToSave = Array.from(collectedProducts);
 
-            // Ambil nilai fasilitas dari input teks baru jika ada, jika tidak, ambil dari dropdown
             let facility = newFacilityInput.value.trim();
             if (!facility) {
                 facility = facilitySelect.value;
             }
             
-            // Ambil nilai owner dari input teks baru jika ada, jika tidak, ambil dari dropdown
             let owner = document.getElementById('newOwner').value.trim();
             if (!owner) {
                 owner = document.getElementById('owner').value;
@@ -1793,21 +1785,14 @@
             // Ambil nilai konsultan dari hidden input
             let consultant = consultantHiddenInput.value.trim();
             // NEW: Tambahkan konsultan baru ke daftar unik di memori jika belum ada
-            // Tidak lagi menambahkan ke Firestore 'consultantsCollection' di sini
             if (consultant && !uniqueConsultants.has(consultant)) {
-                uniqueConsultants.add(consultant); // Tambahkan ke set di memori
+                uniqueConsultants.add(consultant);
                 console.log(`New consultant "${consultant}" added to local list.`);
-                // Jika Anda ingin menyimpan konsultan baru ini secara persisten,
-                // Anda perlu menambahkan logika untuk menyimpannya ke file JSON di GitHub
-                // atau ke database lain yang Anda kelola.
             }
 
-
-            // MODIFIKASI: Kumpulkan semua nilai kontraktor dari field yang ada
             const contractorInputs = document.querySelectorAll('#contractorList select, #contractorList input[type="text"]');
-            const collectedContractors = new Set(); // Gunakan Set untuk menghindari duplikasi
+            const collectedContractors = new Set();
 
-            // Iterasi melalui setiap pasangan select dan input teks
             for (let i = 0; i < contractorInputs.length; i += 2) {
                 const selectElement = contractorInputs[i];
                 const textInputElement = contractorInputs[i + 1];
@@ -1823,20 +1808,19 @@
                     collectedContractors.add(contractorValue);
                 }
             }
-            const contractorsToSave = Array.from(collectedContractors); // Konversi ke array
+            const contractorsToSave = Array.from(collectedContractors);
 
-            // Ambil nilai PIC dari input teks baru jika ada, jika tidak, ambil dari dropdown
             let pic = document.getElementById('newPic').value.trim();
             if (!pic) {
                 pic = document.getElementById('pic').value;
             }
 
-            const planPO = document.getElementById('planPO').value; // New: Get Plan PO
+            const planPO = document.getElementById('planPO').value;
             const stage = document.getElementById('stage').value;
             const priority = document.getElementById('priority').value;
-            const remarks = document.getElementById('remarks').value; // New: Get Remarks
+            const remarks = document.getElementById('remarks').value;
 
-            if (!dealName) { // MODIFIED: Removed !value from validation
+            if (!dealName) {
                 showToast("Nama Proyek harus diisi.", 3000);
                 return;
             }
@@ -1844,20 +1828,20 @@
             const dealData = {
                 dealName: dealName,
                 salesName: salesName,
-                beforeDiscount: beforeDiscount, // Ini sudah numerik
+                beforeDiscount: beforeDiscount,
                 discount: discount,
-                value: value, // Ini sudah numerik
+                value: value,
                 package: packageType,
-                product: productsToSave, // NEW: Simpan sebagai array
+                product: productsToSave,
                 facility: facility,
-                owner: owner, // New: Add owner to dealData
+                owner: owner,
                 consultant: consultant,
-                contractor: contractorsToSave, // MODIFIKASI: Simpan sebagai array
+                contractor: contractorsToSave,
                 pic: pic,
-                planPO: planPO, // New: Add Plan PO to dealData
+                planPO: planPO,
                 stage: stage,
                 priority: priority,
-                remarks: remarks, // New: Add Remarks to dealData
+                remarks: remarks,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
@@ -1884,7 +1868,7 @@
                     });
                 }
                 closeDealModal();
-                loadDealsFromFirebase(); // Memuat ulang deals untuk memperbarui daftar unik
+                loadDealsFromFirebase();
                 loadActivitiesFromFirebase();
             } catch (error) {
                 console.error("Error saving deal:", error);
@@ -1961,31 +1945,29 @@
             document.getElementById('detailDiscount').textContent = `${deal.discount || '0'}%`;
             document.getElementById('detailBeforeDiscount').textContent = `Rp ${formatNumber(deal.beforeDiscount) || '0'}`;
             document.getElementById('detailPackage').textContent = deal.package || '-';
-            // NEW: Menampilkan multiple produk
             const detailProductElement = document.getElementById('detailProduct');
             if (deal.product && Array.isArray(deal.product) && deal.product.length > 0) {
                 detailProductElement.textContent = deal.product.join(', ');
-            } else if (deal.product) { // Untuk kompatibilitas mundur dengan data lama (string)
+            } else if (deal.product) {
                 detailProductElement.textContent = deal.product;
             } else {
                 detailProductElement.textContent = '-';
             }
             document.getElementById('detailFacility').textContent = deal.facility || '-';
-            document.getElementById('detailOwner').textContent = deal.owner || '-'; // New: Display Owner
+            document.getElementById('detailOwner').textContent = deal.owner || '-';
             document.getElementById('detailConsultant').textContent = deal.consultant || '-';
-            // MODIFIKASI: Menampilkan multiple kontraktor
             const detailContractorElement = document.getElementById('detailContractor');
             if (deal.contractor && Array.isArray(deal.contractor) && deal.contractor.length > 0) {
                 detailContractorElement.textContent = deal.contractor.join(', ');
-            } else if (deal.contractor) { // Untuk kompatibilitas mundur dengan data lama (string)
+            } else if (deal.contractor) {
                 detailContractorElement.textContent = deal.contractor;
             } else {
                 detailContractorElement.textContent = '-';
             }
             document.getElementById('detailPIC').textContent = deal.pic || '-';
-            document.getElementById('detailPlanPO').textContent = deal.planPO || '-'; // Menampilkan Plan PO
-            document.getElementById('detailCreatedDate').textContent = formatDate(deal.createdAt) || '-'; // Menampilkan tanggal dibuat
-            document.getElementById('detailRemarks').textContent = deal.remarks || '-'; // New: Display Remarks
+            document.getElementById('detailPlanPO').textContent = deal.planPO || '-';
+            document.getElementById('detailCreatedDate').textContent = formatDate(deal.createdAt) || '-';
+            document.getElementById('detailRemarks').textContent = deal.remarks || '-';
 
             document.getElementById('dealDetailModal').classList.remove('hidden');
             document.getElementById('dealDetailModalContent').classList.remove('modal-content-leave-active');
@@ -2024,14 +2006,12 @@
                 ghostClass: 'sortable-ghost',
                 chosenClass: 'sortable-chosen',
                 dragClass: 'sortable-drag',
-                disabled: currentUserRole !== 'admin', // Hanya admin yang bisa drag-and-drop
+                disabled: currentUserRole !== 'admin',
                 onEnd: function(evt) {
                     if (currentUserRole !== 'admin') return;
                     
                     const dealId = evt.item.dataset.id;
-                    // Asumsi stage selalu 'main-pipeline' karena hanya ada satu kolom
-                    // Jika ada banyak kolom, Anda perlu mendapatkan ID kolom tujuan dari evt.to.id
-                    const newStage = 'main-pipeline'; 
+                    const newStage = 'main-pipeline';
                     
                     updateDealStage(dealId, newStage);
                 }
@@ -2059,15 +2039,13 @@
         let salesValue = {};
         let salesWinCount = {};
         // Variabel global untuk menyimpan data agregat produk
-        let productValue = {}; // Tambahkan variabel global ini
+        let productValue = {};
 
         // Fungsi untuk memproses data deals menjadi format yang siap untuk chart
         function processDealDataForCharts(dealsData) {
-            // Ambil semua opsi tahap dari elemen select#stage
             const stageSelect = document.getElementById('stage');
-            const allStages = Array.from(stageSelect.options).map(option => option.value).filter(value => value !== ''); // Filter out empty value
+            const allStages = Array.from(stageSelect.options).map(option => option.value).filter(value => value !== '');
 
-            // Inisialisasi winRateData dengan semua tahap yang ada
             const winRateDataMap = {};
             allStages.forEach(stage => {
                 winRateDataMap[stage] = 0;
@@ -2076,73 +2054,62 @@
             const stats = {
                 dealSizeLabels: [],
                 dealSizeData: [],
-                winRateLabels: allStages, // Gunakan semua tahap sebagai label
-                winRateData: [], // Akan diisi dari winRateDataMap
+                winRateLabels: allStages,
+                winRateData: [],
                 dealsBySalesLabels: [],
                 dealsBySalesData: [],
                 dealsByProductLabels: [],
-                    dealsByProductData: [],
+                dealsByProductData: [],
                 pipelineValueLabels: [],
                 pipelineValueData: []
             };
 
-            // Helper untuk mengelompokkan data
             const dealSizes = {
                 'Small (< Rp 500 Juta)': 0,
                 'Medium (Rp 500 Juta - Rp 2 Miliar)': 0,
                 'Large (> Rp 2 Miliar)': 0
             };
             const dealsBySales = {};
-            salesValue = {}; // Reset global salesValue
-            salesWinCount = {}; // Reset global salesWinCount
+            salesValue = {};
+            salesWinCount = {};
             const dealsByProduct = {};
-            productValue = {}; // Reset global productValue
+            productValue = {};
             const pipelineValueByMonth = {};
 
             dealsData.forEach(deal => {
-                // Deal Size
-                if (deal.value < 500000000) { // 500 Juta
+                if (deal.value < 500000000) {
                     dealSizes['Small (< Rp 500 Juta)']++;
-                } else if (deal.value >= 500000000 && deal.value <= 2000000000) { // 500 Juta - 2 Miliar
+                } else if (deal.value >= 500000000 && deal.value <= 2000000000) {
                     dealSizes['Medium (Rp 500 Juta - Rp 2 Miliar)']++;
-                } else { // Lebih dari 2 Miliar
+                } else {
                     dealSizes['Large (> Rp 2 Miliar)']++;
                 }
 
-                // Win Rate
                 if (deal.stage && winRateDataMap.hasOwnProperty(deal.stage)) {
                     winRateDataMap[deal.stage]++;
                 } else {
-                    // Jika ada tahap yang tidak terdaftar di form, bisa ditambahkan ke kategori 'Other' atau diabaikan
-                    // Untuk saat ini, kita akan mengabaikannya jika tidak ada di allStages
                     console.warn(`Deal with unknown stage: ${deal.stage}`);
                 }
 
-                // Deals By Sales (Updated)
                 if (deal.salesName) {
                     dealsBySales[deal.salesName] = (dealsBySales[deal.salesName] || 0) + 1;
-                    salesValue[deal.salesName] = (salesValue[deal.salesName] || 0) + (deal.value || 0); // Accumulate value
+                    salesValue[deal.salesName] = (salesValue[deal.salesName] || 0) + (deal.value || 0);
                     if (deal.stage === 'win') {
-                        salesWinCount[deal.salesName] = (salesWinCount[deal.salesName] || 0) + 1; // Accumulate win count
+                        salesWinCount[deal.salesName] = (salesWinCount[deal.salesName] || 0) + 1;
                     }
                 }
 
-                // Deals By Product (menggunakan product)
-                // NEW: Handle multiple products
                 const productsInDeal = Array.isArray(deal.product) ? deal.product : (deal.product ? [deal.product] : []);
                 productsInDeal.forEach(product => {
                     const productKey = product || 'Unknown Product';
                     dealsByProduct[productKey] = (dealsByProduct[productKey] || 0) + 1;
-                    productValue[productKey] = (productValue[productKey] || 0) + (deal.value || 0); // Akumulasi nilai per produk
+                    productValue[productKey] = (productValue[productKey] || 0) + (deal.value || 0);
                 });
 
-                // Pipeline Value Over Time (menggunakan createdAt)
-                // Hanya sertakan deal yang belum 'lost' atau 'win' untuk pipeline value
                 if (deal.stage !== 'lost' && deal.stage !== 'win') {
                     const dateSource = deal.createdAt;
                     if (dateSource && typeof dateSource.toDate === 'function') {
                         const date = dateSource.toDate();
-                        // Format tanggal sesuai permintaan: "Bulan Tahun"
                         const monthYear = date.toLocaleString('id-ID', { month: 'short', year: 'numeric' });
                         pipelineValueByMonth[monthYear] = (pipelineValueByMonth[monthYear] || 0) + deal.value;
                     } else {
@@ -2151,27 +2118,22 @@
                 }
             });
 
-            // Konversi objek ke array untuk chart
             stats.dealSizeLabels = Object.keys(dealSizes);
             stats.dealSizeData = Object.values(dealSizes);
 
-            // Isi winRateData dari map
             stats.winRateData = stats.winRateLabels.map(stage => winRateDataMap[stage]);
 
-            // Update dealsBySalesLabels dan dealsBySalesData untuk menyertakan nilai dan win count
             stats.dealsBySalesLabels = Object.keys(dealsBySales);
             stats.dealsBySalesData = Object.values(dealsBySales);
 
             stats.dealsByProductLabels = Object.keys(dealsByProduct);
             stats.dealsByProductData = Object.values(dealsByProduct);
 
-            // Urutkan data pipeline value berdasarkan bulan
             const sortedMonths = Object.keys(pipelineValueByMonth).sort((a, b) => {
-                // Parse string "Bulan Tahun" menjadi objek Date untuk perbandingan
                 const [monthStrA, yearStrA] = a.split(' ');
                 const [monthStrB, yearStrB] = b.split(' ');
-                const monthIndexA = new Date(Date.parse(monthStrA + " 1, 2000")).getMonth(); // Get month index
-                const monthIndexB = new Date(Date.parse(monthStrB + " 1, 2000")).getMonth(); // Get month index
+                const monthIndexA = new Date(Date.parse(monthStrA + " 1, 2000")).getMonth();
+                const monthIndexB = new Date(Date.parse(monthStrB + " 1, 2000")).getMonth();
                 const dateA = new Date(parseInt(yearStrA), monthIndexA, 1);
                 const dateB = new Date(parseInt(yearStrB), monthIndexB, 1);
                 return dateA - dateB;
@@ -2199,14 +2161,12 @@
             }
         }
 
-        // Fungsi untuk merender semua chart (akan diimplementasikan lebih lanjut)
+        // Fungsi untuk merender semua chart
         function renderAllCharts() {
             console.log("Rendering all charts...");
 
-            // 1. Proses Data Deals untuk Statistik
             const processedStats = processDealDataForCharts(deals);
 
-            // 2. Deal Size Chart (Distribusi Ukuran Deal)
             const dealSizeCtx = document.getElementById('dealSizeChart').getContext('2d');
             if (charts.dealSizeChart) charts.dealSizeChart.destroy();
             charts.dealSizeChart = new Chart(dealSizeCtx, {
@@ -2216,7 +2176,7 @@
                     datasets: [{
                         label: 'Jumlah Deal',
                         data: processedStats.dealSizeData,
-                        backgroundColor: ['#3B82F6', '#60A5FA', '#93C5FD', '#22D3EE', '#A78BFA'] // Tambahkan warna jika ada lebih banyak kategori
+                        backgroundColor: ['#3B82F6', '#60A5FA', '#93C5FD', '#22D3EE', '#A78BFA']
                     }]
                 },
                 options: {
@@ -2232,14 +2192,13 @@
                         y: {
                             beginAtZero: true,
                             ticks: {
-                                precision: 0 // Pastikan tick y-axis adalah bilangan bulat
+                                precision: 0
                             }
                         }
                     }
                 }
             });
 
-            // 3. Win Rate Chart (Tingkat Kemenangan Berdasarkan Tahap)
             const winRateCtx = document.getElementById('winRateChart').getContext('2d');
             if (charts.winRateChart) charts.winRateChart.destroy();
             charts.winRateChart = new Chart(winRateCtx, {
@@ -2250,15 +2209,15 @@
                         label: 'Jumlah Deal',
                         data: processedStats.winRateData,
                         backgroundColor: [
-                            '#10B981', // win
-                            '#EF4444', // lost
-                            '#F59E0B', // on-hold
-                            '#6B7280', // identified
-                            '#3B82F6', // prospect
-                            '#06B6D4', // tender-me
-                            '#A855F7', // tender-main-con
-                            '#EC4899'  // contract-award
-                        ] // Sesuaikan warna untuk setiap tahap jika perlu
+                            '#10B981',
+                            '#EF4444',
+                            '#F59E0B',
+                            '#6B7280',
+                            '#3B82F6',
+                            '#06B6D4',
+                            '#A855F7',
+                            '#EC4899'
+                        ]
                     }]
                 },
                 options: {
@@ -2273,7 +2232,6 @@
                 }
             });
 
-            // 4. Deals By Sales Chart (Jumlah Deal per Sales)
             const dealsBySalesCtx = document.getElementById('dealsBySalesChart').getContext('2d');
             if (charts.dealsBySalesChart) charts.dealsBySalesChart.destroy();
             charts.dealsBySalesChart = new Chart(dealsBySalesCtx, {
@@ -2292,9 +2250,9 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Jumlah Deal per Sales' // Ubah judul
+                            text: 'Jumlah Deal per Sales'
                         },
-                        tooltip: { // Tambahkan konfigurasi tooltip
+                        tooltip: {
                             callbacks: {
                                 label: function(context) {
                                     let label = context.dataset.label || '';
@@ -2320,7 +2278,6 @@
                 }
             });
 
-            // 5. Deals By Product Chart (Deal per Produk) - Updated
             const dealsByProductPackageCtx = document.getElementById('dealsByProductPackageChart').getContext('2d');
             if (charts.dealsByProductPackageChart) charts.dealsByProductPackageChart.destroy();
             charts.dealsByProductPackageChart = new Chart(dealsByProductPackageCtx, {
@@ -2333,7 +2290,7 @@
                         backgroundColor: [
                             '#F97316', '#14B8A6', '#8B5CF6', '#EC4899', '#FACC15',
                             '#3B82F6', '#EF4444', '#06B6D4', '#A855F7', '#F43F5E',
-                            '#4CAF50', '#FFC107', '#9C27B0', '#00BCD4', '#FF5722' // More colors
+                            '#4CAF50', '#FFC107', '#9C27B0', '#00BCD4', '#FF5722'
                         ]
                     }]
                 },
@@ -2343,17 +2300,17 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Deal per Produk' // Changed title
+                            text: 'Deal per Produk'
                         },
-                        tooltip: { // Tambahkan konfigurasi tooltip
+                        tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    let label = context.label || ''; // Label produk
+                                    let label = context.label || '';
                                     if (label) {
                                         label += ': ';
                                     }
                                     const product = processedStats.dealsByProductLabels[context.dataIndex];
-                                    const totalValue = productValue[product] || 0; // Ambil total nilai produk
+                                    const totalValue = productValue[product] || 0;
                                     return `${label}${context.raw} (Total IDR: Rp ${formatNumber(totalValue)})`;
                                 }
                             }
@@ -2362,7 +2319,6 @@
                 }
             });
 
-            // 6. Pipeline Value Chart (Nilai Pipeline Seiring Waktu) - Updated
             const pipelineValueCtx = document.getElementById('pipelineValueChart').getContext('2d');
             if (charts.pipelineValueChart) charts.pipelineValueChart.destroy();
             charts.pipelineValueChart = new Chart(pipelineValueCtx, {
@@ -2372,14 +2328,14 @@
                     datasets: [{
                         label: 'Nilai Pipeline (IDR)',
                         data: processedStats.pipelineValueData,
-                        borderColor: '#0EA5E9', // Warna garis
-                        backgroundColor: 'rgba(14, 165, 233, 0.2)', // Warna area di bawah garis
-                        tension: 0.3, // Kehalusan garis
-                        fill: true, // Isi area di bawah garis
-                        pointRadius: 5, // Ukuran titik data
-                        pointBackgroundColor: '#0EA5E9', // Warna titik data
-                        pointBorderColor: '#fff', // Warna border titik data
-                        pointHoverRadius: 7, // Ukuran titik saat di-hover
+                        borderColor: '#0EA5E9',
+                        backgroundColor: 'rgba(14, 165, 233, 0.2)',
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#0EA5E9',
+                        pointBorderColor: '#fff',
+                        pointHoverRadius: 7,
                         pointHoverBackgroundColor: '#0EA5E9',
                         pointHoverBorderColor: '#fff'
                     }]
@@ -2395,7 +2351,7 @@
                     },
                     scales: {
                         y: {
-                            beginAtZero: true, // Dimulai dari 0
+                            beginAtZero: true,
                             ticks: {
                                 callback: function(value) {
                                     return 'Rp ' + formatNumber(value);
@@ -2423,27 +2379,18 @@
                 const searchInput = document.getElementById('searchDeals');
                 const openFilterPanelBtn = document.getElementById('openFilterPanelBtn');
 
-                // Tombol Statistik hanya untuk admin dan manager
                 if (viewStatsBtn) viewStatsBtn.classList.toggle('hidden', !(isAdmin || isManager));
                 
-                // Tombol Aktivitas selalu terlihat
                 if (activityBtn) activityBtn.classList.remove('hidden');
                 
-                // Tombol Deal Baru selalu terlihat
                 if (newDealBtn) newDealBtn.classList.remove('hidden');
 
-                // Search dan Filter selalu terlihat
                 if (searchInput) searchInput.classList.remove('hidden');
                 if (openFilterPanelBtn) openFilterPanelBtn.classList.remove('hidden');
 
-                // Atur kemampuan drag-and-drop
                 if (sortableInstances['pipelines-stage']) {
                     sortableInstances['pipelines-stage'].option('disabled', !isAdmin);
                 }
-
-                // Pastikan tombol delete selalu aktif untuk semua role
-                // Tombol delete berada di dalam deal-card yang dirender, dan tidak ada logika penonaktifan berdasarkan role di sana.
-                // Jadi, secara default, semua role akan bisa mengklik tombol delete.
 
                 loadDealsFromFirebase(); 
                 
@@ -2462,7 +2409,7 @@
             try {
                 const dealForm = document.getElementById('dealForm');
                 if (dealForm) {
-                    dealForm.removeEventListener('submit', saveDeal); // Hapus listener lama
+                    dealForm.removeEventListener('submit', saveDeal);
                     dealForm.addEventListener('submit', function(e) {
                         e.preventDefault();
                         saveDeal();
@@ -2480,7 +2427,6 @@
                 buttons.forEach(btn => {
                     const element = document.getElementById(btn.id);
                     if (element) {
-                        // Hapus event listener lama sebelum menambahkan yang baru untuk menghindari duplikasi
                         element.removeEventListener('click', btn.func); 
                         element.addEventListener('click', btn.func);
                         console.log(`Event listener added for ${btn.id}`);
@@ -2493,7 +2439,6 @@
                     searchInput.addEventListener('keyup', filterDeals);
                 }
                 
-                // Event listeners untuk fasilitas
                 if (facilitySelect && newFacilityInput) {
                     facilitySelect.removeEventListener('change', handleFacilitySelectChange);
                     facilitySelect.addEventListener('change', handleFacilitySelectChange);
@@ -2501,7 +2446,6 @@
                     newFacilityInput.addEventListener('input', handleNewFacilityInput);
                 }
 
-                // Setup consultant search
                 setupConsultantSearch();
 
             } catch (error) {
@@ -2510,7 +2454,6 @@
             }
         }
 
-        // Handler functions for facility to avoid inline functions
         function handleFacilitySelectChange() {
             if (facilitySelect.value !== '') {
                 newFacilityInput.value = '';
@@ -2539,13 +2482,11 @@
                 const productFilter = document.getElementById('filterProduct').value;
                 const packageFilter = document.getElementById('filterPackage').value;
                 
-                // Tentukan deals dasar yang akan difilter berdasarkan role
                 let baseDeals = deals;
                 if (currentUserRole !== 'admin') {
                     baseDeals = deals.filter(deal => deal.stage !== 'lost');
                 }
 
-                // Cek apakah ada filter yang aktif (termasuk search term)
                 const isAnyFilterActive = searchTerm !== '' ||
                                           priorityFilter !== 'all' ||
                                           yearFilter !== 'all' ||
@@ -2557,7 +2498,6 @@
                                           productFilter !== 'all' ||
                                           packageFilter !== 'all';
 
-                // Jika tidak ada filter yang aktif dan user bukan admin, tampilkan pesan default
                 if (!isAnyFilterActive && currentUserRole !== 'admin') {
                     const pipelineStage = document.getElementById('pipelines-stage');
                     if (pipelineStage) {
@@ -2569,7 +2509,7 @@
                             </div>
                         `;
                     }
-                    initSortable(); // Pastikan sortable diinisialisasi ulang meskipun kosong
+                    initSortable();
                     return; 
                 }
 
@@ -2595,14 +2535,12 @@
                     const matchesConsultant = consultantFilter === 'all' || 
                                               (deal.consultant && deal.consultant === consultantFilter);
                     
-                    // MODIFIKASI: Filter untuk multiple kontraktor
                     const matchesContractor = contractorFilter === 'all' || 
                                               (deal.contractor && 
                                                (Array.isArray(deal.contractor) ? 
                                                 deal.contractor.includes(contractorFilter) : 
                                                 deal.contractor === contractorFilter));
 
-                    // NEW: Filter untuk multiple produk
                     const matchesProduct = productFilter === 'all' || 
                                            (deal.product && 
                                             (Array.isArray(deal.product) ? 
@@ -2646,7 +2584,7 @@
                 const dealCard = renderDeal(deal);
                 pipelineStage.appendChild(dealCard);
             });
-            initSortable(); // Pastikan sortable diinisialisasi ulang
+            initSortable();
         }
 
         // Fungsi logout
@@ -2675,7 +2613,6 @@
                 return;
             }
 
-            // Pastikan dropdown diisi ulang setiap kali panel dibuka
             populateYearDropdown();
             populateFilterDropdowns();
 
@@ -2704,7 +2641,7 @@
 
         // Fungsi untuk menerapkan filter dan menutup panel
         function applyFiltersAndClosePanel() {
-            filterDeals(); // Panggil fungsi filter yang sudah ada
+            filterDeals();
             closeFilterPanel();
         }
 
@@ -2713,50 +2650,46 @@
             document.getElementById('filterPriority').value = 'all';
             document.getElementById('filterYear').value = 'all';
             document.getElementById('filterStage').value = 'all';
-            document.getElementById('filterSales').value = 'all'; // Tambahkan ini
+            document.getElementById('filterSales').value = 'all';
             document.getElementById('filterConsultant').value = 'all';
             document.getElementById('filterContractor').value = 'all';
             document.getElementById('filterFacility').value = 'all';
             document.getElementById('filterProduct').value = 'all';
             document.getElementById('filterPackage').value = 'all';
-            document.getElementById('searchDeals').value = ''; // Reset juga search input
-            filterDeals(); // Terapkan filter setelah reset
-            // Tidak perlu menutup panel secara otomatis setelah reset, biarkan user melihat bahwa filter sudah direset
+            document.getElementById('searchDeals').value = '';
+            filterDeals();
         }
 
         // ==================== FUNGSI SEARCH KONSULTAN ====================
         function setupConsultantSearch() {
-            // Pastikan elemen sudah ada sebelum menambahkan event listener
             if (!consultantSearchInput || !consultantHiddenInput || !consultantSuggestionsDiv) {
                 console.warn("Consultant search elements not found. Skipping setup.");
                 return;
             }
 
-            // Hapus event listener lama sebelum menambahkan yang baru untuk menghindari duplikasi
             consultantSearchInput.removeEventListener('input', handleConsultantSearchInput);
             consultantSearchInput.removeEventListener('blur', handleConsultantSearchBlur);
             consultantSearchInput.removeEventListener('focus', handleConsultantSearchFocus);
-            document.removeEventListener('click', handleDocumentClick); // Hapus juga listener global
+            document.removeEventListener('click', handleDocumentClick);
 
             consultantSearchInput.addEventListener('input', handleConsultantSearchInput);
             consultantSearchInput.addEventListener('blur', handleConsultantSearchBlur);
             consultantSearchInput.addEventListener('focus', handleConsultantSearchFocus);
-            document.addEventListener('click', handleDocumentClick); // Tambahkan kembali listener global
+            document.addEventListener('click', handleDocumentClick);
         }
 
         function handleConsultantSearchInput() {
             const searchTerm = consultantSearchInput.value.toLowerCase();
-            consultantSuggestionsDiv.innerHTML = ''; // Clear previous suggestions
+            consultantSuggestionsDiv.innerHTML = '';
 
             if (searchTerm.length === 0) {
                 consultantSuggestionsDiv.classList.add('hidden');
                 return;
             }
 
-            // Menggunakan uniqueConsultants yang sudah diisi dari data consultantsCollection
             const filteredSuggestions = Array.from(uniqueConsultants)
                 .filter(consultant => consultant.toLowerCase().includes(searchTerm))
-                .sort(); // Sort alphabetically
+                .sort();
 
             if (filteredSuggestions.length > 0) {
                 filteredSuggestions.forEach(consultant => {
@@ -2764,7 +2697,7 @@
                     suggestionItem.className = 'suggestion-item';
                     suggestionItem.textContent = consultant;
                     suggestionItem.addEventListener('click', (e) => {
-                        e.stopPropagation(); // Prevent blur from hiding suggestions immediately
+                        e.stopPropagation();
                         consultantSearchInput.value = consultant;
                         consultantHiddenInput.value = consultant;
                         consultantSuggestionsDiv.classList.add('hidden');
@@ -2778,24 +2711,19 @@
         }
 
         function handleConsultantSearchBlur() {
-            // Use a small delay to allow click event on suggestion to fire first
             setTimeout(() => {
-                // Jika input teks tidak kosong dan tidak ada di daftar saran yang sudah ada,
-                // maka nilai di input teks akan dianggap sebagai konsultan baru.
-                // Nilai ini akan disimpan ke hidden input dan kemudian ditambahkan ke database saat deal disimpan.
                 const currentInputValue = consultantSearchInput.value.trim();
                 if (currentInputValue !== '') {
                     consultantHiddenInput.value = currentInputValue;
                 } else {
-                    consultantHiddenInput.value = ''; // Kosongkan jika input teks kosong
+                    consultantHiddenInput.value = '';
                 }
-                consultantSuggestionsDiv.classList.add('hidden'); // Hide suggestions on blur
+                consultantSuggestionsDiv.classList.add('hidden');
             }, 100);
         }
 
         function handleConsultantSearchFocus() {
             if (consultantSearchInput.value.length > 0) {
-                // Re-trigger input event to show suggestions based on current text
                 const event = new Event('input');
                 consultantSearchInput.dispatchEvent(event);
             }
@@ -2812,15 +2740,13 @@
 
         // Inisialisasi saat DOM siap
         document.addEventListener('DOMContentLoaded', function() {
-            // Dapatkan referensi elemen DOM di sini, sekali saja
             facilitySelect = document.getElementById('facility');
             newFacilityInput = document.getElementById('newFacility');
             consultantSearchInput = document.getElementById('consultantSearch');
             consultantHiddenInput = document.getElementById('consultant');
             consultantSuggestionsDiv = document.getElementById('consultantSuggestions');
 
-            initSortable(); // Inisialisasi SortableJS
-            // initEventListeners() akan dipanggil setelah autentikasi selesai
+            initSortable();
         });
     </script>
 </body>
