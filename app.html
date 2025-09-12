@@ -2076,7 +2076,21 @@
             productValue = {};
             const pipelineValueByMonth = {};
 
+            // NEW: Map untuk menyimpan deal dengan nilai tertinggi per dealName
+            const uniqueDealsByHighestValue = new Map();
+
             dealsData.forEach(deal => {
+                const currentHighestDeal = uniqueDealsByHighestValue.get(deal.dealName);
+                // Jika belum ada deal dengan nama ini, atau deal saat ini memiliki nilai lebih tinggi
+                if (!currentHighestDeal || (deal.value || 0) > (currentHighestDeal.value || 0)) {
+                    uniqueDealsByHighestValue.set(deal.dealName, deal);
+                }
+            });
+
+            // Gunakan deals yang sudah difilter untuk perhitungan statistik
+            const filteredDealsForStats = Array.from(uniqueDealsByHighestValue.values());
+
+            filteredDealsForStats.forEach(deal => { // UBAH: Gunakan filteredDealsForStats di sini
                 if (deal.value < 500000000) {
                     dealSizes['Small (< Rp 500 Juta)']++;
                 } else if (deal.value >= 500000000 && deal.value <= 2000000000) {
