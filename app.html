@@ -1526,7 +1526,7 @@
                     <option value="Maintenance">Maintenance</option>
                     <option value="Fire - Water">Fire - Water</option>
                     <option value="Mechanical">Mechanical</option>
-                    <option value="FAS-FSS-FF">FAS-FSS-FF</option>
+                    <option value="FAS-FSS-FF">FAS&FSS-FF</option>
                     <option value="FAS&FSS">FAS&FSS</option>
                 </select>
                 <input type="text" id="${inputId}" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" placeholder="Atau ketik nama produk baru">
@@ -2061,7 +2061,9 @@
                 dealsByProductLabels: [],
                 dealsByProductData: [],
                 pipelineValueLabels: [],
-                pipelineValueData: []
+                pipelineValueData: [],
+                // NEW: Tambahkan properti untuk sales dengan nilai tertinggi
+                topSales: { name: '', value: 0 }
             };
 
             const dealSizes = {
@@ -2131,6 +2133,18 @@
                     }
                 }
             });
+
+            // NEW: Temukan sales dengan nilai IDR tertinggi
+            let maxSalesValue = 0;
+            let topSalesName = '';
+            for (const salesName in salesValue) {
+                if (salesValue[salesName] > maxSalesValue) {
+                    maxSalesValue = salesValue[salesName];
+                    topSalesName = salesName;
+                }
+            }
+            stats.topSales = { name: topSalesName, value: maxSalesValue };
+
 
             stats.dealSizeLabels = Object.keys(dealSizes);
             stats.dealSizeData = Object.values(dealSizes);
@@ -2263,8 +2277,9 @@
                     maintainAspectRatio: false,
                     plugins: {
                         title: {
+                            // UBAH NAMA CHART DI SINI
                             display: true,
-                            text: 'Jumlah Deal per Sales'
+                            text: 'Total Deals / IDR per Sales' 
                         },
                         tooltip: {
                             callbacks: {
@@ -2278,6 +2293,24 @@
                                     const winCount = salesWinCount[salesName] || 0;
                                     return `${label}${context.raw} (Total IDR: Rp ${formatNumber(totalValue)} / Win: ${winCount})`;
                                 }
+                            }
+                        },
+                        // NEW: Tambahkan plugin untuk keterangan sales tertinggi
+                        afterDraw: function(chart) {
+                            const ctx = chart.ctx;
+                            const topSales = processedStats.topSales;
+
+                            if (topSales.name && topSales.value > 0) {
+                                const text = `Sales dengan IDR Tertinggi: ${topSales.name} (Rp ${formatNumber(topSales.value)})`;
+                                ctx.font = 'bold 12px Arial';
+                                ctx.fillStyle = '#333';
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'bottom';
+
+                                const x = chart.width / 2;
+                                const y = chart.height - 10; // Posisikan di bagian bawah chart
+
+                                ctx.fillText(text, x, y);
                             }
                         }
                     },
