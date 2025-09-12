@@ -2301,7 +2301,7 @@
                             const topSales = processedStats.topSales;
 
                             if (topSales.name && topSales.value > 0) {
-                                const text = `Sales dengan IDR Tertinggi: ${topSales.name} (Rp ${formatNumber(topSales.value)})`;
+                                const text = `TOP IDR Sales = "${topSales.name}"`; // Updated text format
                                 ctx.font = 'bold 12px Arial';
                                 ctx.fillStyle = '#333';
                                 ctx.textAlign = 'center';
