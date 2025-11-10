@@ -418,6 +418,7 @@
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                 <div>
                     <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900">Sales Pipeline Manager <i class="fas fa-chart-line text-blue-600 ml-2"></i></h1>
+                    <p class="text-gray-600 mt-2">Selamat datang, <span id="userWelcome" class="font-semibold"></span></p>
                 </div>
                 <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-4 sm:mt-0">
                     <button id="authButton" onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm">
@@ -470,7 +471,7 @@
         </div>
 
         <!-- Stats Section (hidden by default) -->
-        <div id="stats-section" class="hidden bg-white p-6 rounded-lg shadow-md mb-10">
+        <div id="stats-section" class="bg-white p-6 rounded-lg shadow-md mb-10">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center"><i class="fas fa-chart-bar mr-3 text-gray-500"></i> Analisis Performa Penjualan</h2>
                 <button onclick="hideStats()" class="text-gray-500 hover:text-gray-700 transition duration-200">
@@ -926,14 +927,20 @@
         // Variabel untuk menyimpan preferensi tampilan
         let currentView = 'card'; // 'card' atau 'list'
 
-        // Daftar email sales yang akan memiliki role 'user'
-        const salesEmails = [
-            'pamungkas@genetek.co.id',
-            'rory@genetek.co.id',
-            'rangga@genetek.co.id',
-            'dhea@genetek.co.id',
-            'yib_wahyu@genetek.co.id',
-        ];
+        // Mapping email ke nama sales
+        const emailToSalesNameMap = {
+            'rory@genetek.co.id': 'Rory',
+            'pamungkas@genetek.co.id': 'Pamungkas',
+            'dhea@genetek.co.id': 'Dhea',
+            'rangga@genetek.co.id': 'Rangga',
+            'david@genetek.co.id': 'David',
+            'hadi@genetek.co.id': 'Hadi',
+            'm_husni@genetek.co.id': 'Husni',
+            'edwin@genetek.co.id': 'Edwin',
+            'engineering@genetek.co.id': 'Engineering',
+            'yib_wahyu@genetek.co.id': 'YIB Wahyu',
+            'admin@genetek.co.id': 'Admin' // Untuk admin
+        };
 
         // Daftar email manager yang akan memiliki role 'manager'
         const managerEmails = [
@@ -967,6 +974,12 @@
 
             if (user && window.location.pathname.includes('app.html')) {
                 try {
+                    // Update welcome message
+                    const userWelcome = document.getElementById('userWelcome');
+                    if (userWelcome) {
+                        userWelcome.textContent = user.email;
+                    }
+
                     // Cek role admin
                     if (user.email === 'admin@genetek.co.id') {
                         currentUserRole = 'admin';
@@ -980,16 +993,18 @@
                             role: 'manager',
                             email: user.email 
                         }, { merge: true });
-                    } else if (salesEmails.includes(user.email)) { // Cek apakah email termasuk sales
-                        currentUserRole = 'user'; // Set role sebagai 'user' (sales)
-                        await usersCollection.doc(user.uid).set({ 
-                            role: 'user',
-                            email: user.email 
-                        }, { merge: true });
                     } else {
-                        // Jika bukan admin, manager, atau sales yang terdaftar, anggap sebagai user biasa
+                        // Untuk user biasa (sales)
+                        currentUserRole = 'user';
                         const userDoc = await usersCollection.doc(user.uid).get();
-                        currentUserRole = userDoc.exists ? userDoc.data().role : 'user';
+                        if (!userDoc.exists) {
+                            await usersCollection.doc(user.uid).set({ 
+                                role: 'user',
+                                email: user.email 
+                            }, { merge: true });
+                        } else {
+                            currentUserRole = userDoc.data().role || 'user';
+                        }
                     }
 
                     console.log("Current role:", currentUserRole);
@@ -1326,7 +1341,25 @@
             }
         }
 
-        // Fungsi untuk render deal card (tidak berubah)
+        // NEW: Fungsi untuk mendapatkan nama sales berdasarkan email
+        function getSalesNameFromEmail(email) {
+            return emailToSalesNameMap[email] || email.split('@')[0]; // Default ke bagian sebelum @ jika tidak ada di mapping
+        }
+
+        // NEW: Fungsi untuk memeriksa apakah user dapat mengedit/menghapus deal
+        function canUserEditDeal(deal) {
+            if (currentUserRole === 'admin' || currentUserRole === 'manager') {
+                return true; // Admin dan manager dapat mengedit semua deal
+            }
+            
+            const currentUser = auth.currentUser;
+            if (!currentUser) return false;
+            
+            const userSalesName = getSalesNameFromEmail(currentUser.email);
+            return deal.salesName === userSalesName;
+        }
+
+        // Fungsi untuk render deal card (diperbarui dengan pembatasan akses)
         function renderDeal(deal) {
             const dealCard = document.createElement('div');
             dealCard.className = 'deal-card';
@@ -1388,6 +1421,9 @@
                     priorityColorClass = 'bg-gray-100 text-gray-800'; // Default jika tidak ada yang cocok
             }
 
+            // NEW: Tentukan apakah user dapat mengedit/menghapus deal ini
+            const canEdit = canUserEditDeal(deal);
+
             dealCard.innerHTML = `
                 <div class="flex justify-between items-start">
                     <h3 class="font-bold text-gray-800">${deal.dealName || 'No Name'}</h3>
@@ -1410,12 +1446,14 @@
                         <button onclick="openDealDetailModal('${deal.id}')" class="text-blue-600 hover:text-blue-800">
                             <i class="fas fa-eye"></i>
                         </button>
+                        ${canEdit ? `
                         <button onclick="prepareEditDeal('${deal.id}')" class="text-green-600 hover:text-green-800">
                             <i class="fas fa-edit"></i>
                         </button>
                         <button onclick="confirmDeleteDeal('${deal.id}', '${deal.dealName}')" class="text-red-600 hover:text-red-800">
                             <i class="fas fa-trash-alt"></i>
                         </button>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -1423,10 +1461,13 @@
             return dealCard;
         }
 
-        // NEW: Fungsi untuk render deal dalam format list
+        // NEW: Fungsi untuk render deal dalam format list (diperbarui dengan pembatasan akses)
         function renderDealList(deal, index) {
             const row = document.createElement('tr');
             row.dataset.id = deal.id;
+            
+            // NEW: Tentukan apakah user dapat mengedit/menghapus deal ini
+            const canEdit = canUserEditDeal(deal);
             
             row.innerHTML = `
                 <td>${index + 1}</td>
@@ -1438,12 +1479,14 @@
                     <button onclick="openDealDetailModal('${deal.id}')" class="text-blue-600 hover:text-blue-800">
                         <i class="fas fa-eye"></i>
                     </button>
+                    ${canEdit ? `
                     <button onclick="prepareEditDeal('${deal.id}')" class="text-green-600 hover:text-green-800">
                         <i class="fas fa-edit"></i>
                     </button>
                     <button onclick="confirmDeleteDeal('${deal.id}', '${deal.dealName}')" class="text-red-600 hover:text-red-800">
                         <i class="fas fa-trash-alt"></i>
                     </button>
+                    ` : ''}
                 </td>
             `;
             
@@ -1829,6 +1872,14 @@
                 modalTitle.textContent = 'Tambah Deal Baru';
                 document.getElementById('stage').value = DEFAULT_STAGE;
                 document.getElementById('priority').value = 'Priority';
+                
+                // NEW: Set salesName otomatis berdasarkan email yang login (kecuali admin/manager)
+                const currentUser = auth.currentUser;
+                if (currentUser && currentUserRole === 'user') {
+                    const userSalesName = getSalesNameFromEmail(currentUser.email);
+                    document.getElementById('salesName').value = userSalesName;
+                }
+                
                 addContractorField();
                 addProductField();
             }
@@ -1942,6 +1993,15 @@
                 return;
             }
 
+            // NEW: Validasi untuk user biasa (hanya bisa edit deal miliknya sendiri)
+            if (dealId && currentUserRole === 'user') {
+                const deal = deals.find(d => d.id === dealId);
+                if (deal && !canUserEditDeal(deal)) {
+                    showToast("Anda tidak memiliki izin untuk mengedit deal ini.", 3000);
+                    return;
+                }
+            }
+
             const dealData = {
                 dealName: dealName,
                 salesName: salesName,
@@ -1995,6 +2055,18 @@
 
         // Fungsi untuk menyiapkan modal edit deal
         function prepareEditDeal(dealId) {
+            // NEW: Validasi akses sebelum membuka modal edit
+            const deal = deals.find(d => d.id === dealId);
+            if (!deal) {
+                showToast("Deal tidak ditemukan.", 3000);
+                return;
+            }
+            
+            if (!canUserEditDeal(deal)) {
+                showToast("Anda tidak memiliki izin untuk mengedit deal ini.", 3000);
+                return;
+            }
+            
             openDealModal(dealId);
         }
 
@@ -2003,6 +2075,18 @@
 
         // Fungsi untuk menampilkan modal konfirmasi penghapusan
         function confirmDeleteDeal(dealId, dealName) {
+            // NEW: Validasi akses sebelum menampilkan modal konfirmasi
+            const deal = deals.find(d => d.id === dealId);
+            if (!deal) {
+                showToast("Deal tidak ditemukan.", 3000);
+                return;
+            }
+            
+            if (!canUserEditDeal(deal)) {
+                showToast("Anda tidak memiliki izin untuk menghapus deal ini.", 3000);
+                return;
+            }
+            
             dealToDeleteId = dealId;
             dealToDeleteName = dealName;
             document.getElementById('dealToDeleteName').textContent = dealName;
@@ -2029,6 +2113,18 @@
         // Fungsi untuk menghapus deal
         async function deleteDeal() {
             if (!dealToDeleteId) return;
+
+            // NEW: Validasi akses sebelum menghapus
+            const deal = deals.find(d => d.id === dealToDeleteId);
+            if (!deal) {
+                showToast("Deal tidak ditemukan.", 3000);
+                return;
+            }
+            
+            if (!canUserEditDeal(deal)) {
+                showToast("Anda tidak memiliki izin untuk menghapus deal ini.", 3000);
+                return;
+            }
 
             try {
                 await dealsCollection.doc(dealToDeleteId).delete();
@@ -2537,18 +2633,17 @@
                 
                 console.log("Applying permissions for Role:", currentUserRole);
                 
+                // Semua user sekarang dapat melihat semua fitur
                 const viewStatsBtn = document.getElementById('viewStatsBtn');
                 const activityBtn = document.getElementById('activityBtn');
                 const newDealBtn = document.getElementById('newDealBtn');
                 const searchInput = document.getElementById('searchDeals');
                 const openFilterPanelBtn = document.getElementById('openFilterPanelBtn');
 
-                if (viewStatsBtn) viewStatsBtn.classList.toggle('hidden', !(isAdmin || isManager));
-                
+                // Hilangkan semua hidden class
+                if (viewStatsBtn) viewStatsBtn.classList.remove('hidden');
                 if (activityBtn) activityBtn.classList.remove('hidden');
-                
                 if (newDealBtn) newDealBtn.classList.remove('hidden');
-
                 if (searchInput) searchInput.classList.remove('hidden');
                 if (openFilterPanelBtn) openFilterPanelBtn.classList.remove('hidden');
 
