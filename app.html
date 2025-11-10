@@ -1262,76 +1262,81 @@
 
         // Fungsi untuk memuat deals dari Firebase
         // Fungsi ini akan memuat SEMUA deals ke variabel 'deals' untuk semua user.
-        async function loadDealsFromFirebase() {
-            console.log("Loading deals from Firebase...");
-            
-            let query = dealsCollection.orderBy("createdAt", "desc");
-            
-            try {
-                const querySnapshot = await query.get();
-                deals = []; // Reset array deals
-                // uniqueConsultants.clear(); // Tidak lagi dibersihkan di sini, karena diisi dari loadConsultantsFromFirebase
-                uniqueContractors.clear();
-                uniquePICs.clear();
-                uniqueOwners.clear();
-                uniqueProducts.clear();
-                uniqueFacilities.clear();
-                uniqueYears.clear();
-                uniqueSales.clear(); // Clear uniqueSales juga
+async function loadDealsFromFirebase() {
+    console.log("Loading deals from Firebase...");
+    
+    let query = dealsCollection.orderBy("createdAt", "desc");
+    
+    try {
+        const querySnapshot = await query.get();
+        deals = []; // Reset array deals
+        uniqueContractors.clear();
+        uniquePICs.clear();
+        uniqueOwners.clear();
+        uniqueProducts.clear();
+        uniqueFacilities.clear();
+        uniqueYears.clear();
+        uniqueSales.clear();
 
-                querySnapshot.forEach((doc) => {
-                    const dealData = doc.data();
-                    // Pastikan createdAt adalah objek Timestamp yang benar
-                    if (dealData.createdAt && typeof dealData.createdAt.toDate !== 'function') {
-                        if (dealData.createdAt.seconds !== undefined && dealData.createdAt.nanoseconds !== undefined) {
-                            dealData.createdAt = new firebase.firestore.Timestamp(dealData.createdAt.seconds, dealData.createdAt.nanoseconds);
-                        } else {
-                            dealData.createdAt = null; 
-                        }
-                    }
-                    deals.push({ id: doc.id, ...dealData });
+        querySnapshot.forEach((doc) => {
+            const dealData = doc.data();
+            // Pastikan createdAt adalah objek Timestamp yang benar
+            if (dealData.createdAt && typeof dealData.createdAt.toDate !== 'function') {
+                if (dealData.createdAt.seconds !== undefined && dealData.createdAt.nanoseconds !== undefined) {
+                    dealData.createdAt = new firebase.firestore.Timestamp(dealData.createdAt.seconds, dealData.createdAt.nanoseconds);
+                } else {
+                    dealData.createdAt = null; 
+                }
+            }
+            deals.push({ id: doc.id, ...dealData });
 
                     // Kumpulkan nilai unik untuk dropdown (selain konsultan)
                     // if (dealData.consultant) uniqueConsultants.add(dealData.consultant); // Tidak lagi diisi dari deals
                     // MODIFIKASI: Kumpulkan nilai unik untuk kontraktor (mendukung array dan string)
-                    if (dealData.contractor) {
-                        if (Array.isArray(dealData.contractor)) {
-                            dealData.contractor.forEach(c => {
-                                if (c) uniqueContractors.add(c);
-                            });
-                        } else { // Untuk kompatibilitas mundur dengan data lama (string)
-                            uniqueContractors.add(dealData.contractor);
-                        }
-                    }
-                    if (dealData.pic) uniquePICs.add(dealData.pic);
-                    if (dealData.owner) uniqueOwners.add(dealData.owner);
-                    // MODIFIKASI: Kumpulkan nilai unik untuk produk (mendukung array dan string)
-                    if (dealData.product) {
-                        if (Array.isArray(dealData.product)) {
-                            dealData.product.forEach(p => {
-                                if (p) uniqueProducts.add(p);
-                            });
-                        } else { // Untuk kompatibilitas mundur dengan data lama (string)
-                            uniqueProducts.add(dealData.product);
-                        }
-                    }
-                    if (dealData.facility) uniqueFacilities.add(dealData.facility);
-                    if (dealData.salesName) uniqueSales.add(dealData.salesName); // Tambahkan ini
-                    
-                    // Kumpulkan tahun unik dari createdAt
-                    if (dealData.createdAt) {
-                        uniqueYears.add(dealData.createdAt.toDate().getFullYear().toString());
-                    }
-                });
-                console.log("Total deals loaded (for search/admin view):", deals.length);
-                populateYearDropdown(); // Panggil setelah deals dimuat dan tahun dikumpulkan
-                populateFilterDropdowns(); // Panggil fungsi baru untuk mengisi dropdown filter
-                filterDeals(); // Panggil filterDeals() setelah deals dimuat untuk menerapkan filter awal
-            } catch (error) {
-                console.error("Error loading deals:", error);
-                showToast("Gagal memuat data deals", 3000);
+            if (dealData.contractor) {
+                if (Array.isArray(dealData.contractor)) {
+                    dealData.contractor.forEach(c => {
+                        if (c) uniqueContractors.add(c);
+                    });
+                } else {
+                    uniqueContractors.add(dealData.contractor);
+                }
             }
+            if (dealData.pic) uniquePICs.add(dealData.pic);
+            if (dealData.owner) uniqueOwners.add(dealData.owner);
+            if (dealData.product) {
+                if (Array.isArray(dealData.product)) {
+                    dealData.product.forEach(p => {
+                        if (p) uniqueProducts.add(p);
+                    });
+                } else {
+                    uniqueProducts.add(dealData.product);
+                }
+            }
+            if (dealData.facility) uniqueFacilities.add(dealData.facility);
+            if (dealData.salesName) uniqueSales.add(dealData.salesName);
+            
+            // Kumpulkan tahun unik dari createdAt
+            if (dealData.createdAt) {
+                uniqueYears.add(dealData.createdAt.toDate().getFullYear().toString());
+            }
+        });
+        console.log("Total deals loaded:", deals.length);
+        populateYearDropdown();
+        populateFilterDropdowns();
+        
+        // PERBAIKAN: Langsung render deals tanpa perlu filter
+        let dealsToDisplay = deals;
+        if (currentUserRole !== 'admin') {
+            dealsToDisplay = deals.filter(deal => deal.stage !== 'lost');
         }
+        renderFilteredDeals(dealsToDisplay);
+        
+    } catch (error) {
+        console.error("Error loading deals:", error);
+        showToast("Gagal memuat data deals", 3000);
+    }
+}
 
         // NEW: Fungsi untuk mendapatkan nama sales berdasarkan email
         function getSalesNameFromEmail(email) {
@@ -2746,99 +2751,92 @@
         }
 
         // Fungsi untuk filter deals
-        function filterDeals() {
-            try {
-                const searchTerm = document.getElementById('searchDeals').value.toLowerCase();
-                const priorityFilter = document.getElementById('filterPriority').value;
-                const yearFilter = document.getElementById('filterYear').value;
-                const stageFilter = document.getElementById('filterStage').value;
-                const salesFilter = document.getElementById('filterSales').value;
-                const consultantFilter = document.getElementById('filterConsultant').value;
-                const contractorFilter = document.getElementById('filterContractor').value;
-                const facilityFilter = document.getElementById('filterFacility').value; 
-                const productFilter = document.getElementById('filterProduct').value;
-                const packageFilter = document.getElementById('filterPackage').value;
-                
-                let baseDeals = deals;
-                if (currentUserRole !== 'admin') {
-                    baseDeals = deals.filter(deal => deal.stage !== 'lost');
-                }
-
-                const isAnyFilterActive = searchTerm !== '' ||
-                                          priorityFilter !== 'all' ||
-                                          yearFilter !== 'all' ||
-                                          stageFilter !== 'all' ||
-                                          salesFilter !== 'all' ||
-                                          consultantFilter !== 'all' ||
-                                          contractorFilter !== 'all' ||
-                                          facilityFilter !== 'all' || 
-                                          productFilter !== 'all' ||
-                                          packageFilter !== 'all';
-
-                if (!isAnyFilterActive && currentUserRole !== 'admin') {
-                    const pipelineStage = document.getElementById('pipelines-stage');
-                    if (pipelineStage) {
-                        pipelineStage.innerHTML = `
-                            <div class="empty-stage-message text-center text-gray-400 p-4 text-sm w-full">
-                                <i class="fas fa-inbox text-3xl mb-2"></i>
-                                <p>Tidak ada data pipeline yang ditampilkan secara default.</p>
-                                <p>Gunakan kolom pencarian atau filter di atas untuk mencari deal.</p>
-                            </div>
-                        `;
-                    }
-                    initSortable();
-                    return; 
-                }
-
-                const filteredDeals = baseDeals.filter(deal => {
-                    const matchesSearch = 
-                        (deal.dealName && deal.dealName.toLowerCase().includes(searchTerm)) ||
-                        (deal.company && deal.company.toLowerCase().includes(searchTerm)) || 
-                        (deal.salesName && deal.salesName.toLowerCase().includes(searchTerm));
-                    
-                    const matchesPriority = 
-                        priorityFilter === 'all' || 
-                        (deal.priority && deal.priority === priorityFilter);
-                    
-                    const matchesYear = yearFilter === 'all' || 
-                                        (deal.createdAt && deal.createdAt.toDate().getFullYear().toString() === yearFilter);
-
-                    const matchesStage = stageFilter === 'all' || 
-                                         (deal.stage && deal.stage === stageFilter);
-
-                    const matchesSales = salesFilter === 'all' || 
-                                         (deal.salesName && deal.salesName === salesFilter);
-
-                    const matchesConsultant = consultantFilter === 'all' || 
-                                              (deal.consultant && deal.consultant === consultantFilter);
-                    
-                    const matchesContractor = contractorFilter === 'all' || 
-                                              (deal.contractor && 
-                                               (Array.isArray(deal.contractor) ? 
-                                                deal.contractor.includes(contractorFilter) : 
-                                                deal.contractor === contractorFilter));
-
-                    const matchesProduct = productFilter === 'all' || 
-                                           (deal.product && 
-                                            (Array.isArray(deal.product) ? 
-                                             deal.product.includes(productFilter) : 
-                                             deal.product === productFilter));
-
-                    const matchesFacility = facilityFilter === 'all' || 
-                                            (deal.facility && deal.facility === facilityFilter);
-
-                    const matchesPackage = packageFilter === 'all' || 
-                                           (deal.package && deal.package === packageFilter);
-                    
-                    return matchesSearch && matchesPriority && matchesYear && matchesStage && matchesSales &&
-                           matchesConsultant && matchesContractor && matchesFacility && matchesProduct && matchesPackage;
-                });
-                
-                renderFilteredDeals(filteredDeals);
-            } catch (error) {
-                console.error("Error filtering deals:", error);
-            }
+function filterDeals() {
+    try {
+        const searchTerm = document.getElementById('searchDeals').value.toLowerCase();
+        const priorityFilter = document.getElementById('filterPriority').value;
+        const yearFilter = document.getElementById('filterYear').value;
+        const stageFilter = document.getElementById('filterStage').value;
+        const salesFilter = document.getElementById('filterSales').value;
+        const consultantFilter = document.getElementById('filterConsultant').value;
+        const contractorFilter = document.getElementById('filterContractor').value;
+        const facilityFilter = document.getElementById('filterFacility').value; 
+        const productFilter = document.getElementById('filterProduct').value;
+        const packageFilter = document.getElementById('filterPackage').value;
+        
+        let baseDeals = deals;
+        if (currentUserRole !== 'admin') {
+            baseDeals = deals.filter(deal => deal.stage !== 'lost');
         }
+
+        const isAnyFilterActive = searchTerm !== '' ||
+                                  priorityFilter !== 'all' ||
+                                  yearFilter !== 'all' ||
+                                  stageFilter !== 'all' ||
+                                  salesFilter !== 'all' ||
+                                  consultantFilter !== 'all' ||
+                                  contractorFilter !== 'all' ||
+                                  facilityFilter !== 'all' || 
+                                  productFilter !== 'all' ||
+                                  packageFilter !== 'all';
+
+        // PERBAIKAN: Tampilkan semua deals untuk user sales meskipun tidak ada filter aktif
+        if (!isAnyFilterActive) {
+            // Untuk semua user, tampilkan deals yang sesuai dengan role mereka
+            renderFilteredDeals(baseDeals);
+            initSortable();
+            return; 
+        }
+
+        const filteredDeals = baseDeals.filter(deal => {
+            const matchesSearch = 
+                (deal.dealName && deal.dealName.toLowerCase().includes(searchTerm)) ||
+                (deal.company && deal.company.toLowerCase().includes(searchTerm)) || 
+                (deal.salesName && deal.salesName.toLowerCase().includes(searchTerm));
+            
+            const matchesPriority = 
+                priorityFilter === 'all' || 
+                (deal.priority && deal.priority === priorityFilter);
+            
+            const matchesYear = yearFilter === 'all' || 
+                                (deal.createdAt && deal.createdAt.toDate().getFullYear().toString() === yearFilter);
+
+            const matchesStage = stageFilter === 'all' || 
+                                 (deal.stage && deal.stage === stageFilter);
+
+            const matchesSales = salesFilter === 'all' || 
+                                 (deal.salesName && deal.salesName === salesFilter);
+
+            const matchesConsultant = consultantFilter === 'all' || 
+                                      (deal.consultant && deal.consultant === consultantFilter);
+            
+            const matchesContractor = contractorFilter === 'all' || 
+                                      (deal.contractor && 
+                                       (Array.isArray(deal.contractor) ? 
+                                        deal.contractor.includes(contractorFilter) : 
+                                        deal.contractor === contractorFilter));
+
+            const matchesProduct = productFilter === 'all' || 
+                                   (deal.product && 
+                                    (Array.isArray(deal.product) ? 
+                                     deal.product.includes(productFilter) : 
+                                     deal.product === productFilter));
+
+            const matchesFacility = facilityFilter === 'all' || 
+                                    (deal.facility && deal.facility === facilityFilter);
+
+            const matchesPackage = packageFilter === 'all' || 
+                                   (deal.package && deal.package === packageFilter);
+            
+            return matchesSearch && matchesPriority && matchesYear && matchesStage && matchesSales &&
+                   matchesConsultant && matchesContractor && matchesFacility && matchesProduct && matchesPackage;
+        });
+        
+        renderFilteredDeals(filteredDeals);
+    } catch (error) {
+        console.error("Error filtering deals:", error);
+    }
+}
 
         // MODIFIKASI: Fungsi untuk render deals yang sudah difilter (mendukung kedua tampilan)
         function renderFilteredDeals(filteredDeals) {
