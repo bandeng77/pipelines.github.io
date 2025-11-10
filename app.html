@@ -326,6 +326,89 @@
         .suggestion-item:hover {
             background-color: #f1f5f9;
         }
+
+        /* CSS untuk toggle view */
+        .view-toggle {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .view-toggle-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid #e2e8f0;
+            background: white;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+        
+        .view-toggle-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+        
+        .view-toggle-btn:hover:not(.active) {
+            background: #f1f5f9;
+        }
+        
+        /* CSS untuk tampilan list */
+        .list-view {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+        
+        .list-view th {
+            background-color: #f8fafc;
+            padding: 0.75rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 1px solid #e5e7eb;
+            position: sticky;
+            top: 0;
+        }
+        
+        .list-view td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            vertical-align: top;
+        }
+        
+        .list-view tr:hover {
+            background-color: #f9fafb;
+        }
+        
+        .list-view .deal-actions {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+        
+        .list-view .deal-actions button {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+        
+        /* Responsivitas untuk tampilan list */
+        @media (max-width: 768px) {
+            .list-view {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+            
+            .list-view th,
+            .list-view td {
+                padding: 0.5rem 0.75rem;
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -371,6 +454,14 @@
             <div class="pipeline-stage stage-main-pipeline">
                 <div class="pipeline-stage-header">
                     <h3>Pipelines</h3>
+                    <div class="view-toggle">
+                        <button id="cardViewBtn" class="view-toggle-btn active">
+                            <i class="fas fa-th-large"></i> Card View
+                        </button>
+                        <button id="listViewBtn" class="view-toggle-btn">
+                            <i class="fas fa-list"></i> List View
+                        </button>
+                    </div>
                 </div>
                 <div id="pipelines-stage" class="pipeline-stage-content">
                     <!-- Deals akan ditampilkan di sini -->
@@ -433,11 +524,6 @@
                                     <option value="Edwin">Edwin</option>
                                     <option value="Engineering">Engineering</option>
                                 </select>
-                                <!-- Tambahkan filter sales di sini -->
-                                <!-- Elemen ini tidak lagi hidden karena akan digunakan untuk filter -->
-                                <!-- <select id="filterSales" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm hidden">
-                                    <option value="all">Semua Sales</option>
-                                </select> -->
                             </div>
                             <div class="mb-3" id="stageFieldContainer">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="stage">Tahap <span class="text-red-500">*</span></label>
@@ -814,7 +900,6 @@
         const dealsCollection = db.collection('deals');
         const activitiesCollection = db.collection('activities');
         const usersCollection = db.collection('users');
-        // const consultantsCollection = db.collection('consultants'); // DIKOMENTARI: Data konsultan sekarang diambil dari GitHub JSON
 
         let deals = []; // Variabel ini akan menyimpan SEMUA deals yang bisa diakses oleh user saat ini
         let activities = [];
@@ -838,6 +923,8 @@
         let facilitySelect, newFacilityInput;
         let consultantSearchInput, consultantHiddenInput, consultantSuggestionsDiv;
 
+        // Variabel untuk menyimpan preferensi tampilan
+        let currentView = 'card'; // 'card' atau 'list'
 
         // Daftar email sales yang akan memiliki role 'user'
         const salesEmails = [
@@ -914,6 +1001,7 @@
                     await loadConsultantsFromFirebase(); 
                     
                     initEventListeners(); // Panggil ini setelah elemen DOM dipastikan ada
+                    initViewToggle(); // Inisialisasi toggle view
                 } catch (error) {
                     console.error("Error checking user role:", error);
                     showToast("Gagal memuat data pengguna. Silakan refresh halaman.", 5000);
@@ -1333,6 +1421,33 @@
             `;
             
             return dealCard;
+        }
+
+        // NEW: Fungsi untuk render deal dalam format list
+        function renderDealList(deal, index) {
+            const row = document.createElement('tr');
+            row.dataset.id = deal.id;
+            
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${deal.salesName || '-'}</td>
+                <td>${deal.dealName || 'No Name'}</td>
+                <td>${deal.consultant || '-'}</td>
+                <td>Rp ${formatNumber(deal.value) || '0'}</td>
+                <td class="deal-actions">
+                    <button onclick="openDealDetailModal('${deal.id}')" class="text-blue-600 hover:text-blue-800">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button onclick="prepareEditDeal('${deal.id}')" class="text-green-600 hover:text-green-800">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="confirmDeleteDeal('${deal.id}', '${deal.dealName}')" class="text-red-600 hover:text-red-800">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </td>
+            `;
+            
+            return row;
         }
 
         // Fungsi untuk render semua deals (untuk tampilan default pipeline)
@@ -2517,6 +2632,31 @@
 
         // ==================== FUNGSI LAINNYA ====================
 
+        // NEW: Fungsi untuk menginisialisasi toggle view
+        function initViewToggle() {
+            const cardViewBtn = document.getElementById('cardViewBtn');
+            const listViewBtn = document.getElementById('listViewBtn');
+            
+            if (cardViewBtn && listViewBtn) {
+                cardViewBtn.addEventListener('click', () => switchView('card'));
+                listViewBtn.addEventListener('click', () => switchView('list'));
+            }
+        }
+
+        // NEW: Fungsi untuk beralih antara tampilan card dan list
+        function switchView(viewType) {
+            if (currentView === viewType) return;
+            
+            currentView = viewType;
+            
+            // Update tombol aktif
+            document.getElementById('cardViewBtn').classList.toggle('active', viewType === 'card');
+            document.getElementById('listViewBtn').classList.toggle('active', viewType === 'list');
+            
+            // Render ulang deals dengan tampilan yang dipilih
+            filterDeals();
+        }
+
         // Fungsi untuk filter deals
         function filterDeals() {
             try {
@@ -2612,7 +2752,7 @@
             }
         }
 
-        // Fungsi untuk render deals yang sudah difilter
+        // MODIFIKASI: Fungsi untuk render deals yang sudah difilter (mendukung kedua tampilan)
         function renderFilteredDeals(filteredDeals) {
             const pipelineStage = document.getElementById('pipelines-stage');
             if (!pipelineStage) return;
@@ -2629,11 +2769,40 @@
                 return;
             }
             
-            filteredDeals.forEach(deal => {
-                const dealCard = renderDeal(deal);
-                pipelineStage.appendChild(dealCard);
-            });
-            initSortable();
+            if (currentView === 'card') {
+                // Tampilan card (sebelumnya)
+                filteredDeals.forEach(deal => {
+                    const dealCard = renderDeal(deal);
+                    pipelineStage.appendChild(dealCard);
+                });
+                initSortable();
+            } else {
+                // Tampilan list (baru)
+                const table = document.createElement('table');
+                table.className = 'list-view';
+                
+                const thead = document.createElement('thead');
+                thead.innerHTML = `
+                    <tr>
+                        <th>No</th>
+                        <th>Nama Sales</th>
+                        <th>Nama Project</th>
+                        <th>Konsultan</th>
+                        <th>Nilai (IDR)</th>
+                        <th>Aksi</th>
+                    </tr>
+                `;
+                table.appendChild(thead);
+                
+                const tbody = document.createElement('tbody');
+                filteredDeals.forEach((deal, index) => {
+                    const row = renderDealList(deal, index);
+                    tbody.appendChild(row);
+                });
+                table.appendChild(tbody);
+                
+                pipelineStage.appendChild(table);
+            }
         }
 
         // Fungsi logout
