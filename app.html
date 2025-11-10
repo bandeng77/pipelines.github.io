@@ -471,7 +471,7 @@
         </div>
 
         <!-- Stats Section (hidden by default) -->
-        <div id="stats-section" class="bg-white p-6 rounded-lg shadow-md mb-10">
+        <div id="stats-section" class="hidden bg-white p-6 rounded-lg shadow-md mb-10">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center"><i class="fas fa-chart-bar mr-3 text-gray-500"></i> Analisis Performa Penjualan</h2>
                 <button onclick="hideStats()" class="text-gray-500 hover:text-gray-700 transition duration-200">
@@ -927,28 +927,26 @@
         // Variabel untuk menyimpan preferensi tampilan
         let currentView = 'card'; // 'card' atau 'list'
 
-        // Mapping email ke nama sales
+        // Mapping email ke nama sales (TIDAK termasuk manager)
         const emailToSalesNameMap = {
             'rory@genetek.co.id': 'Rory',
             'pamungkas@genetek.co.id': 'Pamungkas',
             'dhea@genetek.co.id': 'Dhea',
             'rangga@genetek.co.id': 'Rangga',
-            'david@genetek.co.id': 'David',
-            'hadi@genetek.co.id': 'Hadi',
             'm_husni@genetek.co.id': 'Husni',
             'edwin@genetek.co.id': 'Edwin',
             'engineering@genetek.co.id': 'Engineering',
-            'yib_wahyu@genetek.co.id': 'YIB Wahyu',
-            'admin@genetek.co.id': 'Admin' // Untuk admin
+            'yib_wahyu@genetek.co.id': 'YIB Wahyu'
         };
 
-        // Daftar email manager yang akan memiliki role 'manager'
+        // Daftar email manager (termasuk yang sebelumnya ada di mapping)
         const managerEmails = [
             'hadi@genetek.co.id',
             'david@genetek.co.id',
             'crenata@genetek.co.id',
             'agoesdh@genetek.co.id',
             'satriopk@genetek.co.id',
+            'admin@genetek.co.id' // Admin juga dianggap manager
         ];
 
         // ==================== FUNGSI UTAMA ====================
@@ -980,17 +978,11 @@
                         userWelcome.textContent = user.email;
                     }
 
-                    // Cek role admin
-                    if (user.email === 'admin@genetek.co.id') {
-                        currentUserRole = 'admin';
+                    // Cek role admin/manager
+                    if (managerEmails.includes(user.email)) {
+                        currentUserRole = user.email === 'admin@genetek.co.id' ? 'admin' : 'manager';
                         await usersCollection.doc(user.uid).set({ 
-                            role: 'admin',
-                            email: user.email 
-                        }, { merge: true });
-                    } else if (managerEmails.includes(user.email)) { // Cek apakah email termasuk manager
-                        currentUserRole = 'manager'; // Set role sebagai 'manager'
-                        await usersCollection.doc(user.uid).set({ 
-                            role: 'manager',
+                            role: currentUserRole,
                             email: user.email 
                         }, { merge: true });
                     } else {
@@ -2633,15 +2625,16 @@
                 
                 console.log("Applying permissions for Role:", currentUserRole);
                 
-                // Semua user sekarang dapat melihat semua fitur
                 const viewStatsBtn = document.getElementById('viewStatsBtn');
                 const activityBtn = document.getElementById('activityBtn');
                 const newDealBtn = document.getElementById('newDealBtn');
                 const searchInput = document.getElementById('searchDeals');
                 const openFilterPanelBtn = document.getElementById('openFilterPanelBtn');
 
-                // Hilangkan semua hidden class
-                if (viewStatsBtn) viewStatsBtn.classList.remove('hidden');
+                // Hanya admin dan manager yang bisa melihat statistik
+                if (viewStatsBtn) viewStatsBtn.classList.toggle('hidden', !(isAdmin || isManager));
+                
+                // Semua user bisa melihat aktivitas, deal baru, pencarian, dan filter
                 if (activityBtn) activityBtn.classList.remove('hidden');
                 if (newDealBtn) newDealBtn.classList.remove('hidden');
                 if (searchInput) searchInput.classList.remove('hidden');
