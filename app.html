@@ -2583,8 +2583,53 @@
                     if (e.target.closest('.remove-product-btn')) {
                         removeProductField(e.target.closest('.remove-product-btn'));
                     }
+                    
+                    // PERBAIKAN: Tombol batal di modal deal
+                    if (e.target.closest('#dealModalContent button[type="button"]')) {
+                        closeDealModal();
+                    }
+                    
+                    // PERBAIKAN: Tombol tutup di modal detail deal
+                    if (e.target.closest('#dealDetailModalContent button')) {
+                        closeDealDetailModal();
+                    }
+                    
+                    // PERBAIKAN: Tombol tutup di modal aktivitas
+                    if (e.target.closest('#activityModalContent .flex button')) {
+                        closeActivityModal();
+                    }
+                    
+                    // PERBAIKAN: Tombol batal di modal konfirmasi hapus
+                    if (e.target.closest('#deleteModalContent button:first-child')) {
+                        closeDeleteModal();
+                    }
+                    
+                    // PERBAIKAN: Tombol hapus di modal konfirmasi
+                    if (e.target.closest('#confirmDeleteBtn')) {
+                        deleteDeal();
+                    }
+                    
+                    // PERBAIKAN: Tombol tutup di panel filter
+                    if (e.target.closest('#filterPanelContent button:last-child')) {
+                        closeFilterPanel();
+                    }
+                    
+                    // PERBAIKAN: Tombol reset filter
+                    if (e.target.closest('#filterPanelContent button:first-child')) {
+                        resetFilters();
+                    }
+                    
+                    // PERBAIKAN: Tombol terapkan filter
+                    if (e.target.closest('#filterPanelContent button:nth-child(2)')) {
+                        applyFiltersAndClosePanel();
+                    }
+                    
+                    // PERBAIKAN: Tombol tutup di stats section
+                    if (e.target.closest('#stats-section button')) {
+                        hideStats();
+                    }
                 });
-
+        
                 const dealForm = document.getElementById('dealForm');
                 if (dealForm) {
                     dealForm.addEventListener('submit', function(e) {
@@ -2592,41 +2637,29 @@
                         saveDeal();
                     });
                 }
-
-                // Tombol utama
+        
+                // Tombol utama di header
                 document.getElementById('newDealBtn').addEventListener('click', () => openDealModal());
                 document.getElementById('viewStatsBtn').addEventListener('click', showStats);
                 document.getElementById('activityBtn').addEventListener('click', openActivityModal);
                 document.getElementById('authButton').addEventListener('click', logout);
                 document.getElementById('openFilterPanelBtn').addEventListener('click', openFilterPanel);
-
-                // Tombol modal
-                document.querySelector('#stats-section button').addEventListener('click', hideStats);
-                document.querySelector('#dealModalContent button[type="button"]').addEventListener('click', closeDealModal);
-                document.querySelector('#dealDetailModalContent button').addEventListener('click', closeDealDetailModal);
-                document.querySelector('#activityModalContent .flex button').addEventListener('click', closeActivityModal);
-                document.querySelector('#deleteModalContent button:first-child').addEventListener('click', closeDeleteModal);
-                document.getElementById('confirmDeleteBtn').addEventListener('click', deleteDeal);
-                document.querySelector('#filterPanelContent button:last-child').addEventListener('click', closeFilterPanel);
-                document.querySelector('#filterPanelContent button:first-child').addEventListener('click', resetFilters);
-                document.querySelector('#filterPanelContent button:nth-child(2)').addEventListener('click', applyFiltersAndClosePanel);
-
+        
                 // Input events
                 document.getElementById('searchDeals').addEventListener('keyup', filterDeals);
                 document.getElementById('value').addEventListener('input', formatAndCalculateBeforeDiscount);
                 document.getElementById('discount').addEventListener('input', formatAndCalculateBeforeDiscount);
-
-                // Tombol tambah contractor dan product
-                document.querySelector('#contractorList').parentElement.querySelector('button').addEventListener('click', () => addContractorField());
-                document.querySelector('#productList').parentElement.querySelector('button').addEventListener('click', () => addProductField());
-
+        
+                // PERBAIKAN: Tombol tambah contractor dan product menggunakan event delegation
+                // Tidak perlu event listener terpisah karena sudah ditangani oleh event delegation di atas
+        
                 if (facilitySelect && newFacilityInput) {
                     facilitySelect.addEventListener('change', handleFacilitySelectChange);
                     newFacilityInput.addEventListener('input', handleNewFacilityInput);
                 }
-
+        
                 setupConsultantSearch();
-
+        
             } catch (error) {
                 console.error("Error initializing event listeners:", error);
                 showToast("Gagal memuat beberapa fungsi", 3000);
