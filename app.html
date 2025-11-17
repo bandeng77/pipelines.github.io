@@ -400,6 +400,7 @@
             border-radius: 0.25rem;
             transition: all 0.2s ease;
             background: transparent;
+            cursor: pointer;
         }
         
         .list-view .deal-actions button:hover {
@@ -1572,7 +1573,7 @@ async function loadDealsFromFirebase() {
             // Tambahkan opsi dari nilai unik
             const sortedValues = Array.from(uniqueValues).sort();
             sortedValues.forEach(value => {
-                if (value) { // Pastikan bukan string kosong
+                if (value) { // Pastikan bukan string kosay
                     const option = document.createElement('option');
                     option.value = value;
                     option.textContent = value;
