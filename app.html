@@ -387,40 +387,26 @@
         
         .list-view .deal-actions {
             display: flex;
-            gap: 0.25rem;
+            gap: 0.5rem;
             justify-content: flex-end;
-            align-items: center;
         }
         
         .list-view .deal-actions button {
-            padding: 0.35rem 0.5rem;
+            padding: 0.25rem 0.5rem;
             font-size: 0.75rem;
-            border: 1px solid transparent;
-            border-radius: 0.25rem;
-            transition: all 0.2s ease;
-            background: transparent;
         }
         
-        .list-view .deal-actions button:hover {
-            background-color: #f8fafc;
-            border-color: #e2e8f0;
-            transform: translateY(-1px);
-        }
-        
-        .list-view .deal-actions button i {
-            font-size: 0.7rem;
-            width: 12px;
-            height: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        /* Memastikan kolom aksi memiliki lebar yang cukup */
-        .list-view th:last-child,
-        .list-view td:last-child {
-            width: 120px;
-            min-width: 120px;
+        /* Responsivitas untuk tampilan list */
+        @media (max-width: 768px) {
+            .list-view {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+            
+            .list-view th,
+            .list-view td {
+                padding: 0.5rem 0.75rem;
             }
         }
     </style>
@@ -1478,11 +1464,6 @@ async function loadDealsFromFirebase() {
             row.dataset.id = deal.id;
             
             // NEW: Tentukan apakah user dapat mengedit/menghapus deal ini
-function renderDealList(deal, index) {
-    const row = document.createElement('tr');
-    row.dataset.id = deal.id;
-    
-    // NEW: Tentukan apakah user dapat mengedit/menghapus deal ini
             const canEdit = canUserEditDeal(deal);
             
             row.innerHTML = `
@@ -1492,14 +1473,14 @@ function renderDealList(deal, index) {
                 <td>${deal.consultant || '-'}</td>
                 <td>Rp ${formatNumber(deal.value) || '0'}</td>
                 <td class="deal-actions">
-                    <button onclick="openDealDetailModal('${deal.id}')" class="text-blue-600 hover:text-blue-800 px-2 py-1 rounded transition-colors">
+                    <button onclick="openDealDetailModal('${deal.id}')" class="text-blue-600 hover:text-blue-800">
                         <i class="fas fa-eye"></i>
                     </button>
                     ${canEdit ? `
-                    <button onclick="prepareEditDeal('${deal.id}')" class="text-green-600 hover:text-green-800 px-2 py-1 rounded transition-colors">
+                    <button onclick="prepareEditDeal('${deal.id}')" class="text-green-600 hover:text-green-800">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button onclick="confirmDeleteDeal('${deal.id}', '${deal.dealName || 'No Name'}')" class="text-red-600 hover:text-red-800 px-2 py-1 rounded transition-colors">
+                    <button onclick="confirmDeleteDeal('${deal.id}', '${deal.dealName}')" class="text-red-600 hover:text-red-800">
                         <i class="fas fa-trash-alt"></i>
                     </button>
                     ` : ''}
@@ -2071,24 +2052,19 @@ function renderDealList(deal, index) {
 
         // Fungsi untuk menyiapkan modal edit deal
         function prepareEditDeal(dealId) {
-            try {
-                // NEW: Validasi akses sebelum membuka modal edit
-                const deal = deals.find(d => d.id === dealId);
-                if (!deal) {
-                    showToast("Deal tidak ditemukan.", 3000);
-                    return;
-                }
-                
-                if (!canUserEditDeal(deal)) {
-                    showToast("Anda tidak memiliki izin untuk mengedit deal ini.", 3000);
-                    return;
-                }
-                
-                openDealModal(dealId);
-            } catch (error) {
-                console.error("Error preparing edit deal:", error);
-                showToast("Gagal membuka form edit", 3000);
+            // NEW: Validasi akses sebelum membuka modal edit
+            const deal = deals.find(d => d.id === dealId);
+            if (!deal) {
+                showToast("Deal tidak ditemukan.", 3000);
+                return;
             }
+            
+            if (!canUserEditDeal(deal)) {
+                showToast("Anda tidak memiliki izin untuk mengedit deal ini.", 3000);
+                return;
+            }
+            
+            openDealModal(dealId);
         }
 
         let dealToDeleteId = null;
@@ -2110,11 +2086,7 @@ function renderDealList(deal, index) {
             
             dealToDeleteId = dealId;
             dealToDeleteName = dealName;
-            
-            // Escape deal name untuk mencegah XSS dan masalah formatting
-            const safeDealName = dealName.replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
-            document.getElementById('dealToDeleteName').textContent = safeDealName;
-            
+            document.getElementById('dealToDeleteName').textContent = dealName;
             document.getElementById('deleteModal').classList.remove('hidden');
             document.getElementById('deleteModalContent').classList.remove('modal-content-leave-active');
             document.getElementById('deleteModalContent').classList.add('modal-content-enter-active');
@@ -2171,53 +2143,46 @@ function renderDealList(deal, index) {
 
         // Fungsi untuk membuka modal detail deal
         function openDealDetailModal(dealId) {
-            try {
-                const deal = deals.find(d => d.id === dealId);
-                if (!deal) {
-                    showToast("Detail deal tidak ditemukan.", 3000);
-                    return;
-                }
-        
-                document.getElementById('dealDetailTitle').textContent = deal.dealName || 'Detail Deal';
-                document.getElementById('detailSalesName').textContent = deal.salesName || '-';
-                document.getElementById('detailValue').textContent = `Rp ${formatNumber(deal.value) || '0'}`;
-                document.getElementById('detailDiscount').textContent = `${deal.discount || '0'}%`;
-                document.getElementById('detailBeforeDiscount').textContent = `Rp ${formatNumber(deal.beforeDiscount) || '0'}`;
-                document.getElementById('detailPackage').textContent = deal.package || '-';
-                
-                const detailProductElement = document.getElementById('detailProduct');
-                if (deal.product && Array.isArray(deal.product) && deal.product.length > 0) {
-                    detailProductElement.textContent = deal.product.join(', ');
-                } else if (deal.product) {
-                    detailProductElement.textContent = deal.product;
-                } else {
-                    detailProductElement.textContent = '-';
-                }
-                
-                document.getElementById('detailFacility').textContent = deal.facility || '-';
-                document.getElementById('detailOwner').textContent = deal.owner || '-';
-                document.getElementById('detailConsultant').textContent = deal.consultant || '-';
-                
-                const detailContractorElement = document.getElementById('detailContractor');
-                if (deal.contractor && Array.isArray(deal.contractor) && deal.contractor.length > 0) {
-                    detailContractorElement.textContent = deal.contractor.join(', ');
-                } else if (deal.contractor) {
-                    detailContractorElement.textContent = deal.contractor;
-                } else {
-                    detailContractorElement.textContent = '-';
-                }
-                
-                document.getElementById('detailPIC').textContent = deal.pic || '-';
-                document.getElementById('detailPlanPO').textContent = deal.planPO || '-';
-                document.getElementById('detailCreatedDate').textContent = formatDate(deal.createdAt) || '-';
-                document.getElementById('detailRemarks').textContent = deal.remarks || '-';
-        
-                document.getElementById('dealDetailModal').classList.remove('hidden');
-                document.getElementById('dealDetailModalContent').classList.remove('modal-content-leave-active');
-                document.getElementById('dealDetailModalContent').classList.add('modal-content-enter-active');
-            } catch (error) {
-                console.error("Error opening deal detail modal:", error);
-                showToast("Gagal membuka detail deal", 3000);
+            const deal = deals.find(d => d.id === dealId);
+            if (!deal) {
+                showToast("Detail deal tidak ditemukan.", 3000);
+                return;
+            }
+
+            document.getElementById('dealDetailTitle').textContent = deal.dealName || 'Detail Deal';
+            document.getElementById('detailSalesName').textContent = deal.salesName || '-';
+            document.getElementById('detailValue').textContent = `Rp ${formatNumber(deal.value) || '0'}`;
+            document.getElementById('detailDiscount').textContent = `${deal.discount || '0'}%`;
+            document.getElementById('detailBeforeDiscount').textContent = `Rp ${formatNumber(deal.beforeDiscount) || '0'}`;
+            document.getElementById('detailPackage').textContent = deal.package || '-';
+            const detailProductElement = document.getElementById('detailProduct');
+            if (deal.product && Array.isArray(deal.product) && deal.product.length > 0) {
+                detailProductElement.textContent = deal.product.join(', ');
+            } else if (deal.product) {
+                detailProductElement.textContent = deal.product;
+            } else {
+                detailProductElement.textContent = '-';
+            }
+            document.getElementById('detailFacility').textContent = deal.facility || '-';
+            document.getElementById('detailOwner').textContent = deal.owner || '-';
+            document.getElementById('detailConsultant').textContent = deal.consultant || '-';
+            const detailContractorElement = document.getElementById('detailContractor');
+            if (deal.contractor && Array.isArray(deal.contractor) && deal.contractor.length > 0) {
+                detailContractorElement.textContent = deal.contractor.join(', ');
+            } else if (deal.contractor) {
+                detailContractorElement.textContent = deal.contractor;
+            } else {
+                detailContractorElement.textContent = '-';
+            }
+            document.getElementById('detailPIC').textContent = deal.pic || '-';
+            document.getElementById('detailPlanPO').textContent = deal.planPO || '-';
+            document.getElementById('detailCreatedDate').textContent = formatDate(deal.createdAt) || '-';
+            document.getElementById('detailRemarks').textContent = deal.remarks || '-';
+
+            document.getElementById('dealDetailModal').classList.remove('hidden');
+            document.getElementById('dealDetailModalContent').classList.remove('modal-content-leave-active');
+            document.getElementById('dealDetailModalContent').classList.add('modal-content-enter-active');
+        }
 
         // Fungsi untuk menutup modal detail deal
         function closeDealDetailModal() {
