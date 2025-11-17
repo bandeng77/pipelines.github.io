@@ -1383,13 +1383,20 @@
             return emailToSalesNameMap[email] || email.split('@')[0];
         }
 
-        // Fungsi untuk memeriksa apakah user dapat mengedit/menghapus deal
+        // MODIFIKASI: Fungsi untuk memeriksa apakah user dapat mengedit/menghapus deal
         function canUserEditDeal(deal) {
+            // Admin dan manager dapat mengedit semua deal
             if (currentUserRole === 'admin' || currentUserRole === 'manager') {
                 return true;
             }
             
+            // User Bintang dapat mengedit semua deal
             const currentUser = auth.currentUser;
+            if (currentUser && currentUser.email === 'bintang@genetek.co.id') {
+                return true;
+            }
+            
+            // Untuk user lain, hanya dapat mengedit deal mereka sendiri
             if (!currentUser) return false;
             
             const userSalesName = getSalesNameFromEmail(currentUser.email);
