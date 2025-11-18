@@ -411,6 +411,29 @@
                 padding: 0.5rem 0.75rem;
             }
         }
+
+        /* CSS untuk Recycle Bin */
+        .recycle-bin-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .recycle-bin-table th,
+        .recycle-bin-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .recycle-bin-table th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .recycle-bin-table tr:hover {
+            background-color: #f9fafb;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -438,6 +461,12 @@
                     <button id="activityBtn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm">
                         <i class="fas fa-bell mr-2"></i> Aktivitas
                         <span id="activity-badge" class="ml-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full hidden">0</span>
+                    </button>
+                    
+                    <!-- Tombol Recycle Bin (hanya untuk admin) -->
+                    <button id="recycleBinBtn" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm hidden">
+                        <i class="fas fa-trash-restore mr-2"></i> Recycle Bin
+                        <span id="recycle-bin-badge" class="ml-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full hidden">0</span>
                     </button>
                     
                     <!-- Tombol Export Excel (hanya untuk admin) -->
@@ -773,13 +802,96 @@
         <div id="deleteModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
             <div class="bg-white rounded-xl p-8 w-full max-w-sm shadow-2xl modal-content-enter" id="deleteModalContent">
                 <h2 class="text-xl font-bold mb-4 text-gray-900">Konfirmasi Penghapusan</h2>
-                <p class="text-gray-700 mb-6 text-sm">Apakah Anda yakin ingin menghapus "<span id="dealToDeleteName" class="font-semibold"></span>"? Aksi ini tidak dapat dibatalkan.</p>
+                <p class="text-gray-700 mb-6 text-sm">Apakah Anda yakin ingin menghapus "<span id="dealToDeleteName" class="font-semibold"></span>"? Deal akan dipindahkan ke Recycle Bin dan dapat dipulihkan dalam 30 hari.</p>
                 <div class="flex justify-end space-x-3">
                     <button type="button" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
                         Batal
                     </button>
                     <button type="button" id="confirmDeleteBtn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow-md font-medium transition duration-200 ease-in-out transform hover:scale-105 text-sm">
                         Hapus
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recycle Bin Modal -->
+        <div id="recycleBinModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-xl p-8 w-full max-w-6xl h-5/6 shadow-2xl modal-content-enter" id="recycleBinModalContent">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center">
+                        <i class="fas fa-trash-restore mr-3 text-gray-500"></i> Recycle Bin
+                    </h2>
+                    <button class="text-gray-500 hover:text-gray-700 transition duration-200 close-recycle-bin">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="mb-4 flex justify-between items-center">
+                    <p class="text-gray-600">Deal yang telah dihapus akan disimpan selama 30 hari sebelum dihapus permanen.</p>
+                    <button id="emptyRecycleBinBtn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 text-sm">
+                        <i class="fas fa-trash mr-2"></i> Kosongkan Recycle Bin
+                    </button>
+                </div>
+                
+                <div class="bg-gray-50 rounded-lg p-4 h-5/6 overflow-y-auto">
+                    <table class="recycle-bin-table">
+                        <thead>
+                            <tr>
+                                <th>Nama Deal</th>
+                                <th>Sales</th>
+                                <th>Nilai</th>
+                                <th>Tahap</th>
+                                <th>Dihapus Pada</th>
+                                <th>Dihapus Oleh</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recycleBinContent">
+                            <!-- Konten recycle bin akan diisi oleh JavaScript -->
+                        </tbody>
+                    </table>
+                    
+                    <div id="emptyRecycleBinMessage" class="text-center py-8 hidden">
+                        <i class="fas fa-trash text-4xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-500">Recycle Bin kosong</p>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end mt-6">
+                    <button class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm close-recycle-bin">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Permanent Delete Confirmation Modal -->
+        <div id="permanentDeleteModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-xl p-8 w-full max-w-sm shadow-2xl modal-content-enter" id="permanentDeleteModalContent">
+                <h2 class="text-xl font-bold mb-4 text-gray-900">Hapus Permanen</h2>
+                <p class="text-gray-700 mb-6 text-sm">Apakah Anda yakin ingin menghapus permanen "<span id="permanentDeleteDealName" class="font-semibold"></span>"? Aksi ini tidak dapat dibatalkan.</p>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm cancel-permanent-delete">
+                        Batal
+                    </button>
+                    <button type="button" id="confirmPermanentDeleteBtn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow-md font-medium transition duration-200 ease-in-out transform hover:scale-105 text-sm">
+                        Hapus Permanen
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty Recycle Bin Confirmation Modal -->
+        <div id="emptyRecycleBinModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-xl p-8 w-full max-w-sm shadow-2xl modal-content-enter" id="emptyRecycleBinModalContent">
+                <h2 class="text-xl font-bold mb-4 text-gray-900">Kosongkan Recycle Bin</h2>
+                <p class="text-gray-700 mb-6 text-sm">Apakah Anda yakin ingin mengosongkan Recycle Bin? <span id="recycleBinCount" class="font-semibold"></span> deal akan dihapus permanen. Aksi ini tidak dapat dibatalkan.</p>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm cancel-empty-bin">
+                        Batal
+                    </button>
+                    <button type="button" id="confirmEmptyBinBtn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow-md font-medium transition duration-200 ease-in-out transform hover:scale-105 text-sm">
+                        Kosongkan
                     </button>
                 </div>
             </div>
@@ -951,10 +1063,12 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
         const dealsCollection = db.collection('deals');
+        const deletedDealsCollection = db.collection('deletedDeals'); // Collection baru untuk Recycle Bin
         const activitiesCollection = db.collection('activities');
         const usersCollection = db.collection('users');
 
         let deals = [];
+        let deletedDeals = []; // Data untuk Recycle Bin
         let activities = [];
         let charts = {};
         const DEFAULT_STAGE = 'identified';
@@ -1062,12 +1176,288 @@
                     initEventListeners();
                     initViewToggle();
                     initExportElements();
+                    
+                    // Load Recycle Bin data untuk admin
+                    if (currentUserRole === 'admin') {
+                        loadRecycleBin();
+                    }
                 } catch (error) {
                     console.error("Error checking user role:", error);
                     showToast("Gagal memuat data pengguna. Silakan refresh halaman.", 5000);
                 }
             }
         });
+
+        // ==================== FUNGSI RECYCLE BIN ====================
+
+        // Fungsi untuk memuat data Recycle Bin
+        async function loadRecycleBin() {
+            try {
+                const querySnapshot = await deletedDealsCollection
+                    .orderBy("deletedAt", "desc")
+                    .get();
+                
+                deletedDeals = [];
+                querySnapshot.forEach((doc) => {
+                    deletedDeals.push({ id: doc.id, ...doc.data() });
+                });
+                
+                updateRecycleBinBadge();
+                return deletedDeals;
+            } catch (error) {
+                console.error("Error loading recycle bin:", error);
+                showToast("Gagal memuat Recycle Bin", 3000);
+                return [];
+            }
+        }
+
+        // Fungsi untuk memperbarui badge Recycle Bin
+        function updateRecycleBinBadge() {
+            const recycleBinBadge = document.getElementById('recycle-bin-badge');
+            if (!recycleBinBadge) return;
+            
+            if (deletedDeals.length > 0) {
+                recycleBinBadge.textContent = deletedDeals.length;
+                recycleBinBadge.classList.remove('hidden');
+            } else {
+                recycleBinBadge.classList.add('hidden');
+            }
+        }
+
+        // Fungsi untuk membuka modal Recycle Bin
+        async function openRecycleBinModal() {
+            if (currentUserRole !== 'admin') {
+                showToast("Hanya admin yang dapat mengakses Recycle Bin", 3000);
+                return;
+            }
+            
+            try {
+                await loadRecycleBin();
+                const recycleBinContent = document.getElementById('recycleBinContent');
+                const emptyMessage = document.getElementById('emptyRecycleBinMessage');
+                
+                if (deletedDeals.length === 0) {
+                    recycleBinContent.innerHTML = '';
+                    emptyMessage.classList.remove('hidden');
+                } else {
+                    emptyMessage.classList.add('hidden');
+                    renderRecycleBinContent();
+                }
+                
+                document.getElementById('recycleBinModal').classList.remove('hidden');
+                document.getElementById('recycleBinModalContent').classList.remove('modal-content-leave-active');
+                document.getElementById('recycleBinModalContent').classList.add('modal-content-enter-active');
+            } catch (error) {
+                console.error("Error opening recycle bin:", error);
+                showToast("Gagal membuka Recycle Bin", 3000);
+            }
+        }
+
+        // Fungsi untuk merender konten Recycle Bin
+        function renderRecycleBinContent() {
+            const recycleBinContent = document.getElementById('recycleBinContent');
+            recycleBinContent.innerHTML = '';
+            
+            deletedDeals.forEach(deal => {
+                const row = document.createElement('tr');
+                row.className = 'border-b hover:bg-gray-50';
+                
+                row.innerHTML = `
+                    <td class="p-3 text-sm">${deal.dealName || 'No Name'}</td>
+                    <td class="p-3 text-sm">${deal.salesName || '-'}</td>
+                    <td class="p-3 text-sm">Rp ${formatNumber(deal.value) || '0'}</td>
+                    <td class="p-3 text-sm">${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}</td>
+                    <td class="p-3 text-sm">${formatDateTime(deal.deletedAt)}</td>
+                    <td class="p-3 text-sm">${deal.deletedByEmail || '-'}</td>
+                    <td class="p-3 text-sm">
+                        <button class="restore-deal-btn text-green-600 hover:text-green-800 mr-3" data-id="${deal.id}">
+                            <i class="fas fa-undo mr-1"></i> Restore
+                        </button>
+                        <button class="permanent-delete-btn text-red-600 hover:text-red-800" data-id="${deal.id}" data-name="${deal.dealName || 'No Name'}">
+                            <i class="fas fa-trash mr-1"></i> Hapus Permanen
+                        </button>
+                    </td>
+                `;
+                
+                recycleBinContent.appendChild(row);
+            });
+        }
+
+        // Fungsi untuk restore deal
+        async function restoreDeal(deletedDealId) {
+            try {
+                const deletedDeal = deletedDeals.find(d => d.id === deletedDealId);
+                if (!deletedDeal) {
+                    showToast("Data tidak ditemukan di Recycle Bin", 3000);
+                    return;
+                }
+                
+                // Hapus field yang tidak diperlukan
+                const { id, originalId, deletedAt, deletedBy, deletedByEmail, ...dealData } = deletedDeal;
+                
+                // Simpan kembali ke collection deals
+                await dealsCollection.add(dealData);
+                
+                // Hapus dari recycle bin
+                await deletedDealsCollection.doc(deletedDealId).delete();
+                
+                showToast(`Deal "${dealData.dealName}" berhasil dipulihkan!`, 2000);
+                
+                // Log aktivitas
+                await activitiesCollection.add({
+                    message: `Deal "${dealData.dealName}" dipulihkan dari Recycle Bin oleh ${auth.currentUser.email}.`,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    userEmail: auth.currentUser.email,
+                    read: false
+                });
+                
+                // Refresh tampilan
+                await loadRecycleBin();
+                renderRecycleBinContent();
+                updateRecycleBinBadge();
+                loadDealsFromFirebase();
+                
+            } catch (error) {
+                console.error("Error restoring deal:", error);
+                showToast("Gagal memulihkan deal", 3000);
+            }
+        }
+
+        // Variabel untuk menyimpan data yang akan dihapus permanen
+        let permanentDeleteDealId = null;
+        let permanentDeleteDealName = '';
+
+        // Fungsi untuk konfirmasi hapus permanen
+        function confirmPermanentDelete(deletedDealId, dealName) {
+            permanentDeleteDealId = deletedDealId;
+            permanentDeleteDealName = dealName;
+            
+            document.getElementById('permanentDeleteDealName').textContent = dealName;
+            document.getElementById('permanentDeleteModal').classList.remove('hidden');
+            document.getElementById('permanentDeleteModalContent').classList.remove('modal-content-leave-active');
+            document.getElementById('permanentDeleteModalContent').classList.add('modal-content-enter-active');
+        }
+
+        // Fungsi untuk menghapus permanen
+        async function permanentDeleteDeal() {
+            if (!permanentDeleteDealId) return;
+
+            try {
+                await deletedDealsCollection.doc(permanentDeleteDealId).delete();
+                
+                showToast(`Deal "${permanentDeleteDealName}" berhasil dihapus permanen!`, 2000);
+                
+                // Log aktivitas
+                await activitiesCollection.add({
+                    message: `Deal "${permanentDeleteDealName}" dihapus permanen dari Recycle Bin oleh ${auth.currentUser.email}.`,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    userEmail: auth.currentUser.email,
+                    read: false
+                });
+                
+                // Refresh tampilan
+                await loadRecycleBin();
+                renderRecycleBinContent();
+                updateRecycleBinBadge();
+                closePermanentDeleteModal();
+                
+            } catch (error) {
+                console.error("Error permanent deleting deal:", error);
+                showToast("Gagal menghapus permanen deal", 3000);
+            }
+        }
+
+        // Fungsi untuk menutup modal hapus permanen
+        function closePermanentDeleteModal() {
+            const permanentDeleteModalContent = document.getElementById('permanentDeleteModalContent');
+            if (!permanentDeleteModalContent) return;
+
+            permanentDeleteModalContent.classList.remove('modal-content-enter-active');
+            permanentDeleteModalContent.classList.add('modal-content-leave-active');
+            
+            permanentDeleteModalContent.addEventListener('transitionend', function handler() {
+                document.getElementById('permanentDeleteModal').classList.add('hidden');
+                permanentDeleteModalContent.classList.remove('modal-content-leave-active');
+                permanentDeleteModalContent.removeEventListener('transitionend', handler);
+            }, { once: true });
+        }
+
+        // Fungsi untuk mengosongkan Recycle Bin
+        async function emptyRecycleBin() {
+            if (deletedDeals.length === 0) {
+                showToast("Recycle Bin sudah kosong", 3000);
+                return;
+            }
+            
+            document.getElementById('recycleBinCount').textContent = deletedDeals.length;
+            document.getElementById('emptyRecycleBinModal').classList.remove('hidden');
+            document.getElementById('emptyRecycleBinModalContent').classList.remove('modal-content-leave-active');
+            document.getElementById('emptyRecycleBinModalContent').classList.add('modal-content-enter-active');
+        }
+
+        // Fungsi untuk konfirmasi kosongkan Recycle Bin
+        async function confirmEmptyRecycleBin() {
+            try {
+                // Hapus semua dokumen dalam deletedDeals collection
+                const batch = db.batch();
+                deletedDeals.forEach(deal => {
+                    const docRef = deletedDealsCollection.doc(deal.id);
+                    batch.delete(docRef);
+                });
+                
+                await batch.commit();
+                
+                showToast(`Recycle Bin berhasil dikosongkan! ${deletedDeals.length} deal dihapus permanen.`, 3000);
+                
+                // Log aktivitas
+                await activitiesCollection.add({
+                    message: `Recycle Bin dikosongkan oleh ${auth.currentUser.email}. ${deletedDeals.length} deal dihapus permanen.`,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    userEmail: auth.currentUser.email,
+                    read: false
+                });
+                
+                // Refresh tampilan
+                await loadRecycleBin();
+                renderRecycleBinContent();
+                updateRecycleBinBadge();
+                closeEmptyRecycleBinModal();
+                
+            } catch (error) {
+                console.error("Error emptying recycle bin:", error);
+                showToast("Gagal mengosongkan Recycle Bin", 3000);
+            }
+        }
+
+        // Fungsi untuk menutup modal kosongkan Recycle Bin
+        function closeEmptyRecycleBinModal() {
+            const emptyRecycleBinModalContent = document.getElementById('emptyRecycleBinModalContent');
+            if (!emptyRecycleBinModalContent) return;
+
+            emptyRecycleBinModalContent.classList.remove('modal-content-enter-active');
+            emptyRecycleBinModalContent.classList.add('modal-content-leave-active');
+            
+            emptyRecycleBinModalContent.addEventListener('transitionend', function handler() {
+                document.getElementById('emptyRecycleBinModal').classList.add('hidden');
+                emptyRecycleBinModalContent.classList.remove('modal-content-leave-active');
+                emptyRecycleBinModalContent.removeEventListener('transitionend', handler);
+            }, { once: true });
+        }
+
+        // Fungsi untuk menutup modal Recycle Bin
+        function closeRecycleBinModal() {
+            const recycleBinModalContent = document.getElementById('recycleBinModalContent');
+            if (!recycleBinModalContent) return;
+
+            recycleBinModalContent.classList.remove('modal-content-enter-active');
+            recycleBinModalContent.classList.add('modal-content-leave-active');
+            
+            recycleBinModalContent.addEventListener('transitionend', function handler() {
+                document.getElementById('recycleBinModal').classList.add('hidden');
+                recycleBinModalContent.classList.remove('modal-content-leave-active');
+                recycleBinModalContent.removeEventListener('transitionend', handler);
+            }, { once: true });
+        }
 
         // ==================== FUNGSI AKTIVITAS ====================
 
@@ -2082,7 +2472,7 @@
             }, { once: true });
         }
 
-        // Fungsi untuk menghapus deal
+        // MODIFIKASI: Fungsi untuk menghapus deal (soft delete)
         async function deleteDeal() {
             if (!dealToDeleteId) return;
 
@@ -2098,17 +2488,34 @@
             }
 
             try {
+                // Simpan data ke collection deletedDeals terlebih dahulu
+                await deletedDealsCollection.add({
+                    ...deal,
+                    originalId: deal.id,
+                    deletedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    deletedBy: auth.currentUser.uid,
+                    deletedByEmail: auth.currentUser.email
+                });
+
+                // Hapus dari collection deals
                 await dealsCollection.doc(dealToDeleteId).delete();
-                showToast(`Deal "${dealToDeleteName}" berhasil dihapus!`, 2000);
+                
+                showToast(`Deal "${dealToDeleteName}" berhasil dipindahkan ke Recycle Bin!`, 2000);
                 await activitiesCollection.add({
-                    message: `Deal "${dealToDeleteName}" dihapus oleh ${auth.currentUser.email}.`,
+                    message: `Deal "${dealToDeleteName}" dipindahkan ke Recycle Bin oleh ${auth.currentUser.email}.`,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                     userEmail: auth.currentUser.email,
                     read: false
                 });
+                
                 closeDeleteModal();
                 loadDealsFromFirebase();
                 loadActivitiesFromFirebase();
+                
+                // Update Recycle Bin badge untuk admin
+                if (currentUserRole === 'admin') {
+                    loadRecycleBin();
+                }
             } catch (error) {
                 console.error("Error deleting deal:", error);
                 showToast("Gagal menghapus deal. Silakan coba lagi.", 3000);
@@ -2580,6 +2987,7 @@
                 const newDealBtn = document.getElementById('newDealBtn');
                 const searchInput = document.getElementById('searchDeals');
                 const openFilterPanelBtn = document.getElementById('openFilterPanelBtn');
+                const recycleBinBtn = document.getElementById('recycleBinBtn');
 
                 if (viewStatsBtn) viewStatsBtn.classList.toggle('hidden', !(isAdmin || isManager));
                 
@@ -2587,6 +2995,15 @@
                 if (newDealBtn) newDealBtn.classList.remove('hidden');
                 if (searchInput) searchInput.classList.remove('hidden');
                 if (openFilterPanelBtn) openFilterPanelBtn.classList.remove('hidden');
+                
+                // Tampilkan tombol Recycle Bin hanya untuk admin
+                if (recycleBinBtn) {
+                    if (isAdmin) {
+                        recycleBinBtn.classList.remove('hidden');
+                    } else {
+                        recycleBinBtn.classList.add('hidden');
+                    }
+                }
 
                 toggleExportButton();
                 loadDealsFromFirebase(); 
@@ -2646,6 +3063,20 @@
                         removeProductField(e.target.closest('.remove-product-btn'));
                     }
                     
+                    // Tombol restore deal di Recycle Bin
+                    if (e.target.closest('.restore-deal-btn')) {
+                        const dealId = e.target.closest('.restore-deal-btn').dataset.id;
+                        restoreDeal(dealId);
+                    }
+                    
+                    // Tombol hapus permanen di Recycle Bin
+                    if (e.target.closest('.permanent-delete-btn')) {
+                        const button = e.target.closest('.permanent-delete-btn');
+                        const dealId = button.dataset.id;
+                        const dealName = button.dataset.name;
+                        confirmPermanentDelete(dealId, dealName);
+                    }
+                    
                     // PERBAIKAN: Tombol batal di modal deal
                     if (e.target.closest('#dealModalContent button[type="button"]')) {
                         closeDealModal();
@@ -2669,6 +3100,36 @@
                     // PERBAIKAN: Tombol hapus di modal konfirmasi
                     if (e.target.closest('#confirmDeleteBtn')) {
                         deleteDeal();
+                    }
+                    
+                    // Tombol tutup Recycle Bin
+                    if (e.target.closest('.close-recycle-bin')) {
+                        closeRecycleBinModal();
+                    }
+                    
+                    // Tombol kosongkan Recycle Bin
+                    if (e.target.closest('#emptyRecycleBinBtn')) {
+                        emptyRecycleBin();
+                    }
+                    
+                    // Tombol batal hapus permanen
+                    if (e.target.closest('.cancel-permanent-delete')) {
+                        closePermanentDeleteModal();
+                    }
+                    
+                    // Tombol konfirmasi hapus permanen
+                    if (e.target.closest('#confirmPermanentDeleteBtn')) {
+                        permanentDeleteDeal();
+                    }
+                    
+                    // Tombol batal kosongkan Recycle Bin
+                    if (e.target.closest('.cancel-empty-bin')) {
+                        closeEmptyRecycleBinModal();
+                    }
+                    
+                    // Tombol konfirmasi kosongkan Recycle Bin
+                    if (e.target.closest('#confirmEmptyBinBtn')) {
+                        confirmEmptyRecycleBin();
                     }
                     
                     // PERBAIKAN: Tombol tutup di panel filter
@@ -2704,6 +3165,7 @@
                 document.getElementById('newDealBtn').addEventListener('click', () => openDealModal());
                 document.getElementById('viewStatsBtn').addEventListener('click', showStats);
                 document.getElementById('activityBtn').addEventListener('click', openActivityModal);
+                document.getElementById('recycleBinBtn').addEventListener('click', openRecycleBinModal);
                 document.getElementById('authButton').addEventListener('click', logout);
                 document.getElementById('openFilterPanelBtn').addEventListener('click', openFilterPanel);
         
