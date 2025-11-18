@@ -434,6 +434,46 @@
         .recycle-bin-table tr:hover {
             background-color: #f9fafb;
         }
+
+        /* CSS untuk tombol Recycle Bin di pojok kanan bawah */
+        .recycle-bin-fab {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #f59e0b;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            z-index: 40;
+            transition: all 0.3s ease;
+        }
+        
+        .recycle-bin-fab:hover {
+            background-color: #d97706;
+            transform: scale(1.05);
+        }
+        
+        .recycle-bin-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -461,12 +501,6 @@
                     <button id="activityBtn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm">
                         <i class="fas fa-bell mr-2"></i> Aktivitas
                         <span id="activity-badge" class="ml-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full hidden">0</span>
-                    </button>
-                    
-                    <!-- Tombol Recycle Bin (hanya untuk admin) -->
-                    <button id="recycleBinBtn" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm hidden">
-                        <i class="fas fa-trash-restore mr-2"></i> Recycle Bin
-                        <span id="recycle-bin-badge" class="ml-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full hidden">0</span>
                     </button>
                     
                     <!-- Tombol Export Excel (hanya untuk admin) -->
@@ -531,6 +565,12 @@
             <div class="mt-8 bg-gray-50 p-4 rounded-lg shadow-inner chart-container">
                 <canvas id="pipelineValueChart"></canvas>
             </div>
+        </div>
+
+        <!-- Tombol Recycle Bin Floating Action Button -->
+        <div id="recycleBinFab" class="recycle-bin-fab hidden">
+            <i class="fas fa-trash-alt text-xl"></i>
+            <div id="recycle-bin-badge" class="recycle-bin-badge hidden">0</div>
         </div>
 
         <!-- Add/Edit Deal Modal -->
@@ -2987,7 +3027,7 @@
                 const newDealBtn = document.getElementById('newDealBtn');
                 const searchInput = document.getElementById('searchDeals');
                 const openFilterPanelBtn = document.getElementById('openFilterPanelBtn');
-                const recycleBinBtn = document.getElementById('recycleBinBtn');
+                const recycleBinFab = document.getElementById('recycleBinFab');
 
                 if (viewStatsBtn) viewStatsBtn.classList.toggle('hidden', !(isAdmin || isManager));
                 
@@ -2997,11 +3037,11 @@
                 if (openFilterPanelBtn) openFilterPanelBtn.classList.remove('hidden');
                 
                 // Tampilkan tombol Recycle Bin hanya untuk admin
-                if (recycleBinBtn) {
+                if (recycleBinFab) {
                     if (isAdmin) {
-                        recycleBinBtn.classList.remove('hidden');
+                        recycleBinFab.classList.remove('hidden');
                     } else {
-                        recycleBinBtn.classList.add('hidden');
+                        recycleBinFab.classList.add('hidden');
                     }
                 }
 
@@ -3102,6 +3142,11 @@
                         deleteDeal();
                     }
                     
+                    // Tombol Recycle Bin FAB
+                    if (e.target.closest('#recycleBinFab')) {
+                        openRecycleBinModal();
+                    }
+                    
                     // Tombol tutup Recycle Bin
                     if (e.target.closest('.close-recycle-bin')) {
                         closeRecycleBinModal();
@@ -3165,7 +3210,6 @@
                 document.getElementById('newDealBtn').addEventListener('click', () => openDealModal());
                 document.getElementById('viewStatsBtn').addEventListener('click', showStats);
                 document.getElementById('activityBtn').addEventListener('click', openActivityModal);
-                document.getElementById('recycleBinBtn').addEventListener('click', openRecycleBinModal);
                 document.getElementById('authButton').addEventListener('click', logout);
                 document.getElementById('openFilterPanelBtn').addEventListener('click', openFilterPanel);
         
