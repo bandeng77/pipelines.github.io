@@ -1139,6 +1139,7 @@
             'pamungkas@genetek.co.id': 'Pamungkas',
             'dhea@genetek.co.id': 'Dhea',
             'bintang@genetek.co.id': 'Bintang',
+            'andy@genetek.co.id': 'Andy',
             'rangga@genetek.co.id': 'Rangga',
             'm_husni@genetek.co.id': 'Husni',
             'edwin@genetek.co.id': 'Edwin',
@@ -1822,10 +1823,16 @@
             
             // User Bintang dapat mengedit semua deal
             const currentUser = auth.currentUser;
-            if (currentUser && currentUser.email === 'bintang@genetek.co.id') {
+            
+            const allowedEmails = [
+                'bintang@genetek.co.id',
+                'andyU@genetek.co.id'
+            ];
+            
+            if (currentUser && allowedEmails.includes(currentUser.email)) {
                 return true;
             }
-            
+
             // Untuk user lain, hanya dapat mengedit deal mereka sendiri
             if (!currentUser) return false;
             
