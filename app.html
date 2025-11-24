@@ -474,6 +474,37 @@
             font-size: 0.75rem;
             font-weight: bold;
         }
+
+        /* CSS untuk dropdown dengan tombol hapus */
+        .dropdown-with-delete {
+            position: relative;
+        }
+        
+        .dropdown-with-delete select {
+            padding-right: 2.5rem;
+        }
+        
+        .delete-option-btn {
+            position: absolute;
+            right: 0.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 0.25rem;
+            display: none;
+        }
+        
+        .delete-option-btn:hover {
+            background-color: #fef2f2;
+        }
+        
+        .dropdown-with-delete:hover .delete-option-btn {
+            display: block;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -588,45 +619,60 @@
                             </div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="salesName">Nama Sales</label>
-                                <select id="salesName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                    <option value="">Pilih Sales</option>
-                                    <option value="Pamungkas">Pamungkas</option>
-                                    <option value="Rory">Rory</option>
-                                    <option value="Rangga">Rangga</option>
-                                    <option value="Dhea">Dhea</option>
-                                    <option value="YIB Wahyu">YIB Wahyu</option>
-                                    <option value="David">David</option>
-                                    <option value="Hadi">Hadi</option>
-                                    <option value="Husni">Husni</option>
-                                    <option value="Edwin">Edwin</option>
-                                    <option value="Andy">Andy</option>
-                                    <option value="Bintang">Bintang</option>
-                                    <option value="Engineering">Engineering</option>
-                                </select>
+                                <div class="dropdown-with-delete">
+                                    <select id="salesName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                        <option value="">Pilih Sales</option>
+                                        <option value="Pamungkas">Pamungkas</option>
+                                        <option value="Rory">Rory</option>
+                                        <option value="Rangga">Rangga</option>
+                                        <option value="Dhea">Dhea</option>
+                                        <option value="YIB Wahyu">YIB Wahyu</option>
+                                        <option value="David">David</option>
+                                        <option value="Hadi">Hadi</option>
+                                        <option value="Husni">Husni</option>
+                                        <option value="Edwin">Edwin</option>
+                                        <option value="Andy">Andy</option>
+                                        <option value="Bintang">Bintang</option>
+                                        <option value="Engineering">Engineering</option>
+                                    </select>
+                                    <button type="button" class="delete-option-btn hidden" data-target="salesName">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="mb-3" id="stageFieldContainer">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="stage">Tahap <span class="text-red-500">*</span></label>
-                                <select id="stage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
-                                    <option value="identified">Identified</option>
-                                    <option value="prospect">Prospect</option>
-                                    <option value="tender-me">Tender Stage M&E</option>
-                                    <option value="tender-main-con">Tender Main Con</option>
-                                    <option value="contract-award">Contract Award</option>
-                                    <option value="win">Win</option>
-                                    <option value="lost">Lost</option>
-                                    <option value="on-hold">On Hold</option>
-                                </select>
+                                <div class="dropdown-with-delete">
+                                    <select id="stage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
+                                        <option value="identified">Identified</option>
+                                        <option value="prospect">Prospect</option>
+                                        <option value="tender-me">Tender Stage M&E</option>
+                                        <option value="tender-main-con">Tender Main Con</option>
+                                        <option value="contract-award">Contract Award</option>
+                                        <option value="win">Win</option>
+                                        <option value="lost">Lost</option>
+                                        <option value="on-hold">On Hold</option>
+                                    </select>
+                                    <button type="button" class="delete-option-btn hidden" data-target="stage">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="priority">Prioritas</label>
-                                <select id="priority" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                    <option value="Priority">Priority</option>
-                                    <option value="Win">Win</option>
-                                    <option value="Lost">Lost</option>
-                                    <option value="Behind">Behind</option>
-                                    <option value="On Track">On Track</option>
-                                    <option value="Completed">Completed</option>
-                                </select>
+                                <div class="dropdown-with-delete">
+                                    <select id="priority" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                        <option value="Priority">Priority</option>
+                                        <option value="Win">Win</option>
+                                        <option value="Lost">Lost</option>
+                                        <option value="Behind">Behind</option>
+                                        <option value="On Track">On Track</option>
+                                        <option value="Completed">Completed</option>
+                                    </select>
+                                    <button type="button" class="delete-option-btn hidden" data-target="priority">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="remarks">Remarks</label>
@@ -637,35 +683,46 @@
                         <div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="package">Paket</label>
-                                <select id="package" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                    <option value="">Pilih Paket</option>
-                                    <option value="Electronic Package">Electronic Package</option>
-                                    <option value="M&E">M&E</option>
-                                    <option value="Fire Fighting Cont">Fire Fighting Cont</option>
-                                    <option value="Main Kontraktor">Main Kontraktor</option>
-                                </select>
+                                <div class="dropdown-with-delete">
+                                    <select id="package" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                        <option value="">Pilih Paket</option>
+                                        <option value="Electronic Package">Electronic Package</option>
+                                        <option value="M&E">M&E</option>
+                                        <option value="Fire Fighting Cont">Fire Fighting Cont</option>
+                                        <option value="Main Kontraktor">Main Kontraktor</option>
+                                    </select>
+                                    <button type="button" class="delete-option-btn hidden" data-target="package">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <input type="text" id="newPackage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama paket baru">
                             </div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="product">Produk</label>
                                 <div id="productList" class="space-y-2 mb-2">
                                     <!-- Produk yang dipilih akan ditambahkan di sini secara dinamis oleh JS -->
                                 </div>
-                                <button type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded-lg text-xs flex items-center">
+                                <button type="button" id="addProductBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded-lg text-xs flex items-center">
                                     <i class="fas fa-plus mr-1"></i> Tambah Produk
                                 </button>
                             </div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="facility">Fasilitas</label>
-                                <select id="facility" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                    <option value="">Pilih Fasilitas</option>
-                                    <option value="Industrial">Industrial</option>
-                                    <option value="Office">Office</option>
-                                    <option value="Hotel">Hotel</option>
-                                    <option value="Data Center">Data Center</option>
-                                    <option value="Oil & Gas">Oil & Gas</option>
-                                    <option value="Warehouse">Warehouse</option>
-                                    <option value="Other">Other</option>
-                                </select>
+                                <div class="dropdown-with-delete">
+                                    <select id="facility" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                        <option value="">Pilih Fasilitas</option>
+                                        <option value="Industrial">Industrial</option>
+                                        <option value="Office">Office</option>
+                                        <option value="Hotel">Hotel</option>
+                                        <option value="Data Center">Data Center</option>
+                                        <option value="Oil & Gas">Oil & Gas</option>
+                                        <option value="Warehouse">Warehouse</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                    <button type="button" class="delete-option-btn hidden" data-target="facility">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
                                 <input type="text" id="newFacility" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama fasilitas baru">
                             </div>
                         </div>
@@ -673,9 +730,14 @@
                         <div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="owner">Owner</label>
-                                <select id="owner" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                    <option value="">Pilih Owner</option>
-                                </select>
+                                <div class="dropdown-with-delete">
+                                    <select id="owner" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                        <option value="">Pilih Owner</option>
+                                    </select>
+                                    <button type="button" class="delete-option-btn hidden" data-target="owner">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
                                 <input type="text" id="newOwner" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama owner baru">
                             </div>
                             <div class="mb-3">
@@ -690,16 +752,21 @@
                                 <div id="contractorList" class="space-y-2 mb-2">
                                     <!-- Kontraktor yang dipilih akan ditambahkan di sini secara dinamis oleh JS -->
                                 </div>
-                                <button type="button" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded-lg text-xs flex items-center">
+                                <button type="button" id="addContractorBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded-lg text-xs flex items-center">
                                     <i class="fas fa-plus mr-1"></i> Tambah Kontraktor
                                 </button>
                             </div>
                             <!-- AKHIR MODIFIKASI HTML UNTUK KONTRAKTOR -->
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="pic">PIC</label>
-                                <select id="pic" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                    <option value="">Pilih PIC</option>
-                                </select>
+                                <div class="dropdown-with-delete">
+                                    <select id="pic" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                        <option value="">Pilih PIC</option>
+                                    </select>
+                                    <button type="button" class="delete-option-btn hidden" data-target="pic">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
                                 <input type="text" id="newPic" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama PIC baru">
                             </div>
                         </div>
@@ -719,26 +786,31 @@
                             </div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="planPO">Plan PO</label>
-                                <select id="planPO" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                    <option value="">Pilih Bulan</option>
-                                    <option value="Januari">Januari</option>
-                                    <option value="Februari">Februari</option>
-                                    <option value="Maret">Maret</option>
-                                    <option value="April">April</option>
-                                    <option value="Mei">Mei</option>
-                                    <option value="Juni">Juni</option>
-                                    <option value="Juli">Juli</option>
-                                    <option value="Agustus">Agustus</option>
-                                    <option value="September">September</option>
-                                    <option value="Oktober">Oktober</option>
-                                    <option value="November">November</option>
-                                    <option value="Desember">Desember</option>
-                                </select>
+                                <div class="dropdown-with-delete">
+                                    <select id="planPO" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                        <option value="">Pilih Bulan</option>
+                                        <option value="Januari">Januari</option>
+                                        <option value="Februari">Februari</option>
+                                        <option value="Maret">Maret</option>
+                                        <option value="April">April</option>
+                                        <option value="Mei">Mei</option>
+                                        <option value="Juni">Juni</option>
+                                        <option value="Juli">Juli</option>
+                                        <option value="Agustus">Agustus</option>
+                                        <option value="September">September</option>
+                                        <option value="Oktober">Oktober</option>
+                                        <option value="November">November</option>
+                                        <option value="Desember">Desember</option>
+                                    </select>
+                                    <button type="button" class="delete-option-btn hidden" data-target="planPO">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
                     <div class="flex justify-end space-x-3 mt-6">
-                        <button type="button" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
+                        <button type="button" id="cancelDealBtn" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
                             Batal
                         </button>
                         <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md font-medium transition duration-200 ease-in-out transform hover:scale-105 text-sm">
@@ -813,7 +885,7 @@
                     </div>
                 </div>
                 <div class="flex justify-end space-x-3 mt-6">
-                    <button type="button" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
+                    <button type="button" id="closeDetailBtn" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
                         Tutup
                     </button>
                 </div>
@@ -825,7 +897,7 @@
             <div class="bg-white rounded-xl p-8 w-full max-w-lg shadow-2xl modal-content-enter" id="activityModalContent">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center"><i class="fas fa-history mr-3 text-gray-500"></i> Aktivitas Terakhir</h2>
-                    <button class="text-gray-500 hover:text-gray-700 transition duration-200">
+                    <button id="closeActivityBtn" class="text-gray-500 hover:text-gray-700 transition duration-200">
                         <i class="fas fa-times text-xl"></i>
                     </button>
                 </div>
@@ -833,7 +905,7 @@
                     <!-- Aktivitas akan dimuat di sini -->
                 </div>
                 <div class="flex justify-end mt-6">
-                    <button class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
+                    <button id="closeActivityFooterBtn" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
                         Tutup
                     </button>
                 </div>
@@ -846,7 +918,7 @@
                 <h2 class="text-xl font-bold mb-4 text-gray-900">Konfirmasi Penghapusan</h2>
                 <p class="text-gray-700 mb-6 text-sm">Apakah Anda yakin ingin menghapus "<span id="dealToDeleteName" class="font-semibold"></span>"? Deal akan dipindahkan ke Recycle Bin dan dapat dipulihkan dalam 30 hari.</p>
                 <div class="flex justify-end space-x-3">
-                    <button type="button" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
+                    <button type="button" id="cancelDeleteBtn" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
                         Batal
                     </button>
                     <button type="button" id="confirmDeleteBtn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow-md font-medium transition duration-200 ease-in-out transform hover:scale-105 text-sm">
@@ -944,7 +1016,7 @@
             <div class="bg-white rounded-xl p-8 w-full max-w-2xl shadow-2xl modal-content-enter" id="filterPanelContent">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center"><i class="fas fa-filter mr-3 text-gray-500"></i> Filter Deals</h2>
-                    <button class="text-gray-500 hover:text-gray-700 transition duration-200">
+                    <button id="closeFilterBtn" class="text-gray-500 hover:text-gray-700 transition duration-200">
                         <i class="fas fa-times text-xl"></i>
                     </button>
                 </div>
@@ -1031,10 +1103,10 @@
                     </div>
                 </div>
                 <div class="flex justify-end space-x-3 mt-6">
-                    <button type="button" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
+                    <button type="button" id="resetFilterBtn" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
                         Reset Filter
                     </button>
-                    <button type="button" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md font-medium transition duration-200 ease-in-out transform hover:scale-105 text-sm">
+                    <button type="button" id="applyFilterBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md font-medium transition duration-200 ease-in-out transform hover:scale-105 text-sm">
                         Terapkan Filter
                     </button>
                 </div>
@@ -1108,6 +1180,7 @@
         const deletedDealsCollection = db.collection('deletedDeals'); // Collection baru untuk Recycle Bin
         const activitiesCollection = db.collection('activities');
         const usersCollection = db.collection('users');
+        const dropdownOptionsCollection = db.collection('dropdownOptions'); // Collection untuk menyimpan opsi dropdown
 
         let deals = [];
         let deletedDeals = []; // Data untuk Recycle Bin
@@ -1125,11 +1198,13 @@
         let uniqueOwners = new Set();
         let uniqueProducts = new Set();
         let uniqueFacilities = new Set();
+        let uniquePackages = new Set();
         let uniqueYears = new Set();
         let uniqueSales = new Set();
 
         // Deklarasi variabel elemen DOM
         let facilitySelect, newFacilityInput;
+        let packageSelect, newPackageInput;
         let consultantSearchInput, consultantHiddenInput, consultantSuggestionsDiv;
 
         // Variabel untuk menyimpan preferensi tampilan
@@ -1216,6 +1291,9 @@
                     // Muat konsultan dari GitHub JSON
                     await loadConsultantsFromFirebase(); 
                     
+                    // Muat opsi dropdown dari Firebase
+                    await loadDropdownOptions();
+                    
                     initEventListeners();
                     initViewToggle();
                     initExportElements();
@@ -1230,6 +1308,152 @@
                 }
             }
         });
+
+        // ==================== FUNGSI DROPDOWN OPTIONS ====================
+
+        // Fungsi untuk memuat opsi dropdown dari Firebase
+        async function loadDropdownOptions() {
+            try {
+                const doc = await dropdownOptionsCollection.doc('options').get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    if (data.facilities) {
+                        uniqueFacilities = new Set(data.facilities);
+                    }
+                    if (data.packages) {
+                        uniquePackages = new Set(data.packages);
+                    }
+                    if (data.owners) {
+                        uniqueOwners = new Set(data.owners);
+                    }
+                    if (data.pics) {
+                        uniquePICs = new Set(data.pics);
+                    }
+                    console.log("Dropdown options loaded from Firebase");
+                }
+            } catch (error) {
+                console.error("Error loading dropdown options:", error);
+            }
+        }
+
+        // Fungsi untuk menyimpan opsi dropdown ke Firebase
+        async function saveDropdownOptions() {
+            try {
+                await dropdownOptionsCollection.doc('options').set({
+                    facilities: Array.from(uniqueFacilities),
+                    packages: Array.from(uniquePackages),
+                    owners: Array.from(uniqueOwners),
+                    pics: Array.from(uniquePICs),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                console.log("Dropdown options saved to Firebase");
+            } catch (error) {
+                console.error("Error saving dropdown options:", error);
+            }
+        }
+
+        // Fungsi untuk menghapus opsi dari dropdown
+        async function deleteDropdownOption(field, value) {
+            if (currentUserRole !== 'admin' && currentUserRole !== 'manager') {
+                showToast("Hanya admin dan manager yang dapat menghapus opsi dropdown", 3000);
+                return;
+            }
+
+            try {
+                // Hapus dari Set yang sesuai
+                switch (field) {
+                    case 'facility':
+                        uniqueFacilities.delete(value);
+                        break;
+                    case 'package':
+                        uniquePackages.delete(value);
+                        break;
+                    case 'owner':
+                        uniqueOwners.delete(value);
+                        break;
+                    case 'pic':
+                        uniquePICs.delete(value);
+                        break;
+                    case 'salesName':
+                        // Tidak bisa menghapus salesName karena sudah ditentukan
+                        break;
+                    case 'stage':
+                        // Tidak bisa menghapus stage karena sudah ditentukan
+                        break;
+                    case 'priority':
+                        // Tidak bisa menghapus priority karena sudah ditentukan
+                        break;
+                    case 'planPO':
+                        // Tidak bisa menghapus planPO karena sudah ditentukan
+                        break;
+                }
+
+                // Simpan perubahan ke Firebase
+                await saveDropdownOptions();
+                
+                // Perbarui dropdown yang sesuai
+                updateDropdownOptions();
+                
+                showToast(`Opsi "${value}" berhasil dihapus`, 2000);
+            } catch (error) {
+                console.error("Error deleting dropdown option:", error);
+                showToast("Gagal menghapus opsi dropdown", 3000);
+            }
+        }
+
+        // Fungsi untuk memperbarui opsi dropdown di UI
+        function updateDropdownOptions() {
+            // Update facility dropdown
+            if (facilitySelect) {
+                const currentValue = facilitySelect.value;
+                facilitySelect.innerHTML = `
+                    <option value="">Pilih Fasilitas</option>
+                    <option value="Industrial">Industrial</option>
+                    <option value="Office">Office</option>
+                    <option value="Hotel">Hotel</option>
+                    <option value="Data Center">Data Center</option>
+                    <option value="Oil & Gas">Oil & Gas</option>
+                    <option value="Warehouse">Warehouse</option>
+                    <option value="Other">Other</option>
+                `;
+                Array.from(uniqueFacilities).sort().forEach(value => {
+                    if (value && !['Industrial', 'Office', 'Hotel', 'Data Center', 'Oil & Gas', 'Warehouse', 'Other'].includes(value)) {
+                        const option = document.createElement('option');
+                        option.value = value;
+                        option.textContent = value;
+                        facilitySelect.appendChild(option);
+                    }
+                });
+                facilitySelect.value = currentValue;
+            }
+
+            // Update package dropdown
+            if (packageSelect) {
+                const currentValue = packageSelect.value;
+                packageSelect.innerHTML = `
+                    <option value="">Pilih Paket</option>
+                    <option value="Electronic Package">Electronic Package</option>
+                    <option value="M&E">M&E</option>
+                    <option value="Fire Fighting Cont">Fire Fighting Cont</option>
+                    <option value="Main Kontraktor">Main Kontraktor</option>
+                `;
+                Array.from(uniquePackages).sort().forEach(value => {
+                    if (value && !['Electronic Package', 'M&E', 'Fire Fighting Cont', 'Main Kontraktor'].includes(value)) {
+                        const option = document.createElement('option');
+                        option.value = value;
+                        option.textContent = value;
+                        packageSelect.appendChild(option);
+                    }
+                });
+                packageSelect.value = currentValue;
+            }
+
+            // Update owner dropdown
+            populateDropdown('owner', uniqueOwners);
+            
+            // Update pic dropdown
+            populateDropdown('pic', uniquePICs);
+        }
 
         // ==================== FUNGSI RECYCLE BIN ====================
 
@@ -1754,6 +1978,7 @@
                 uniqueOwners.clear();
                 uniqueProducts.clear();
                 uniqueFacilities.clear();
+                uniquePackages.clear();
                 uniqueYears.clear();
                 uniqueSales.clear();
 
@@ -1789,6 +2014,7 @@
                         }
                     }
                     if (dealData.facility) uniqueFacilities.add(dealData.facility);
+                    if (dealData.package) uniquePackages.add(dealData.package);
                     if (dealData.salesName) uniqueSales.add(dealData.salesName);
                     
                     if (dealData.createdAt) {
@@ -2011,6 +2237,7 @@
             populateDropdown('filterContractor', uniqueContractors, document.getElementById('filterContractor').value);
             populateDropdown('filterFacility', uniqueFacilities, document.getElementById('filterFacility').value);
             populateDropdown('filterProduct', uniqueProducts, document.getElementById('filterProduct').value);
+            populateDropdown('filterPackage', uniquePackages, document.getElementById('filterPackage').value);
         }
 
         // Fungsi helper untuk memformat input angka secara real-time
@@ -2185,6 +2412,8 @@
 
             document.getElementById('newOwner').value = '';
             document.getElementById('newPic').value = '';
+            document.getElementById('newPackage').value = '';
+            document.getElementById('newFacility').value = '';
             
             consultantSearchInput.value = '';
             consultantHiddenInput.value = '';
@@ -2196,6 +2425,7 @@
 
             document.getElementById('productList').innerHTML = '';
 
+            // Update facility dropdown
             facilitySelect.innerHTML = `
                 <option value="">Pilih Fasilitas</option>
                 <option value="Industrial">Industrial</option>
@@ -2214,7 +2444,23 @@
                     facilitySelect.appendChild(option);
                 }
             });
-            newFacilityInput.value = '';
+
+            // Update package dropdown
+            packageSelect.innerHTML = `
+                <option value="">Pilih Paket</option>
+                <option value="Electronic Package">Electronic Package</option>
+                <option value="M&E">M&E</option>
+                <option value="Fire Fighting Cont">Fire Fighting Cont</option>
+                <option value="Main Kontraktor">Main Kontraktor</option>
+            `;
+            Array.from(uniquePackages).sort().forEach(value => {
+                if (value && !['Electronic Package', 'M&E', 'Fire Fighting Cont', 'Main Kontraktor'].includes(value)) {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = value;
+                    packageSelect.appendChild(option);
+                }
+            });
 
             document.getElementById('contractorList').innerHTML = '';
             
@@ -2233,7 +2479,14 @@
                     document.getElementById('discount').value = deal.discount || '';
                     calculateBeforeDiscount();
                     
-                    document.getElementById('package').value = deal.package || '';
+                    // Handle package
+                    if (deal.package && Array.from(packageSelect.options).some(option => option.value === deal.package)) {
+                        packageSelect.value = deal.package;
+                        document.getElementById('newPackage').value = '';
+                    } else {
+                        packageSelect.value = '';
+                        document.getElementById('newPackage').value = deal.package || '';
+                    }
                     
                     if (deal.product && Array.isArray(deal.product) && deal.product.length > 0) {
                         deal.product.forEach(product => {
@@ -2247,10 +2500,10 @@
 
                     if (deal.facility && Array.from(facilitySelect.options).some(option => option.value === deal.facility)) {
                         facilitySelect.value = deal.facility;
-                        newFacilityInput.value = '';
+                        document.getElementById('newFacility').value = '';
                     } else {
                         facilitySelect.value = '';
-                        newFacilityInput.value = deal.facility || '';
+                        document.getElementById('newFacility').value = deal.facility || '';
                     }
                     
                     if (deal.owner && uniqueOwners.has(deal.owner)) {
@@ -2334,7 +2587,17 @@
             const beforeDiscountRaw = document.getElementById('beforeDiscount').value.replace(/[^0-9]/g, '');
             const beforeDiscount = parseFloat(beforeDiscountRaw) || 0;
 
-            const packageType = document.getElementById('package').value;
+            let packageType = document.getElementById('newPackage').value.trim();
+            if (!packageType) {
+                packageType = document.getElementById('package').value;
+            }
+            
+            // Tambahkan package baru ke uniquePackages jika belum ada
+            if (packageType && !uniquePackages.has(packageType)) {
+                uniquePackages.add(packageType);
+                await saveDropdownOptions();
+                updateDropdownOptions();
+            }
             
             const productInputs = document.querySelectorAll('#productList select, #productList input[type="text"]');
             const collectedProducts = new Set();
@@ -2356,14 +2619,28 @@
             }
             const productsToSave = Array.from(collectedProducts);
 
-            let facility = newFacilityInput.value.trim();
+            let facility = document.getElementById('newFacility').value.trim();
             if (!facility) {
                 facility = facilitySelect.value;
+            }
+            
+            // Tambahkan facility baru ke uniqueFacilities jika belum ada
+            if (facility && !uniqueFacilities.has(facility)) {
+                uniqueFacilities.add(facility);
+                await saveDropdownOptions();
+                updateDropdownOptions();
             }
             
             let owner = document.getElementById('newOwner').value.trim();
             if (!owner) {
                 owner = document.getElementById('owner').value;
+            }
+            
+            // Tambahkan owner baru ke uniqueOwners jika belum ada
+            if (owner && !uniqueOwners.has(owner)) {
+                uniqueOwners.add(owner);
+                await saveDropdownOptions();
+                updateDropdownOptions();
             }
 
             let consultant = consultantHiddenInput.value.trim();
@@ -2395,6 +2672,13 @@
             let pic = document.getElementById('newPic').value.trim();
             if (!pic) {
                 pic = document.getElementById('pic').value;
+            }
+            
+            // Tambahkan pic baru ke uniquePICs jika belum ada
+            if (pic && !uniquePICs.has(pic)) {
+                uniquePICs.add(pic);
+                await saveDropdownOptions();
+                updateDropdownOptions();
             }
 
             const planPO = document.getElementById('planPO').value;
@@ -3126,84 +3410,16 @@
                         confirmPermanentDelete(dealId, dealName);
                     }
                     
-                    // PERBAIKAN: Tombol batal di modal deal
-                    if (e.target.closest('#dealModalContent button[type="button"]')) {
-                        closeDealModal();
-                    }
-                    
-                    // PERBAIKAN: Tombol tutup di modal detail deal
-                    if (e.target.closest('#dealDetailModalContent button')) {
-                        closeDealDetailModal();
-                    }
-                    
-                    // PERBAIKAN: Tombol tutup di modal aktivitas
-                    if (e.target.closest('#activityModalContent .flex button')) {
-                        closeActivityModal();
-                    }
-                    
-                    // PERBAIKAN: Tombol batal di modal konfirmasi hapus
-                    if (e.target.closest('#deleteModalContent button:first-child')) {
-                        closeDeleteModal();
-                    }
-                    
-                    // PERBAIKAN: Tombol hapus di modal konfirmasi
-                    if (e.target.closest('#confirmDeleteBtn')) {
-                        deleteDeal();
-                    }
-                    
-                    // Tombol Recycle Bin FAB
-                    if (e.target.closest('#recycleBinFab')) {
-                        openRecycleBinModal();
-                    }
-                    
-                    // Tombol tutup Recycle Bin
-                    if (e.target.closest('.close-recycle-bin')) {
-                        closeRecycleBinModal();
-                    }
-                    
-                    // Tombol kosongkan Recycle Bin
-                    if (e.target.closest('#emptyRecycleBinBtn')) {
-                        emptyRecycleBin();
-                    }
-                    
-                    // Tombol batal hapus permanen
-                    if (e.target.closest('.cancel-permanent-delete')) {
-                        closePermanentDeleteModal();
-                    }
-                    
-                    // Tombol konfirmasi hapus permanen
-                    if (e.target.closest('#confirmPermanentDeleteBtn')) {
-                        permanentDeleteDeal();
-                    }
-                    
-                    // Tombol batal kosongkan Recycle Bin
-                    if (e.target.closest('.cancel-empty-bin')) {
-                        closeEmptyRecycleBinModal();
-                    }
-                    
-                    // Tombol konfirmasi kosongkan Recycle Bin
-                    if (e.target.closest('#confirmEmptyBinBtn')) {
-                        confirmEmptyRecycleBin();
-                    }
-                    
-                    // PERBAIKAN: Tombol tutup di panel filter
-                    if (e.target.closest('#filterPanelContent button:last-child')) {
-                        closeFilterPanel();
-                    }
-                    
-                    // PERBAIKAN: Tombol reset filter
-                    if (e.target.closest('#filterPanelContent button:first-child')) {
-                        resetFilters();
-                    }
-                    
-                    // PERBAIKAN: Tombol terapkan filter
-                    if (e.target.closest('#filterPanelContent button:nth-child(2)')) {
-                        applyFiltersAndClosePanel();
-                    }
-                    
-                    // PERBAIKAN: Tombol tutup di stats section
-                    if (e.target.closest('#stats-section button')) {
-                        hideStats();
+                    // Tombol hapus opsi dropdown
+                    if (e.target.closest('.delete-option-btn')) {
+                        const button = e.target.closest('.delete-option-btn');
+                        const targetField = button.dataset.target;
+                        const selectElement = document.getElementById(targetField);
+                        const selectedValue = selectElement.value;
+                        
+                        if (selectedValue && selectedValue !== '') {
+                            deleteDropdownOption(targetField, selectedValue);
+                        }
                     }
                 });
         
@@ -3222,21 +3438,52 @@
                 document.getElementById('authButton').addEventListener('click', logout);
                 document.getElementById('openFilterPanelBtn').addEventListener('click', openFilterPanel);
         
+                // Tombol di modal deal
+                document.getElementById('cancelDealBtn').addEventListener('click', closeDealModal);
+                document.getElementById('addContractorBtn').addEventListener('click', () => addContractorField());
+                document.getElementById('addProductBtn').addEventListener('click', () => addProductField());
+                
+                // Tombol di modal detail deal
+                document.getElementById('closeDetailBtn').addEventListener('click', closeDealDetailModal);
+                
+                // Tombol di modal aktivitas
+                document.getElementById('closeActivityBtn').addEventListener('click', closeActivityModal);
+                document.getElementById('closeActivityFooterBtn').addEventListener('click', closeActivityModal);
+                
+                // Tombol di modal konfirmasi hapus
+                document.getElementById('cancelDeleteBtn').addEventListener('click', closeDeleteModal);
+                document.getElementById('confirmDeleteBtn').addEventListener('click', deleteDeal);
+                
+                // Tombol di panel filter
+                document.getElementById('closeFilterBtn').addEventListener('click', closeFilterPanel);
+                document.getElementById('resetFilterBtn').addEventListener('click', resetFilters);
+                document.getElementById('applyFilterBtn').addEventListener('click', applyFiltersAndClosePanel);
+                
+                // Tombol di stats section
+                document.querySelector('#stats-section button').addEventListener('click', hideStats);
+
                 // Input events
                 document.getElementById('searchDeals').addEventListener('keyup', filterDeals);
                 document.getElementById('value').addEventListener('input', formatAndCalculateBeforeDiscount);
                 document.getElementById('discount').addEventListener('input', formatAndCalculateBeforeDiscount);
         
-                // PERBAIKAN: Tombol tambah contractor dan product menggunakan event delegation
-                // Tidak perlu event listener terpisah karena sudah ditangani oleh event delegation di atas
-        
+                // Handle facility select and input
                 if (facilitySelect && newFacilityInput) {
                     facilitySelect.addEventListener('change', handleFacilitySelectChange);
                     newFacilityInput.addEventListener('input', handleNewFacilityInput);
                 }
+                
+                // Handle package select and input
+                if (packageSelect && newPackageInput) {
+                    packageSelect.addEventListener('change', handlePackageSelectChange);
+                    newPackageInput.addEventListener('input', handleNewPackageInput);
+                }
         
                 setupConsultantSearch();
-        
+                
+                // Tampilkan/sembunyikan tombol hapus pada dropdown berdasarkan role
+                toggleDeleteOptionButtons();
+                
             } catch (error) {
                 console.error("Error initializing event listeners:", error);
                 showToast("Gagal memuat beberapa fungsi", 3000);
@@ -3253,6 +3500,32 @@
             if (newFacilityInput.value.trim() !== '') {
                 facilitySelect.value = '';
             }
+        }
+        
+        function handlePackageSelectChange() {
+            if (packageSelect.value !== '') {
+                newPackageInput.value = '';
+            }
+        }
+
+        function handleNewPackageInput() {
+            if (newPackageInput.value.trim() !== '') {
+                packageSelect.value = '';
+            }
+        }
+        
+        // Fungsi untuk menampilkan/menyembunyikan tombol hapus pada dropdown
+        function toggleDeleteOptionButtons() {
+            const deleteButtons = document.querySelectorAll('.delete-option-btn');
+            const canDelete = currentUserRole === 'admin' || currentUserRole === 'manager';
+            
+            deleteButtons.forEach(button => {
+                if (canDelete) {
+                    button.classList.remove('hidden');
+                } else {
+                    button.classList.add('hidden');
+                }
+            });
         }
 
         // ==================== FUNGSI LAINNYA ====================
@@ -3834,6 +4107,8 @@
         document.addEventListener('DOMContentLoaded', function() {
             facilitySelect = document.getElementById('facility');
             newFacilityInput = document.getElementById('newFacility');
+            packageSelect = document.getElementById('package');
+            newPackageInput = document.getElementById('newPackage');
             consultantSearchInput = document.getElementById('consultantSearch');
             consultantHiddenInput = document.getElementById('consultant');
             consultantSuggestionsDiv = document.getElementById('consultantSuggestions');
