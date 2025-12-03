@@ -3385,6 +3385,21 @@
                         removeProductField(e.target.closest('.remove-product-btn'));
                     }
                     
+                    // Tombol Recycle Bin Floating Action Button
+                    if (e.target.closest('#recycleBinFab')) {
+                        openRecycleBinModal();
+                    }
+                    
+                    // Tombol close Recycle Bin modal
+                    if (e.target.closest('.close-recycle-bin')) {
+                        closeRecycleBinModal();
+                    }
+                    
+                    // Tombol empty Recycle Bin
+                    if (e.target.closest('#emptyRecycleBinBtn')) {
+                        emptyRecycleBin();
+                    }
+                    
                     // Tombol restore deal di Recycle Bin
                     if (e.target.closest('.restore-deal-btn')) {
                         const dealId = e.target.closest('.restore-deal-btn').dataset.id;
@@ -3397,6 +3412,26 @@
                         const dealId = button.dataset.id;
                         const dealName = button.dataset.name;
                         confirmPermanentDelete(dealId, dealName);
+                    }
+                    
+                    // Tombol cancel permanent delete
+                    if (e.target.closest('.cancel-permanent-delete')) {
+                        closePermanentDeleteModal();
+                    }
+                    
+                    // Tombol confirm permanent delete
+                    if (e.target.closest('#confirmPermanentDeleteBtn')) {
+                        permanentDeleteDeal();
+                    }
+                    
+                    // Tombol cancel empty bin
+                    if (e.target.closest('.cancel-empty-bin')) {
+                        closeEmptyRecycleBinModal();
+                    }
+                    
+                    // Tombol confirm empty bin
+                    if (e.target.closest('#confirmEmptyBinBtn')) {
+                        confirmEmptyRecycleBin();
                     }
                     
                     // Tombol hapus opsi dropdown
