@@ -657,6 +657,7 @@
                                 <div class="dropdown-with-delete">
                                     <select id="priority" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                                         <option value="Priority">Priority</option>
+                                        <option value="Hot Priority">Hot Priority</option>
                                         <option value="Win">Win</option>
                                         <option value="Lost">Lost</option>
                                         <option value="Behind">Behind</option>
@@ -1010,6 +1011,7 @@
                         <select id="filterPriority" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Prioritas</option>
                             <option value="Priority">Priority</option>
+                            <option value="Hot Priority">Hot Priority</option>
                             <option value="Win">Win</option>
                             <option value="Lost">Lost</option>
                             <option value="Behind">Behind</option>
@@ -2092,6 +2094,9 @@
                 case 'Priority':
                     priorityColorClass = 'bg-red-100 text-red-800';
                     break;
+                case 'Hot Priority':
+                    priorityColorClass = 'bg-red-300 text-red-900';
+                    break;
                 case 'Win':
                     priorityColorClass = 'bg-green-100 text-green-800';
                     break;
@@ -2161,6 +2166,7 @@
                 <td>${index + 1}</td>
                 <td>${deal.salesName || '-'}</td>
                 <td>${deal.dealName || 'No Name'}</td>
+                <td>${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}</td>
                 <td>${deal.consultant || '-'}</td>
                 <td>Rp ${formatNumber(deal.value) || '0'}</td>
                 <td class="deal-actions">
@@ -2213,7 +2219,7 @@
 
         // Fungsi untuk mengisi dropdown filter tambahan
         function populateFilterDropdowns() {
-            populateDropdown('filterPriority', ['Priority', 'Win', 'Lost', 'Behind', 'On Track', 'Completed'], document.getElementById('filterPriority').value);
+            populateDropdown('filterPriority', ['Priority', 'Hot Priority', 'Win', 'Lost', 'Behind', 'On Track', 'Completed'], document.getElementById('filterPriority').value);
             populateDropdown('filterStage', ['identified', 'prospect', 'tender-me', 'tender-main-con', 'contract-award', 'win', 'lost', 'on-hold'], document.getElementById('filterStage').value);
             populateDropdown('filterSales', uniqueSales, document.getElementById('filterSales').value);
             populateDropdown('filterConsultant', uniqueConsultants, document.getElementById('filterConsultant').value);
@@ -3654,6 +3660,7 @@
                         <th>No</th>
                         <th>Nama Sales</th>
                         <th>Nama Project</th>
+                        <th>Tahap</th>
                         <th>Konsultan</th>
                         <th>Nilai (IDR)</th>
                         <th>Aksi</th>
