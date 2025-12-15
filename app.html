@@ -1195,6 +1195,20 @@
         // Variabel untuk menyimpan preferensi tampilan
         let currentView = 'card';
 
+        // Variabel untuk menyimpan filter yang sedang aktif
+        let activeFilters = {
+            searchTerm: '',
+            priority: 'all',
+            year: 'all',
+            stage: 'all',
+            sales: 'all',
+            consultant: 'all',
+            contractor: 'all',
+            facility: 'all',
+            product: 'all',
+            package: 'all'
+        };
+
         // Mapping email ke nama sales
         const emailToSalesNameMap = {
             'rory@genetek.co.id': 'Rory',
@@ -1563,7 +1577,7 @@
                     read: false
                 });
                 
-                // Refresh tampilan
+                // Refresh tampilan dengan filter yang aktif
                 await loadRecycleBin();
                 renderRecycleBinContent();
                 updateRecycleBinBadge();
@@ -2010,11 +2024,8 @@
                 populateYearDropdown();
                 populateFilterDropdowns();
                 
-                let dealsToDisplay = deals;
-                if (currentUserRole !== 'admin') {
-                    dealsToDisplay = deals.filter(deal => deal.stage !== 'lost');
-                }
-                renderFilteredDeals(dealsToDisplay);
+                // Terapkan filter yang aktif
+                applyActiveFilters();
                 
             } catch (error) {
                 console.error("Error loading deals:", error);
@@ -2219,14 +2230,18 @@
 
         // Fungsi untuk mengisi dropdown filter tambahan
         function populateFilterDropdowns() {
-            populateDropdown('filterPriority', ['Priority', 'Hot Priority', 'Win', 'Lost', 'Behind', 'On Track', 'Completed'], document.getElementById('filterPriority').value);
-            populateDropdown('filterStage', ['identified', 'prospect', 'tender-me', 'tender-main-con', 'contract-award', 'win', 'lost', 'on-hold'], document.getElementById('filterStage').value);
-            populateDropdown('filterSales', uniqueSales, document.getElementById('filterSales').value);
-            populateDropdown('filterConsultant', uniqueConsultants, document.getElementById('filterConsultant').value);
-            populateDropdown('filterContractor', uniqueContractors, document.getElementById('filterContractor').value);
-            populateDropdown('filterFacility', uniqueFacilities, document.getElementById('filterFacility').value);
-            populateDropdown('filterProduct', uniqueProducts, document.getElementById('filterProduct').value);
-            populateDropdown('filterPackage', uniquePackages, document.getElementById('filterPackage').value);
+            populateDropdown('filterPriority', ['Priority', 'Hot Priority', 'Win', 'Lost', 'Behind', 'On Track', 'Completed'], activeFilters.priority);
+            populateDropdown('filterStage', ['identified', 'prospect', 'tender-me', 'tender-main-con', 'contract-award', 'win', 'lost', 'on-hold'], activeFilters.stage);
+            populateDropdown('filterSales', uniqueSales, activeFilters.sales);
+            populateDropdown('filterConsultant', uniqueConsultants, activeFilters.consultant);
+            populateDropdown('filterContractor', uniqueContractors, activeFilters.contractor);
+            populateDropdown('filterFacility', uniqueFacilities, activeFilters.facility);
+            populateDropdown('filterProduct', uniqueProducts, activeFilters.product);
+            populateDropdown('filterPackage', uniquePackages, activeFilters.package);
+            populateDropdown('filterYear', uniqueYears, activeFilters.year);
+            
+            // Set nilai input pencarian
+            document.getElementById('searchDeals').value = activeFilters.searchTerm;
         }
 
         // Fungsi helper untuk memformat input angka secara real-time
@@ -2731,7 +2746,8 @@
                     });
                 }
                 closeDealModal();
-                loadDealsFromFirebase();
+                // PERBAIKAN: Setelah save, load deals dan terapkan filter yang aktif
+                await loadDealsFromFirebase();
                 loadActivitiesFromFirebase();
             } catch (error) {
                 console.error("Error saving deal:", error);
@@ -2831,7 +2847,8 @@
                 });
                 
                 closeDeleteModal();
-                loadDealsFromFirebase();
+                // PERBAIKAN: Setelah delete, load deals dan terapkan filter yang aktif
+                await loadDealsFromFirebase();
                 loadActivitiesFromFirebase();
                 
                 // Update Recycle Bin badge untuk admin
@@ -3574,89 +3591,92 @@
             document.getElementById('cardViewBtn').classList.toggle('active', viewType === 'card');
             document.getElementById('listViewBtn').classList.toggle('active', viewType === 'list');
             
-            filterDeals();
+            // Terapkan filter yang aktif dengan view baru
+            applyActiveFilters();
         }
 
-        // Fungsi untuk filter deals
-        function filterDeals() {
+        // Fungsi untuk menerapkan filter yang aktif
+        function applyActiveFilters() {
             try {
-                const searchTerm = document.getElementById('searchDeals').value.toLowerCase();
-                const priorityFilter = document.getElementById('filterPriority').value;
-                const yearFilter = document.getElementById('filterYear').value;
-                const stageFilter = document.getElementById('filterStage').value;
-                const salesFilter = document.getElementById('filterSales').value;
-                const consultantFilter = document.getElementById('filterConsultant').value;
-                const contractorFilter = document.getElementById('filterContractor').value;
-                const facilityFilter = document.getElementById('filterFacility').value; 
-                const productFilter = document.getElementById('filterProduct').value;
-                const packageFilter = document.getElementById('filterPackage').value;
-                
                 let baseDeals = deals;
                 if (currentUserRole !== 'admin') {
                     baseDeals = deals.filter(deal => deal.stage !== 'lost');
                 }
 
-                const isAnyFilterActive = searchTerm !== '' ||
-                                        priorityFilter !== 'all' ||
-                                        yearFilter !== 'all' ||
-                                        stageFilter !== 'all' ||
-                                        salesFilter !== 'all' ||
-                                        consultantFilter !== 'all' ||
-                                        contractorFilter !== 'all' ||
-                                        facilityFilter !== 'all' || 
-                                        productFilter !== 'all' ||
-                                        packageFilter !== 'all';
-
-                if (!isAnyFilterActive) {
-                    renderFilteredDeals(baseDeals);
-                    initSortable();
-                    return; 
-                }
-
                 const filteredDeals = baseDeals.filter(deal => {
                     const matchesSearch = 
-                        (deal.dealName && deal.dealName.toLowerCase().includes(searchTerm)) ||
-                        (deal.salesName && deal.salesName.toLowerCase().includes(searchTerm));
+                        activeFilters.searchTerm === '' ||
+                        (deal.dealName && deal.dealName.toLowerCase().includes(activeFilters.searchTerm)) ||
+                        (deal.salesName && deal.salesName.toLowerCase().includes(activeFilters.searchTerm));
                     
                     const matchesPriority = 
-                        priorityFilter === 'all' || 
-                        (deal.priority && deal.priority === priorityFilter);
+                        activeFilters.priority === 'all' || 
+                        (deal.priority && deal.priority === activeFilters.priority);
                     
-                    const matchesYear = yearFilter === 'all' || 
-                                        (deal.createdAt && deal.createdAt.toDate().getFullYear().toString() === yearFilter);
+                    const matchesYear = activeFilters.year === 'all' || 
+                                        (deal.createdAt && deal.createdAt.toDate().getFullYear().toString() === activeFilters.year);
 
-                    const matchesStage = stageFilter === 'all' || 
-                                        (deal.stage && deal.stage === stageFilter);
+                    const matchesStage = activeFilters.stage === 'all' || 
+                                        (deal.stage && deal.stage === activeFilters.stage);
 
-                    const matchesSales = salesFilter === 'all' || 
-                                        (deal.salesName && deal.salesName === salesFilter);
+                    const matchesSales = activeFilters.sales === 'all' || 
+                                        (deal.salesName && deal.salesName === activeFilters.sales);
 
-                    const matchesConsultant = consultantFilter === 'all' || 
-                                            (deal.consultant && deal.consultant === consultantFilter);
+                    const matchesConsultant = activeFilters.consultant === 'all' || 
+                                            (deal.consultant && deal.consultant === activeFilters.consultant);
                     
-                    const matchesContractor = contractorFilter === 'all' || 
+                    const matchesContractor = activeFilters.contractor === 'all' || 
                                             (deal.contractor && 
                                             (Array.isArray(deal.contractor) ? 
-                                            deal.contractor.includes(contractorFilter) : 
-                                            deal.contractor === contractorFilter));
+                                            deal.contractor.includes(activeFilters.contractor) : 
+                                            deal.contractor === activeFilters.contractor));
 
-                    const matchesProduct = productFilter === 'all' || 
+                    const matchesProduct = activeFilters.product === 'all' || 
                                         (deal.product && 
                                         (Array.isArray(deal.product) ? 
-                                        deal.product.includes(productFilter) : 
-                                        deal.product === productFilter));
+                                        deal.product.includes(activeFilters.product) : 
+                                        deal.product === activeFilters.product));
 
-                    const matchesFacility = facilityFilter === 'all' || 
-                                            (deal.facility && deal.facility === facilityFilter);
+                    const matchesFacility = activeFilters.facility === 'all' || 
+                                            (deal.facility && deal.facility === activeFilters.facility);
 
-                    const matchesPackage = packageFilter === 'all' || 
-                                        (deal.package && deal.package === packageFilter);
+                    const matchesPackage = activeFilters.package === 'all' || 
+                                        (deal.package && deal.package === activeFilters.package);
                     
                     return matchesSearch && matchesPriority && matchesYear && matchesStage && matchesSales &&
                         matchesConsultant && matchesContractor && matchesFacility && matchesProduct && matchesPackage;
                 });
                 
                 renderFilteredDeals(filteredDeals);
+            } catch (error) {
+                console.error("Error applying active filters:", error);
+            }
+        }
+
+        // Fungsi untuk menyimpan filter yang aktif
+        function saveActiveFilters() {
+            activeFilters = {
+                searchTerm: document.getElementById('searchDeals').value.toLowerCase(),
+                priority: document.getElementById('filterPriority').value,
+                year: document.getElementById('filterYear').value,
+                stage: document.getElementById('filterStage').value,
+                sales: document.getElementById('filterSales').value,
+                consultant: document.getElementById('filterConsultant').value,
+                contractor: document.getElementById('filterContractor').value,
+                facility: document.getElementById('filterFacility').value,
+                product: document.getElementById('filterProduct').value,
+                package: document.getElementById('filterPackage').value
+            };
+        }
+
+        // Fungsi untuk filter deals
+        function filterDeals() {
+            try {
+                // Simpan filter yang aktif
+                saveActiveFilters();
+                
+                // Terapkan filter yang aktif
+                applyActiveFilters();
             } catch (error) {
                 console.error("Error filtering deals:", error);
             }
@@ -3768,12 +3788,19 @@
 
         // Fungsi untuk menerapkan filter dan menutup panel
         function applyFiltersAndClosePanel() {
-            filterDeals();
+            // Simpan filter yang dipilih
+            saveActiveFilters();
+            
+            // Terapkan filter
+            applyActiveFilters();
+            
+            // Tutup panel
             closeFilterPanel();
         }
 
         // Fungsi untuk mereset semua filter
         function resetFilters() {
+            // Reset filter di UI
             document.getElementById('filterPriority').value = 'all';
             document.getElementById('filterYear').value = 'all';
             document.getElementById('filterStage').value = 'all';
@@ -3784,7 +3811,23 @@
             document.getElementById('filterProduct').value = 'all';
             document.getElementById('filterPackage').value = 'all';
             document.getElementById('searchDeals').value = '';
-            filterDeals();
+            
+            // Reset filter aktif
+            activeFilters = {
+                searchTerm: '',
+                priority: 'all',
+                year: 'all',
+                stage: 'all',
+                sales: 'all',
+                consultant: 'all',
+                contractor: 'all',
+                facility: 'all',
+                product: 'all',
+                package: 'all'
+            };
+            
+            // Terapkan filter reset
+            applyActiveFilters();
         }
 
         // ==================== FUNGSI SEARCH KONSULTAN ====================
