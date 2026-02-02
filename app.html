@@ -271,91 +271,6 @@
             padding: 0.5rem 0.75rem;
         }
 
-        /* Progress Bar Styles */
-        .progress-container {
-            margin-top: 1rem;
-            background-color: #f1f5f9;
-            border-radius: 0.5rem;
-            padding: 1rem;
-        }
-
-        .progress-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.5rem;
-        }
-
-        .progress-title {
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: #374151;
-        }
-
-        .progress-percentage {
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: #3b82f6;
-        }
-
-        .progress-bar {
-            height: 8px;
-            background-color: #e5e7eb;
-            border-radius: 4px;
-            overflow: hidden;
-            margin-bottom: 0.5rem;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background-color: #3b82f6;
-            border-radius: 4px;
-            transition: width 0.3s ease;
-        }
-
-        .progress-steps {
-            display: flex;
-            justify-content: space-between;
-            position: relative;
-            margin-top: 0.5rem;
-        }
-
-        .progress-step {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: relative;
-            z-index: 1;
-        }
-
-        .step-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background-color: #e5e7eb;
-            margin-bottom: 0.25rem;
-        }
-
-        .step-dot.completed {
-            background-color: #10b981;
-        }
-
-        .step-dot.active {
-            background-color: #3b82f6;
-        }
-
-        .step-label {
-            font-size: 0.7rem;
-            color: #6b7280;
-            text-align: center;
-            max-width: 60px;
-        }
-
-        .step-label.active {
-            color: #3b82f6;
-            font-weight: 600;
-        }
-
         /* Menghilangkan scrollbar jika konten pas */
         #dealModalContent::-webkit-scrollbar {
             width: 0px;
@@ -686,59 +601,6 @@
             line-height: 1;
         }
 
-        /* CSS untuk deal list di statistik */
-        .deal-list-container {
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.5rem;
-            margin-top: 1rem;
-        }
-
-        .deal-list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid #e5e7eb;
-            transition: background-color 0.2s;
-        }
-
-        .deal-list-item:last-child {
-            border-bottom: none;
-        }
-
-        .deal-list-item:hover {
-            background-color: #f9fafb;
-        }
-
-        .deal-list-info {
-            flex: 1;
-        }
-
-        .deal-list-name {
-            font-weight: 600;
-            color: #1f2937;
-            margin-bottom: 0.25rem;
-        }
-
-        .deal-list-details {
-            display: flex;
-            gap: 1rem;
-            font-size: 0.75rem;
-            color: #6b7280;
-        }
-
-        .deal-list-value {
-            font-weight: 600;
-            color: #3b82f6;
-        }
-
-        .deal-list-actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-
         /* Responsive adjustments for stats modal */
         @media (max-width: 768px) {
             #statsModal .modal-content-enter {
@@ -751,11 +613,6 @@
             
             .metric-value {
                 font-size: 1.5rem;
-            }
-            
-            .deal-list-details {
-                flex-direction: column;
-                gap: 0.25rem;
             }
         }
 
@@ -776,47 +633,6 @@
 
         #statsModal .overflow-y-auto::-webkit-scrollbar-thumb:hover {
             background: #a8a8a8;
-        }
-
-        /* Clickable chart elements */
-        .clickable-chart {
-            cursor: pointer;
-        }
-
-        /* Priority colors untuk badges */
-        .priority-badge-priority {
-            background-color: #fef3c7;
-            color: #92400e;
-        }
-
-        .priority-badge-hot {
-            background-color: #fee2e2;
-            color: #991b1b;
-        }
-
-        .priority-badge-win {
-            background-color: #d1fae5;
-            color: #065f46;
-        }
-
-        .priority-badge-lost {
-            background-color: #f3f4f6;
-            color: #374151;
-        }
-
-        .priority-badge-behind {
-            background-color: #ffedd5;
-            color: #9a3412;
-        }
-
-        .priority-badge-ontrack {
-            background-color: #dbeafe;
-            color: #1e40af;
-        }
-
-        .priority-badge-completed {
-            background-color: #f3e8ff;
-            color: #6b21a8;
         }
     </style>
 </head>
@@ -949,7 +765,7 @@
                                 <canvas id="salesStageChart"></canvas>
                             </div>
                             <div class="bg-gray-50 p-4 rounded-lg shadow-inner chart-container">
-                                <canvas id="salesPriorityChart" class="clickable-chart"></canvas>
+                                <canvas id="salesPriorityChart"></canvas>
                             </div>
                         </div>
                         
@@ -982,14 +798,6 @@
                                 <p id="salesMaxValue" class="metric-value text-orange-600">Rp 0</p>
                             </div>
                         </div>
-                        
-                        <!-- Deal List berdasarkan Priority -->
-                        <div id="salesPriorityDealList" class="mt-6 hidden">
-                            <h3 class="text-lg font-bold mb-3 text-gray-900">Detail Deal untuk Priority: <span id="selectedPriorityLabel"></span></h3>
-                            <div class="deal-list-container" id="salesPriorityDealListContent">
-                                <!-- Daftar deal akan dimuat di sini -->
-                            </div>
-                        </div>
                     </div>
                     
                     <!-- Tab 3: Analisis Priority -->
@@ -1010,7 +818,7 @@
                         
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <div class="bg-gray-50 p-4 rounded-lg shadow-inner chart-container">
-                                <canvas id="priorityStageChart" class="clickable-chart"></canvas>
+                                <canvas id="priorityStageChart"></canvas>
                             </div>
                             <div class="bg-gray-50 p-4 rounded-lg shadow-inner chart-container">
                                 <canvas id="prioritySalesChart"></canvas>
@@ -1048,14 +856,6 @@
                             <div class="metric-box">
                                 <h3 class="metric-title">Deal Terkecil</h3>
                                 <p id="priorityMinValue" class="metric-value text-yellow-600">Rp 0</p>
-                            </div>
-                        </div>
-                        
-                        <!-- Deal List berdasarkan Stage -->
-                        <div id="priorityStageDealList" class="mt-6 hidden">
-                            <h3 class="text-lg font-bold mb-3 text-gray-900">Detail Deal untuk Stage: <span id="selectedStageLabel"></span></h3>
-                            <div class="deal-list-container" id="priorityStageDealListContent">
-                                <!-- Daftar deal akan dimuat di sini -->
                             </div>
                         </div>
                     </div>
@@ -1255,44 +1055,6 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Progress Bar Section -->
-                    <div class="progress-container">
-                        <div class="progress-header">
-                            <div class="progress-title">Progress Pipeline</div>
-                            <div class="progress-percentage" id="progressPercentage">0%</div>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
-                        </div>
-                        <div class="progress-steps">
-                            <div class="progress-step" data-stage="identified">
-                                <div class="step-dot"></div>
-                                <div class="step-label">Identified</div>
-                            </div>
-                            <div class="progress-step" data-stage="prospect">
-                                <div class="step-dot"></div>
-                                <div class="step-label">Prospect</div>
-                            </div>
-                            <div class="progress-step" data-stage="tender-me">
-                                <div class="step-dot"></div>
-                                <div class="step-label">Tender M&E</div>
-                            </div>
-                            <div class="progress-step" data-stage="tender-main-con">
-                                <div class="step-dot"></div>
-                                <div class="step-label">Tender Main Con</div>
-                            </div>
-                            <div class="progress-step" data-stage="contract-award">
-                                <div class="step-dot"></div>
-                                <div class="step-label">Contract Award</div>
-                            </div>
-                            <div class="progress-step" data-stage="win">
-                                <div class="step-dot"></div>
-                                <div class="step-label">Win</div>
-                            </div>
-                        </div>
-                    </div>
-                    
                     <div class="flex justify-end space-x-3 mt-6">
                         <button type="button" id="cancelDealBtn" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
                             Batal
@@ -1604,7 +1366,7 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="exportDateRange">Rentang Tanggal</label>
-                            <select id="exportDateRange" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                        <select id="exportDateRange" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Data</option>
                             <option value="this_month">Bulan Ini</option>
                             <option value="last_month">Bulan Lalu</option>
@@ -1740,22 +1502,6 @@
             priorityStageChart: null,
             prioritySalesChart: null,
             priorityTimelineChart: null
-        };
-
-        // Variabel untuk menyimpan data yang dipilih di chart
-        let selectedPriorityForSales = null;
-        let selectedStageForPriority = null;
-
-        // Mapping progress stages
-        const stageProgressMap = {
-            'identified': 0,
-            'prospect': 20,
-            'tender-me': 40,
-            'tender-main-con': 60,
-            'contract-award': 80,
-            'win': 100,
-            'lost': 0,
-            'on-hold': 0
         };
 
         // ==================== FUNGSI UTAMA ====================
@@ -2434,28 +2180,6 @@
             }, duration);
         }
 
-        // Fungsi untuk mendapatkan class priority badge
-        function getPriorityBadgeClass(priority) {
-            switch(priority) {
-                case 'Priority':
-                    return 'priority-badge-priority';
-                case 'Hot Priority':
-                    return 'priority-badge-hot';
-                case 'Win':
-                    return 'priority-badge-win';
-                case 'Lost':
-                    return 'priority-badge-lost';
-                case 'Behind':
-                    return 'priority-badge-behind';
-                case 'On Track':
-                    return 'priority-badge-ontrack';
-                case 'Completed':
-                    return 'priority-badge-completed';
-                default:
-                    return 'priority-badge-priority';
-            }
-        }
-
         // ==================== FUNGSI DEALS ====================
 
         // Fungsi untuk mengisi dropdown tahun
@@ -2635,13 +2359,39 @@
                     stageColorClass = 'bg-gray-100 text-gray-800';
             }
 
-            const priorityBadgeClass = getPriorityBadgeClass(deal.priority);
+            let priorityColorClass = '';
+            switch (deal.priority) {
+                case 'Priority':
+                    priorityColorClass = 'bg-red-100 text-red-800';
+                    break;
+                case 'Hot Priority':
+                    priorityColorClass = 'bg-red-300 text-red-900';
+                    break;
+                case 'Win':
+                    priorityColorClass = 'bg-green-100 text-green-800';
+                    break;
+                case 'Lost':
+                    priorityColorClass = 'bg-gray-300 text-gray-800';
+                    break;
+                case 'Behind':
+                    priorityColorClass = 'bg-orange-100 text-orange-800';
+                    break;
+                case 'On Track':
+                    priorityColorClass = 'bg-blue-100 text-blue-800';
+                    break;
+                case 'Completed':
+                    priorityColorClass = 'bg-purple-100 text-purple-800';
+                    break;
+                default:
+                    priorityColorClass = 'bg-gray-100 text-gray-800';
+            }
+
             const canEdit = canUserEditDeal(deal);
 
             dealCard.innerHTML = `
                 <div class="flex justify-between items-start">
                     <h3 class="font-bold text-gray-800">${deal.dealName || 'No Name'}</h3>
-                    <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
+                    <span class="priority-badge px-2 py-1 rounded-full ${priorityColorClass}">
                         ${deal.priority || 'Priority'}
                     </span>
                 </div>
@@ -2681,7 +2431,6 @@
             row.dataset.id = deal.id;
             
             const canEdit = canUserEditDeal(deal);
-            const priorityBadgeClass = getPriorityBadgeClass(deal.priority);
             
             row.innerHTML = `
                 <td>${index + 1}</td>
@@ -2690,11 +2439,6 @@
                 <td>${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}</td>
                 <td>${deal.consultant || '-'}</td>
                 <td>Rp ${formatNumber(deal.value) || '0'}</td>
-                <td>
-                    <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
-                        ${deal.priority || 'Priority'}
-                    </span>
-                </td>
                 <td class="deal-actions">
                     <button class="view-detail-btn text-blue-600 hover:text-blue-800">
                         <i class="fas fa-eye"></i>
@@ -2772,43 +2516,6 @@
             inputElement.value = new Intl.NumberFormat('id-ID').format(numberValue);
         }
 
-        // ==================== PROGRESS BAR FUNCTIONS ====================
-
-        // Fungsi untuk mengupdate progress bar berdasarkan stage
-        function updateProgressBar(stage) {
-            const progressPercentage = document.getElementById('progressPercentage');
-            const progressFill = document.getElementById('progressFill');
-            const progressSteps = document.querySelectorAll('.progress-step');
-            
-            const progress = stageProgressMap[stage] || 0;
-            
-            progressPercentage.textContent = `${progress}%`;
-            progressFill.style.width = `${progress}%`;
-            
-            // Update step dots
-            progressSteps.forEach(step => {
-                const stepDot = step.querySelector('.step-dot');
-                const stepLabel = step.querySelector('.step-label');
-                const stepStage = step.dataset.stage;
-                
-                // Reset semua
-                stepDot.classList.remove('completed', 'active');
-                stepLabel.classList.remove('active');
-                
-                // Set completed steps
-                const stepProgress = stageProgressMap[stepStage] || 0;
-                if (stepProgress <= progress && stepProgress > 0) {
-                    stepDot.classList.add('completed');
-                }
-                
-                // Set active step
-                if (stepStage === stage) {
-                    stepDot.classList.add('active');
-                    stepLabel.classList.add('active');
-                }
-            });
-        }
-
         // ==================== FUNGSI STATISTIK MODAL ====================
 
         // Fungsi untuk membuka modal statistik
@@ -2822,11 +2529,6 @@
             
             // Set tab aktif ke overview
             switchStatsTab('overview');
-            
-            // Reset selected data
-            selectedPriorityForSales = null;
-            selectedStageForPriority = null;
-            hideDealLists();
             
             // Render semua chart
             renderAllCharts();
@@ -2908,12 +2610,6 @@
             }
         }
 
-        // Fungsi untuk menyembunyikan daftar deal
-        function hideDealLists() {
-            document.getElementById('salesPriorityDealList').classList.add('hidden');
-            document.getElementById('priorityStageDealList').classList.add('hidden');
-        }
-
         // ==================== FUNGSI STATISTIK PER SALES ====================
 
         // Fungsi untuk memproses data per sales
@@ -2933,8 +2629,7 @@
                 byProduct: {},
                 byFacility: {},
                 maxDealValue: 0,
-                minDealValue: 0,
-                dealsByPriority: {}
+                minDealValue: 0
             };
             
             if (salesDeals.length > 0) {
@@ -2959,14 +2654,7 @@
                 stats.stageDistribution[deal.stage] = (stats.stageDistribution[deal.stage] || 0) + 1;
                 
                 // Priority distribution
-                const priority = deal.priority || 'Priority';
-                stats.priorityDistribution[priority] = (stats.priorityDistribution[priority] || 0) + 1;
-                
-                // Store deals by priority
-                if (!stats.dealsByPriority[priority]) {
-                    stats.dealsByPriority[priority] = [];
-                }
-                stats.dealsByPriority[priority].push(deal);
+                stats.priorityDistribution[deal.priority] = (stats.priorityDistribution[deal.priority] || 0) + 1;
                 
                 // Monthly timeline
                 if (deal.createdAt) {
@@ -3009,65 +2697,7 @@
             return stats;
         }
 
-        // Fungsi untuk menampilkan daftar deal berdasarkan priority
-        function showDealsByPriority(salesFilter, priority) {
-            const salesData = processSalesData(salesFilter.value);
-            const dealsList = salesData.dealsByPriority[priority] || [];
-            
-            if (dealsList.length === 0) {
-                document.getElementById('salesPriorityDealList').classList.add('hidden');
-                return;
-            }
-            
-            // Update label
-            document.getElementById('selectedPriorityLabel').textContent = priority;
-            
-            // Render deal list
-            const dealListContent = document.getElementById('salesPriorityDealListContent');
-            dealListContent.innerHTML = '';
-            
-            dealsList.forEach(deal => {
-                const dealItem = document.createElement('div');
-                dealItem.className = 'deal-list-item';
-                const priorityBadgeClass = getPriorityBadgeClass(deal.priority);
-                
-                dealItem.innerHTML = `
-                    <div class="deal-list-info">
-                        <div class="deal-list-name">${deal.dealName || 'No Name'}</div>
-                        <div class="deal-list-details">
-                            <span>Stage: ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}</span>
-                            <span>Sales: ${deal.salesName || '-'}</span>
-                            <span class="deal-list-value">Rp ${formatNumber(deal.value) || '0'}</span>
-                        </div>
-                    </div>
-                    <div class="deal-list-actions">
-                        <button class="view-detail-list-btn text-blue-600 hover:text-blue-800" data-id="${deal.id}">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
-                            ${deal.priority || 'Priority'}
-                        </span>
-                    </div>
-                `;
-                dealListContent.appendChild(dealItem);
-            });
-            
-            // Show the list
-            document.getElementById('salesPriorityDealList').classList.remove('hidden');
-            
-            // Add event listeners to view buttons
-            dealListContent.querySelectorAll('.view-detail-list-btn').forEach(button => {
-                button.addEventListener('click', function() {
-                    const dealId = this.dataset.id;
-                    closeStatsModal();
-                    setTimeout(() => {
-                        openDealDetailModal(dealId);
-                    }, 300);
-                });
-            });
-        }
-
-        // Fungsi untuk merender chart per sales dengan clickable features
+        // Fungsi untuk merender chart per sales
         function renderSalesCharts() {
             const salesFilter = document.getElementById('salesFilter');
             const selectedSales = salesFilter ? salesFilter.value : 'all';
@@ -3114,24 +2744,12 @@
                 }
             });
             
-            // Render priority distribution chart dengan click handler
+            // Render priority distribution chart
             const priorityCtx = document.getElementById('salesPriorityChart').getContext('2d');
             if (salesCharts.salesPriorityChart) salesCharts.salesPriorityChart.destroy();
             
             const priorityLabels = Object.keys(salesData.priorityDistribution);
             const priorityData = Object.values(salesData.priorityDistribution);
-            const backgroundColors = priorityLabels.map(priority => {
-                switch(priority) {
-                    case 'Priority': return '#fef3c7';
-                    case 'Hot Priority': return '#fee2e2';
-                    case 'Win': return '#d1fae5';
-                    case 'Lost': return '#f3f4f6';
-                    case 'Behind': return '#ffedd5';
-                    case 'On Track': return '#dbeafe';
-                    case 'Completed': return '#f3e8ff';
-                    default: return '#e5e7eb';
-                }
-            });
             
             salesCharts.salesPriorityChart = new Chart(priorityCtx, {
                 type: 'bar',
@@ -3140,9 +2758,7 @@
                     datasets: [{
                         label: 'Jumlah Deal',
                         data: priorityData,
-                        backgroundColor: backgroundColors,
-                        borderColor: backgroundColors.map(color => color.replace('0.8', '1')),
-                        borderWidth: 1
+                        backgroundColor: '#8B5CF6'
                     }]
                 },
                 options: {
@@ -3160,14 +2776,6 @@
                             ticks: {
                                 precision: 0
                             }
-                        }
-                    },
-                    onClick: (evt, elements) => {
-                        if (elements.length > 0) {
-                            const index = elements[0].index;
-                            const priority = priorityLabels[index];
-                            selectedPriorityForSales = priority;
-                            showDealsByPriority(salesFilter, priority);
                         }
                     }
                 }
@@ -3277,8 +2885,7 @@
                 monthlyTimeline: {},
                 avgDealValue: 0,
                 maxDealValue: 0,
-                minDealValue: 0,
-                dealsByStage: {}
+                minDealValue: 0
             };
             
             if (priorityDeals.length > 0) {
@@ -3298,15 +2905,8 @@
                 }
                 
                 // Stage distribution
-                const stage = deal.stage || 'unknown';
-                stats.stageDistribution[stage] = (stats.stageDistribution[stage] || 0) + 1;
-                stats.valueByStage[stage] = (stats.valueByStage[stage] || 0) + dealValue;
-                
-                // Store deals by stage
-                if (!stats.dealsByStage[stage]) {
-                    stats.dealsByStage[stage] = [];
-                }
-                stats.dealsByStage[stage].push(deal);
+                stats.stageDistribution[deal.stage] = (stats.stageDistribution[deal.stage] || 0) + 1;
+                stats.valueByStage[deal.stage] = (stats.valueByStage[deal.stage] || 0) + dealValue;
                 
                 // Sales distribution
                 if (deal.salesName) {
@@ -3341,65 +2941,7 @@
             return stats;
         }
 
-        // Fungsi untuk menampilkan daftar deal berdasarkan stage
-        function showDealsByStage(priorityFilter, stage) {
-            const priorityData = processPriorityData(priorityFilter.value);
-            const dealsList = priorityData.dealsByStage[stage] || [];
-            
-            if (dealsList.length === 0) {
-                document.getElementById('priorityStageDealList').classList.add('hidden');
-                return;
-            }
-            
-            // Update label
-            document.getElementById('selectedStageLabel').textContent = stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            
-            // Render deal list
-            const dealListContent = document.getElementById('priorityStageDealListContent');
-            dealListContent.innerHTML = '';
-            
-            dealsList.forEach(deal => {
-                const dealItem = document.createElement('div');
-                dealItem.className = 'deal-list-item';
-                const priorityBadgeClass = getPriorityBadgeClass(deal.priority);
-                
-                dealItem.innerHTML = `
-                    <div class="deal-list-info">
-                        <div class="deal-list-name">${deal.dealName || 'No Name'}</div>
-                        <div class="deal-list-details">
-                            <span>Sales: ${deal.salesName || '-'}</span>
-                            <span>Consultant: ${deal.consultant || '-'}</span>
-                            <span class="deal-list-value">Rp ${formatNumber(deal.value) || '0'}</span>
-                        </div>
-                    </div>
-                    <div class="deal-list-actions">
-                        <button class="view-detail-list-btn text-blue-600 hover:text-blue-800" data-id="${deal.id}">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
-                            ${deal.priority || 'Priority'}
-                        </span>
-                    </div>
-                `;
-                dealListContent.appendChild(dealItem);
-            });
-            
-            // Show the list
-            document.getElementById('priorityStageDealList').classList.remove('hidden');
-            
-            // Add event listeners to view buttons
-            dealListContent.querySelectorAll('.view-detail-list-btn').forEach(button => {
-                button.addEventListener('click', function() {
-                    const dealId = this.dataset.id;
-                    closeStatsModal();
-                    setTimeout(() => {
-                        openDealDetailModal(dealId);
-                    }, 300);
-                });
-            });
-        }
-
-        // Fungsi untuk merender chart per priority dengan clickable features
+        // Fungsi untuk merender chart per priority
         function renderPriorityCharts() {
             const priorityFilter = document.getElementById('priorityFilter');
             const selectedPriority = priorityFilter ? priorityFilter.value : 'all';
@@ -3413,7 +2955,7 @@
             document.getElementById('priorityMaxValue').textContent = `Rp ${formatNumber(priorityData.maxDealValue)}`;
             document.getElementById('priorityMinValue').textContent = `Rp ${formatNumber(priorityData.minDealValue)}`;
             
-            // Render stage distribution chart dengan click handler
+            // Render stage distribution chart
             const stageCtx = document.getElementById('priorityStageChart').getContext('2d');
             if (salesCharts.priorityStageChart) salesCharts.priorityStageChart.destroy();
             
@@ -3425,220 +2967,200 @@
                 priorityData.valueByStage[stage]
             );
             
-            const backgroundColors = stageLabels.map((stage, index) => {
-                const colors = [
-                    '#3B82F6', '#60A5FA', '#93C5FD', '#22D3EE', '#A78BFA',
-                    '#10B981', '#EF4444', '#F59E0B'
-                ];
-                return colors[index % colors.length];
+            salesCharts.priorityStageChart = new Chart(stageCtx, {
+                type: 'bar',
+                data: {
+                    labels: stageLabels,
+                    datasets: [
+                        {
+                            label: 'Jumlah Deal',
+                            data: stageData,
+                            backgroundColor: '#3B82F6',
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Total Nilai (IDR)',
+                            data: stageValueData,
+                            backgroundColor: '#10B981',
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `Distribusi per Tahap - ${selectedPriority === 'all' ? 'Semua Priority' : selectedPriority}`
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Jumlah Deal'
+                            },
+                            ticks: {
+                                precision: 0
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Total Nilai (IDR)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return 'Rp ' + formatNumber(value);
+                                }
+                            }
+                        }
+                    }
+                }
             });
             
-        salesCharts.priorityStageChart = new Chart(stageCtx, {
-            type: 'bar',
-            data: {
-                labels: stageLabels,
-                datasets: [
-                    {
+            // Render sales distribution chart
+            const salesCtx = document.getElementById('prioritySalesChart').getContext('2d');
+            if (salesCharts.prioritySalesChart) salesCharts.prioritySalesChart.destroy();
+            
+            // Ambil top 10 sales untuk chart
+            const sortedSales = Object.entries(priorityData.salesDistribution)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10);
+            
+            const salesLabels = sortedSales.map(([name]) => name);
+            const salesData = sortedSales.map(([, count]) => count);
+            
+            salesCharts.prioritySalesChart = new Chart(salesCtx, {
+                type: 'horizontalBar',
+                data: {
+                    labels: salesLabels,
+                    datasets: [{
                         label: 'Jumlah Deal',
-                        data: stageData,
-                        backgroundColor: backgroundColors.map(color => color + '80'),
-                        borderColor: backgroundColors,
-                        borderWidth: 1,
-                        yAxisID: 'y'
-                    },
-                    {
-                        label: 'Total Nilai (IDR)',
-                        data: stageValueData,
-                        backgroundColor: '#10B98180',
-                        borderColor: '#10B981',
-                        borderWidth: 1,
-                        yAxisID: 'y1'
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
+                        data: salesData,
+                        backgroundColor: '#8B5CF6'
+                    }]
                 },
-                plugins: {
-                    title: {
-                        display: true,
-                        text: `Distribusi per Tahap - ${selectedPriority === 'all' ? 'Semua Priority' : selectedPriority}`
-                    }
-                },
-                scales: {
-                    y: {
-                        type: 'linear',
-                        display: true,
-                        position: 'left',
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
                         title: {
                             display: true,
-                            text: 'Jumlah Deal'
-                        },
-                        ticks: {
-                            precision: 0
+                            text: `Top 10 Sales - ${selectedPriority === 'all' ? 'Semua Priority' : selectedPriority}`
                         }
                     },
-                    y1: {
-                        type: 'linear',
-                        display: true,
-                        position: 'right',
-                        title: {
-                            display: true,
-                            text: 'Total Nilai (IDR)'
-                        },
-                        ticks: {
-                            callback: function(value) {
-                                return 'Rp ' + formatNumber(value);
-                            }
-                        }
-                    }
-                },
-                onClick: (evt, elements) => {
-                    if (elements.length > 0) {
-                        const index = elements[0].index;
-                        const stage = Object.keys(priorityData.stageDistribution)[index];
-                        selectedStageForPriority = stage;
-                        showDealsByStage(priorityFilter, stage);
-                    }
-                }
-            }
-        });
-        
-        // Render sales distribution chart
-        const salesCtx = document.getElementById('prioritySalesChart').getContext('2d');
-        if (salesCharts.prioritySalesChart) salesCharts.prioritySalesChart.destroy();
-        
-        // Ambil top 10 sales untuk chart
-        const sortedSales = Object.entries(priorityData.salesDistribution)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 10);
-        
-        const salesLabels = sortedSales.map(([name]) => name);
-        const salesData = sortedSales.map(([, count]) => count);
-        
-        salesCharts.prioritySalesChart = new Chart(salesCtx, {
-            type: 'horizontalBar',
-            data: {
-                labels: salesLabels,
-                datasets: [{
-                    label: 'Jumlah Deal',
-                    data: salesData,
-                    backgroundColor: '#8B5CF6'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                indexAxis: 'y',
-                plugins: {
-                    title: {
-                        display: true,
-                        text: `Top 10 Sales - ${selectedPriority === 'all' ? 'Semua Priority' : selectedPriority}`
-                    }
-                },
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        ticks: {
-                            precision: 0
-                        }
-                    }
-                }
-            }
-        });
-        
-        // Render timeline chart
-        const timelineCtx = document.getElementById('priorityTimelineChart').getContext('2d');
-        if (salesCharts.priorityTimelineChart) salesCharts.priorityTimelineChart.destroy();
-        
-        const sortedMonths = Object.keys(priorityData.monthlyTimeline).sort((a, b) => {
-            const [monthStrA, yearStrA] = a.split(' ');
-            const [monthStrB, yearStrB] = b.split(' ');
-            const monthIndexA = new Date(Date.parse(monthStrA + " 1, 2000")).getMonth();
-            const monthIndexB = new Date(Date.parse(monthStrB + " 1, 2000")).getMonth();
-            const dateA = new Date(parseInt(yearStrA), monthIndexA, 1);
-            const dateB = new Date(parseInt(yearStrB), monthIndexB, 1);
-            return dateA - dateB;
-        });
-        
-        const timelineCountData = sortedMonths.map(month => priorityData.monthlyTimeline[month].count);
-        const timelineValueData = sortedMonths.map(month => priorityData.monthlyTimeline[month].value);
-        
-        salesCharts.priorityTimelineChart = new Chart(timelineCtx, {
-            type: 'line',
-            data: {
-                labels: sortedMonths,
-                datasets: [
-                    {
-                        label: 'Jumlah Deal',
-                        data: timelineCountData,
-                        borderColor: '#3B82F6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        yAxisID: 'y',
-                        tension: 0.3
-                    },
-                    {
-                        label: 'Total Nilai (IDR)',
-                        data: timelineValueData,
-                        borderColor: '#10B981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        yAxisID: 'y1',
-                        tension: 0.3
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
-                stacked: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: `Timeline - ${selectedPriority === 'all' ? 'Semua Priority' : selectedPriority}`
-                    }
-                },
-                scales: {
-                    y: {
-                        type: 'linear',
-                        display: true,
-                        position: 'left',
-                        title: {
-                            display: true,
-                            text: 'Jumlah Deal'
-                        },
-                        ticks: {
-                            precision: 0
-                        }
-                    },
-                    y1: {
-                        type: 'linear',
-                        display: true,
-                        position: 'right',
-                        title: {
-                            display: true,
-                            text: 'Total Nilai (IDR)'
-                        },
-                        ticks: {
-                            callback: function(value) {
-                                return 'Rp ' + formatNumber(value);
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
                             }
                         }
                     }
                 }
-            }
-        });
+            });
+            
+            // Render timeline chart
+            const timelineCtx = document.getElementById('priorityTimelineChart').getContext('2d');
+            if (salesCharts.priorityTimelineChart) salesCharts.priorityTimelineChart.destroy();
+            
+            const sortedMonths = Object.keys(priorityData.monthlyTimeline).sort((a, b) => {
+                const [monthStrA, yearStrA] = a.split(' ');
+                const [monthStrB, yearStrB] = b.split(' ');
+                const monthIndexA = new Date(Date.parse(monthStrA + " 1, 2000")).getMonth();
+                const monthIndexB = new Date(Date.parse(monthStrB + " 1, 2000")).getMonth();
+                const dateA = new Date(parseInt(yearStrA), monthIndexA, 1);
+                const dateB = new Date(parseInt(yearStrB), monthIndexB, 1);
+                return dateA - dateB;
+            });
+            
+            const timelineCountData = sortedMonths.map(month => priorityData.monthlyTimeline[month].count);
+            const timelineValueData = sortedMonths.map(month => priorityData.monthlyTimeline[month].value);
+            
+            salesCharts.priorityTimelineChart = new Chart(timelineCtx, {
+                type: 'line',
+                data: {
+                    labels: sortedMonths,
+                    datasets: [
+                        {
+                            label: 'Jumlah Deal',
+                            data: timelineCountData,
+                            borderColor: '#3B82F6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            yAxisID: 'y',
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Total Nilai (IDR)',
+                            data: timelineValueData,
+                            borderColor: '#10B981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            yAxisID: 'y1',
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    stacked: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `Timeline - ${selectedPriority === 'all' ? 'Semua Priority' : selectedPriority}`
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Jumlah Deal'
+                            },
+                            ticks: {
+                                precision: 0
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Total Nilai (IDR)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return 'Rp ' + formatNumber(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
-        
+
         // ==================== PERBAIKAN PERHITUNGAN NILAI ====================
-        
+
         // Fungsi untuk menghitung nilai berdasarkan sebelum diskon dan diskon
         function calculateValueFromBeforeDiscount() {
             const beforeDiscountRaw = document.getElementById('beforeDiscount').value.replace(/[^0-9]/g, '');
@@ -3655,7 +3177,7 @@
             valueInput.value = calculatedValue.toFixed(0);
             formatNumberInput(valueInput);
         }
-        
+
         // Update event listener untuk beforeDiscount
         function updateBeforeDiscountEventListeners() {
             const beforeDiscountInput = document.getElementById('beforeDiscount');
@@ -3672,18 +3194,18 @@
                 discountInput.addEventListener('input', calculateValueFromBeforeDiscount);
             }
         }
-        
+
         // ==================== FUNGSI SORTABLE ====================
-        
+
         // PERBAIKAN: Nonaktifkan fitur drag & drop untuk semua user
         function initSortable() {
             const pipelineStage = document.getElementById('pipelines-stage');
             if (!pipelineStage) return;
-        
+
             if (sortableInstances['pipelines-stage']) {
                 sortableInstances['pipelines-stage'].destroy();
             }
-        
+
             // Nonaktifkan Sortable untuk semua user
             sortableInstances['pipelines-stage'] = new Sortable(pipelineStage, {
                 animation: 150,
@@ -3696,24 +3218,24 @@
                 }
             });
         }
-        
+
         // ==================== FUNGSI STATISTIK ====================
-        
+
         // Variabel global untuk menyimpan data agregat sales
         let salesValue = {};
         let salesWinCount = {};
         let productValue = {};
-        
+
         // Fungsi untuk memproses data deals menjadi format yang siap untuk chart
         function processDealDataForCharts(dealsData) {
             const stageSelect = document.getElementById('stage');
             const allStages = Array.from(stageSelect.options).map(option => option.value).filter(value => value !== '');
-        
+
             const winRateDataMap = {};
             allStages.forEach(stage => {
                 winRateDataMap[stage] = 0;
             });
-        
+
             const stats = {
                 dealSizeLabels: [],
                 dealSizeData: [],
@@ -3727,7 +3249,7 @@
                 pipelineValueData: [],
                 topSales: { name: '', value: 0 }
             };
-        
+
             const dealSizes = {
                 'Small (< Rp 500 Juta)': 0,
                 'Medium (Rp 500 Juta - Rp 2 Miliar)': 0,
@@ -3739,18 +3261,18 @@
             const dealsByProduct = {};
             productValue = {};
             const pipelineValueByMonth = {};
-        
+
             const uniqueDealsByHighestValue = new Map();
-        
+
             dealsData.forEach(deal => {
                 const currentHighestDeal = uniqueDealsByHighestValue.get(deal.dealName);
                 if (!currentHighestDeal || (deal.value || 0) > (currentHighestDeal.value || 0)) {
                     uniqueDealsByHighestValue.set(deal.dealName, deal);
                 }
             });
-        
+
             const filteredDealsForStats = Array.from(uniqueDealsByHighestValue.values());
-        
+
             filteredDealsForStats.forEach(deal => {
                 if (deal.value < 500000000) {
                     dealSizes['Small (< Rp 500 Juta)']++;
@@ -3759,13 +3281,13 @@
                 } else {
                     dealSizes['Large (> Rp 2 Miliar)']++;
                 }
-        
+
                 if (deal.stage && winRateDataMap.hasOwnProperty(deal.stage)) {
                     winRateDataMap[deal.stage]++;
                 } else {
                     console.warn(`Deal with unknown stage: ${deal.stage}`);
                 }
-        
+
                 if (deal.salesName) {
                     dealsBySales[deal.salesName] = (dealsBySales[deal.salesName] || 0) + 1;
                     salesValue[deal.salesName] = (salesValue[deal.salesName] || 0) + (deal.value || 0);
@@ -3773,14 +3295,14 @@
                         salesWinCount[deal.salesName] = (salesWinCount[deal.salesName] || 0) + 1;
                     }
                 }
-        
+
                 const productsInDeal = Array.isArray(deal.product) ? deal.product : (deal.product ? [deal.product] : []);
                 productsInDeal.forEach(product => {
                     const productKey = product || 'Unknown Product';
                     dealsByProduct[productKey] = (dealsByProduct[productKey] || 0) + 1;
                     productValue[productKey] = (productValue[productKey] || 0) + (deal.value || 0);
                 });
-        
+
                 if (deal.stage !== 'lost' && deal.stage !== 'win') {
                     const dateSource = deal.createdAt;
                     if (dateSource && typeof dateSource.toDate === 'function') {
@@ -3792,7 +3314,7 @@
                     }
                 }
             });
-        
+
             let maxSalesValue = 0;
             let topSalesName = '';
             for (const salesName in salesValue) {
@@ -3802,18 +3324,18 @@
                 }
             }
             stats.topSales = { name: topSalesName, value: maxSalesValue };
-        
+
             stats.dealSizeLabels = Object.keys(dealSizes);
             stats.dealSizeData = Object.values(dealSizes);
-        
+
             stats.winRateData = stats.winRateLabels.map(stage => winRateDataMap[stage]);
-        
+
             stats.dealsBySalesLabels = Object.keys(dealsBySales);
             stats.dealsBySalesData = Object.values(dealsBySales);
-        
+
             stats.dealsByProductLabels = Object.keys(dealsByProduct);
             stats.dealsByProductData = Object.values(dealsByProduct);
-        
+
             const sortedMonths = Object.keys(pipelineValueByMonth).sort((a, b) => {
                 const [monthStrA, yearStrA] = a.split(' ');
                 const [monthStrB, yearStrB] = b.split(' ');
@@ -3825,16 +3347,16 @@
             });
             stats.pipelineValueLabels = sortedMonths;
             stats.pipelineValueData = sortedMonths.map(month => pipelineValueByMonth[month]);
-        
+
             return stats;
         }
-        
+
         // Fungsi untuk merender semua chart
         function renderAllCharts() {
             console.log("Rendering all charts...");
-        
+
             const processedStats = processDealDataForCharts(deals);
-        
+
             const dealSizeCtx = document.getElementById('dealSizeChart').getContext('2d');
             if (charts.dealSizeChart) charts.dealSizeChart.destroy();
             charts.dealSizeChart = new Chart(dealSizeCtx, {
@@ -3866,7 +3388,7 @@
                     }
                 }
             });
-        
+
             const winRateCtx = document.getElementById('winRateChart').getContext('2d');
             if (charts.winRateChart) charts.winRateChart.destroy();
             charts.winRateChart = new Chart(winRateCtx, {
@@ -3899,7 +3421,7 @@
                     }
                 }
             });
-        
+
             const dealsBySalesCtx = document.getElementById('dealsBySalesChart').getContext('2d');
             if (charts.dealsBySalesChart) charts.dealsBySalesChart.destroy();
             charts.dealsBySalesChart = new Chart(dealsBySalesCtx, {
@@ -3937,17 +3459,17 @@
                         afterDraw: function(chart) {
                             const ctx = chart.ctx;
                             const topSales = processedStats.topSales;
-        
+
                             if (topSales.name && topSales.value > 0) {
                                 const text = `TOP IDR Sales = "${topSales.name}"`;
                                 ctx.font = 'bold 12px Arial';
                                 ctx.fillStyle = '#333';
                                 ctx.textAlign = 'center';
                                 ctx.textBaseline = 'bottom';
-        
+
                                 const x = chart.width / 2;
                                 const y = chart.height - 10;
-        
+
                                 ctx.fillText(text, x, y);
                             }
                         }
@@ -3962,7 +3484,7 @@
                     }
                 }
             });
-        
+
             const dealsByProductPackageCtx = document.getElementById('dealsByProductPackageChart').getContext('2d');
             if (charts.dealsByProductPackageChart) charts.dealsByProductPackageChart.destroy();
             charts.dealsByProductPackageChart = new Chart(dealsByProductPackageCtx, {
@@ -4003,7 +3525,7 @@
                     }
                 }
             });
-        
+
             const pipelineValueCtx = document.getElementById('pipelineValueChart').getContext('2d');
             if (charts.pipelineValueChart) charts.pipelineValueChart.destroy();
             charts.pipelineValueChart = new Chart(pipelineValueCtx, {
@@ -4047,9 +3569,9 @@
                 }
             });
         }
-        
+
         // ==================== FUNGSI PERMISSIONS ====================
-        
+
         // Fungsi untuk menerapkan permissions berdasarkan role
         function applyUserPermissions() {
             try {
@@ -4064,7 +3586,7 @@
                 const searchInput = document.getElementById('searchDeals');
                 const openFilterPanelBtn = document.getElementById('openFilterPanelBtn');
                 const recycleBinFab = document.getElementById('recycleBinFab');
-        
+
                 if (viewStatsBtn) viewStatsBtn.classList.toggle('hidden', !(isAdmin || isManager));
                 
                 if (activityBtn) activityBtn.classList.remove('hidden');
@@ -4080,7 +3602,7 @@
                         recycleBinFab.classList.add('hidden');
                     }
                 }
-        
+
                 toggleExportButton();
                 loadDealsFromFirebase(); 
                 
@@ -4089,9 +3611,9 @@
                 showToast("Gagal menerapkan permissions", 3000);
             }
         }
-        
+
         // ==================== FUNGSI EVENT LISTENERS ====================
-        
+
         // PERBAIKAN: Event delegation untuk tombol aksi
         function initEventListeners() {
             console.log("Initializing event listeners...");
@@ -4221,11 +3743,6 @@
                 document.getElementById('addContractorBtn').addEventListener('click', () => addContractorField());
                 document.getElementById('addProductBtn').addEventListener('click', () => addProductField());
                 
-                // Progress bar update saat stage berubah
-                document.getElementById('stage').addEventListener('change', function() {
-                    updateProgressBar(this.value);
-                });
-                
                 // Tombol di modal detail deal
                 document.getElementById('closeDetailBtn').addEventListener('click', closeDealDetailModal);
                 
@@ -4244,7 +3761,7 @@
                 
                 // Tombol di stats modal
                 document.getElementById('closeStatsBtn').addEventListener('click', closeStatsModal);
-        
+
                 // Tab navigation
                 document.querySelectorAll('.stats-tab').forEach(tab => {
                     tab.addEventListener('click', function() {
@@ -4258,7 +3775,7 @@
                 
                 // Priority filter change
                 document.getElementById('priorityFilter').addEventListener('change', renderPriorityCharts);
-        
+
                 // Input events
                 document.getElementById('searchDeals').addEventListener('keyup', filterDeals);
                 
@@ -4287,13 +3804,13 @@
                 showToast("Gagal memuat beberapa fungsi", 3000);
             }
         }
-        
+
         function handleFacilitySelectChange() {
             if (facilitySelect.value !== '') {
                 newFacilityInput.value = '';
             }
         }
-        
+
         function handleNewFacilityInput() {
             if (newFacilityInput.value.trim() !== '') {
                 facilitySelect.value = '';
@@ -4305,7 +3822,7 @@
                 newPackageInput.value = '';
             }
         }
-        
+
         function handleNewPackageInput() {
             if (newPackageInput.value.trim() !== '') {
                 packageSelect.value = '';
@@ -4325,9 +3842,9 @@
                 }
             });
         }
-        
+
         // ==================== FUNGSI LAINNYA ====================
-        
+
         // Fungsi untuk menginisialisasi toggle view
         function initViewToggle() {
             const cardViewBtn = document.getElementById('cardViewBtn');
@@ -4338,7 +3855,7 @@
                 listViewBtn.addEventListener('click', () => switchView('list'));
             }
         }
-        
+
         // Fungsi untuk beralih antara tampilan card dan list
         function switchView(viewType) {
             if (currentView === viewType) return;
@@ -4351,7 +3868,7 @@
             // Terapkan filter yang aktif dengan view baru
             applyActiveFilters();
         }
-        
+
         // Fungsi untuk menerapkan filter yang aktif
         function applyActiveFilters() {
             try {
@@ -4359,7 +3876,7 @@
                 if (currentUserRole !== 'admin') {
                     baseDeals = deals.filter(deal => deal.stage !== 'lost');
                 }
-        
+
                 const filteredDeals = baseDeals.filter(deal => {
                     const matchesSearch = 
                         activeFilters.searchTerm === '' ||
@@ -4372,13 +3889,13 @@
                     
                     const matchesYear = activeFilters.year === 'all' || 
                                         (deal.createdAt && deal.createdAt.toDate().getFullYear().toString() === activeFilters.year);
-        
+
                     const matchesStage = activeFilters.stage === 'all' || 
                                         (deal.stage && deal.stage === activeFilters.stage);
-        
+
                     const matchesSales = activeFilters.sales === 'all' || 
                                         (deal.salesName && deal.salesName === activeFilters.sales);
-        
+
                     const matchesConsultant = activeFilters.consultant === 'all' || 
                                             (deal.consultant && deal.consultant === activeFilters.consultant);
                     
@@ -4387,16 +3904,16 @@
                                             (Array.isArray(deal.contractor) ? 
                                             deal.contractor.includes(activeFilters.contractor) : 
                                             deal.contractor === activeFilters.contractor));
-        
+
                     const matchesProduct = activeFilters.product === 'all' || 
                                         (deal.product && 
                                         (Array.isArray(deal.product) ? 
                                         deal.product.includes(activeFilters.product) : 
                                         deal.product === activeFilters.product));
-        
+
                     const matchesFacility = activeFilters.facility === 'all' || 
                                             (deal.facility && deal.facility === activeFilters.facility);
-        
+
                     const matchesPackage = activeFilters.package === 'all' || 
                                         (deal.package && deal.package === activeFilters.package);
                     
@@ -4409,7 +3926,7 @@
                 console.error("Error applying active filters:", error);
             }
         }
-        
+
         // Fungsi untuk menyimpan filter yang aktif
         function saveActiveFilters() {
             activeFilters = {
@@ -4425,7 +3942,7 @@
                 package: document.getElementById('filterPackage').value
             };
         }
-        
+
         // Fungsi untuk filter deals
         function filterDeals() {
             try {
@@ -4438,7 +3955,7 @@
                 console.error("Error filtering deals:", error);
             }
         }
-        
+
         // Fungsi untuk render deals yang sudah difilter
         function renderFilteredDeals(filteredDeals) {
             const pipelineStage = document.getElementById('pipelines-stage');
@@ -4475,7 +3992,6 @@
                         <th>Tahap</th>
                         <th>Konsultan</th>
                         <th>Nilai (IDR)</th>
-                        <th>Priority</th>
                         <th>Aksi</th>
                     </tr>
                 `;
@@ -4491,7 +4007,7 @@
                 pipelineStage.appendChild(table);
             }
         }
-        
+
         // Fungsi logout
         function logout() {
             auth.signOut()
@@ -4506,26 +4022,26 @@
                     showToast("Gagal logout. Silakan coba lagi.", 5000);
                 });
         }
-        
+
         // Fungsi untuk membuka panel filter
         function openFilterPanel() {
             const filterPanel = document.getElementById('filterPanel');
             const filterPanelContent = document.getElementById('filterPanelContent');
-        
+
             if (!filterPanel || !filterPanelContent) {
                 console.error("Elemen panel filter tidak ditemukan.");
                 showToast("Gagal membuka filter: Elemen tidak lengkap.", 3000);
                 return;
             }
-        
+
             populateYearDropdown();
             populateFilterDropdowns();
-        
+
             filterPanel.classList.remove('hidden');
             filterPanelContent.classList.remove('modal-content-leave-active');
             filterPanelContent.classList.add('modal-content-enter-active');
         }
-        
+
         // Fungsi untuk menutup panel filter
         function closeFilterPanel() {
             const filterPanelContent = document.getElementById('filterPanelContent');
@@ -4533,7 +4049,7 @@
                 console.error("Elemen filterPanelContent tidak ditemukan saat menutup modal.");
                 return;
             }
-        
+
             filterPanelContent.classList.remove('modal-content-enter-active');
             filterPanelContent.classList.add('modal-content-leave-active');
             
@@ -4543,7 +4059,7 @@
                 filterPanelContent.removeEventListener('transitionend', handler);
             }, { once: true });
         }
-        
+
         // Fungsi untuk menerapkan filter dan menutup panel
         function applyFiltersAndClosePanel() {
             // Simpan filter yang dipilih
@@ -4555,7 +4071,7 @@
             // Tutup panel
             closeFilterPanel();
         }
-        
+
         // Fungsi untuk mereset semua filter
         function resetFilters() {
             // Reset filter di UI
@@ -4587,38 +4103,38 @@
             // Terapkan filter reset
             applyActiveFilters();
         }
-        
+
         // ==================== FUNGSI SEARCH KONSULTAN ====================
         function setupConsultantSearch() {
             if (!consultantSearchInput || !consultantHiddenInput || !consultantSuggestionsDiv) {
                 console.warn("Consultant search elements not found. Skipping setup.");
                 return;
             }
-        
+
             consultantSearchInput.removeEventListener('input', handleConsultantSearchInput);
             consultantSearchInput.removeEventListener('blur', handleConsultantSearchBlur);
             consultantSearchInput.removeEventListener('focus', handleConsultantSearchFocus);
             document.removeEventListener('click', handleDocumentClick);
-        
+
             consultantSearchInput.addEventListener('input', handleConsultantSearchInput);
             consultantSearchInput.addEventListener('blur', handleConsultantSearchBlur);
             consultantSearchInput.addEventListener('focus', handleConsultantSearchFocus);
             document.addEventListener('click', handleDocumentClick);
         }
-        
+
         function handleConsultantSearchInput() {
             const searchTerm = consultantSearchInput.value.toLowerCase();
             consultantSuggestionsDiv.innerHTML = '';
-        
+
             if (searchTerm.length === 0) {
                 consultantSuggestionsDiv.classList.add('hidden');
                 return;
             }
-        
+
             const filteredSuggestions = Array.from(uniqueConsultants)
                 .filter(consultant => consultant.toLowerCase().includes(searchTerm))
                 .sort();
-        
+
             if (filteredSuggestions.length > 0) {
                 filteredSuggestions.forEach(consultant => {
                     const suggestionItem = document.createElement('div');
@@ -4637,7 +4153,7 @@
                 consultantSuggestionsDiv.classList.add('hidden');
             }
         }
-        
+
         function handleConsultantSearchBlur() {
             setTimeout(() => {
                 const currentInputValue = consultantSearchInput.value.trim();
@@ -4649,22 +4165,22 @@
                 consultantSuggestionsDiv.classList.add('hidden');
             }, 100);
         }
-        
+
         function handleConsultantSearchFocus() {
             if (consultantSearchInput.value.length > 0) {
                 const event = new Event('input');
                 consultantSearchInput.dispatchEvent(event);
             }
         }
-        
+
         function handleDocumentClick(event) {
             if (!consultantSearchInput.contains(event.target) && !consultantSuggestionsDiv.contains(event.target)) {
                 consultantSuggestionsDiv.classList.add('hidden');
             }
         }
-        
+
         // ==================== FUNGSI EXPORT EXCEL ====================
-        
+
         // Fungsi untuk menginisialisasi elemen export
         function initExportElements() {
             const exportExcelBtn = document.getElementById('exportExcelBtn');
@@ -4679,7 +4195,7 @@
             document.getElementById('confirmExportBtn').addEventListener('click', exportToExcel);
             document.getElementById('exportDateRange').addEventListener('change', toggleCustomDateRange);
         }
-        
+
         // Fungsi untuk menampilkan/menyembunyikan export button berdasarkan role
         function toggleExportButton() {
             const exportExcelBtn = document.getElementById('exportExcelBtn');
@@ -4691,7 +4207,7 @@
                 }
             }
         }
-        
+
         // Fungsi untuk membuka modal export
         function openExportModal() {
             const exportExcelModal = document.getElementById('exportExcelModal');
@@ -4708,12 +4224,12 @@
             exportExcelModalContent.classList.remove('modal-content-leave-active');
             exportExcelModalContent.classList.add('modal-content-enter-active');
         }
-        
+
         // Fungsi untuk menutup modal export
         function closeExportModal() {
             const exportExcelModalContent = document.getElementById('exportExcelModalContent');
             if (!exportExcelModalContent) return;
-        
+
             exportExcelModalContent.classList.remove('modal-content-enter-active');
             exportExcelModalContent.classList.add('modal-content-leave-active');
             
@@ -4723,7 +4239,7 @@
                 exportExcelModalContent.removeEventListener('transitionend', handler);
             }, { once: true });
         }
-        
+
         // Fungsi untuk menampilkan/menyembunyikan input tanggal kustom
         function toggleCustomDateRange() {
             const dateRange = document.getElementById('exportDateRange').value;
@@ -4735,7 +4251,7 @@
                 customDateRange.classList.add('hidden');
             }
         }
-        
+
         // Fungsi untuk mendapatkan data berdasarkan rentang tanggal
         function getDealsByDateRange() {
             const dateRange = document.getElementById('exportDateRange').value;
@@ -4785,7 +4301,7 @@
                 return dealDate >= startDate && dealDate <= endDate;
             });
         }
-        
+
         // Fungsi untuk export data ke Excel
         function exportToExcel() {
             if (currentUserRole !== 'admin') {
@@ -4841,7 +4357,7 @@
                 showToast("Gagal mengekspor data ke Excel", 3000);
             }
         }
-        
+
         // Fungsi untuk menyiapkan data export detail
         function prepareDetailedExportData(dealsData) {
             return dealsData.map(deal => {
@@ -4867,7 +4383,7 @@
                 };
             });
         }
-        
+
         // Fungsi untuk menyiapkan data export ringkasan
         function prepareSummaryExportData(dealsData) {
             const summary = {};
@@ -4926,18 +4442,18 @@
                 };
             });
         }
-        
+
         // ==================== FUNGSI TAMBAHAN UNTUK DEAL ====================
-        
+
         // Fungsi untuk menambahkan field kontraktor baru
         function addContractorField(initialValue = '') {
             const contractorListDiv = document.getElementById('contractorList');
             const newContractorDiv = document.createElement('div');
             newContractorDiv.className = 'flex items-center space-x-2 mb-2';
-        
+
             const selectId = `contractor-select-${Date.now()}`;
             const inputId = `contractor-input-${Date.now()}`;
-        
+
             newContractorDiv.innerHTML = `
                 <select id="${selectId}" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                     <option value="">Pilih Kontraktor</option>
@@ -4948,9 +4464,9 @@
                 </button>
             `;
             contractorListDiv.appendChild(newContractorDiv);
-        
+
             populateDropdown(selectId, uniqueContractors);
-        
+
             if (initialValue) {
                 const newSelect = document.getElementById(selectId);
                 const newTextInput = document.getElementById(inputId);
@@ -4962,37 +4478,37 @@
                     newTextInput.value = initialValue;
                 }
             }
-        
+
             const newSelect = document.getElementById(selectId);
             const newTextInput = document.getElementById(inputId);
-        
+
             newSelect.addEventListener('change', () => {
                 if (newSelect.value !== '') {
                     newTextInput.value = '';
                 }
             });
-        
+
             newTextInput.addEventListener('input', () => {
                 if (newTextInput.value.trim() !== '') {
                     newSelect.value = '';
                 }
             });
         }
-        
+
         // Fungsi untuk menghapus field kontraktor
         function removeContractorField(buttonElement) {
             buttonElement.closest('.flex').remove();
         }
-        
+
         // Fungsi untuk menambahkan field produk baru
         function addProductField(initialValue = '') {
             const productListDiv = document.getElementById('productList');
             const newProductDiv = document.createElement('div');
             newProductDiv.className = 'flex items-center space-x-2 mb-2';
-        
+
             const selectId = `product-select-${Date.now()}`;
             const inputId = `product-input-${Date.now()}`;
-        
+
             newProductDiv.innerHTML = `
                 <select id="${selectId}" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                     <option value="">Pilih Produk</option>
@@ -5011,10 +4527,10 @@
                 </button>
             `;
             productListDiv.appendChild(newProductDiv);
-        
+
             const newSelect = document.getElementById(selectId);
             const newTextInput = document.getElementById(inputId);
-        
+
             Array.from(uniqueProducts).sort().forEach(value => {
                 if (value && !['Fire', 'Suppresion', 'Vesda', 'Maintenance', 'Fire - Water', 'Mechanical', 'FAS-FSS-FF', 'FAS&FSS'].includes(value)) {
                     const option = document.createElement('option');
@@ -5023,7 +4539,7 @@
                     newSelect.appendChild(option);
                 }
             });
-        
+
             if (initialValue) {
                 if (Array.from(newSelect.options).some(option => option.value === initialValue)) {
                     newSelect.value = initialValue;
@@ -5033,25 +4549,25 @@
                     newTextInput.value = initialValue;
                 }
             }
-        
+
             newSelect.addEventListener('change', () => {
                 if (newSelect.value !== '') {
                     newTextInput.value = '';
                 }
             });
-        
+
             newTextInput.addEventListener('input', () => {
                 if (newTextInput.value.trim() !== '') {
                     newSelect.value = '';
                 }
             });
         }
-        
+
         // Fungsi untuk menghapus field produk
         function removeProductField(buttonElement) {
             buttonElement.closest('.flex').remove();
         }
-        
+
         // Fungsi untuk membuka modal deal
         function openDealModal(dealId = null) {
             const dealModal = document.getElementById('dealModal');
@@ -5062,7 +4578,7 @@
             document.getElementById('dealId').value = '';
             document.getElementById('value').value = '';
             document.getElementById('beforeDiscount').value = '';
-        
+
             document.getElementById('newOwner').value = '';
             document.getElementById('newPic').value = '';
             document.getElementById('newPackage').value = '';
@@ -5072,12 +4588,12 @@
             consultantHiddenInput.value = '';
             consultantSuggestionsDiv.innerHTML = '';
             consultantSuggestionsDiv.classList.add('hidden');
-        
+
             populateDropdown('pic', uniquePICs);
             populateDropdown('owner', uniqueOwners);
-        
+
             document.getElementById('productList').innerHTML = '';
-        
+
             // Update facility dropdown
             facilitySelect.innerHTML = `
                 <option value="">Pilih Fasilitas</option>
@@ -5097,7 +4613,7 @@
                     facilitySelect.appendChild(option);
                 }
             });
-        
+
             // Update package dropdown
             packageSelect.innerHTML = `
                 <option value="">Pilih Paket</option>
@@ -5114,7 +4630,7 @@
                     packageSelect.appendChild(option);
                 }
             });
-        
+
             document.getElementById('contractorList').innerHTML = '';
             
             if (dealId) {
@@ -5151,7 +4667,7 @@
                     } else {
                         addProductField(); 
                     }
-        
+
                     if (deal.facility && Array.from(facilitySelect.options).some(option => option.value === deal.facility)) {
                         facilitySelect.value = deal.facility;
                         document.getElementById('newFacility').value = '';
@@ -5166,10 +4682,10 @@
                         document.getElementById('owner').value = '';
                         document.getElementById('newOwner').value = deal.owner || '';
                     }
-        
+
                     consultantSearchInput.value = deal.consultant || '';
                     consultantHiddenInput.value = deal.consultant || '';
-        
+
                     if (deal.contractor && Array.isArray(deal.contractor) && deal.contractor.length > 0) {
                         deal.contractor.forEach(contractor => {
                             addContractorField(contractor);
@@ -5179,21 +4695,18 @@
                     } else {
                         addContractorField(); 
                     }
-        
+
                     if (deal.pic && uniquePICs.has(deal.pic)) {
                         document.getElementById('pic').value = deal.pic;
                     } else {
                         document.getElementById('pic').value = '';
                         document.getElementById('newPic').value = deal.pic || '';
                     }
-        
+
                     document.getElementById('planPO').value = deal.planPO || '';
                     document.getElementById('stage').value = deal.stage || DEFAULT_STAGE;
                     document.getElementById('priority').value = deal.priority || 'Priority';
                     document.getElementById('remarks').value = deal.remarks || '';
-                    
-                    // Update progress bar
-                    updateProgressBar(deal.stage || DEFAULT_STAGE);
                 }
             } else {
                 modalTitle.textContent = 'Tambah Deal Baru';
@@ -5208,21 +4721,18 @@
                 
                 addContractorField();
                 addProductField();
-                
-                // Set progress bar ke default
-                updateProgressBar(DEFAULT_STAGE);
             }
             
             dealModal.classList.remove('hidden');
             document.getElementById('dealModalContent').classList.remove('modal-content-leave-active');
             document.getElementById('dealModalContent').classList.add('modal-content-enter-active');
         }
-        
+
         // Fungsi untuk menutup modal deal
         function closeDealModal() {
             const dealModalContent = document.getElementById('dealModalContent');
             if (!dealModalContent) return;
-        
+
             dealModalContent.classList.remove('modal-content-enter-active');
             dealModalContent.classList.add('modal-content-leave-active');
             
@@ -5232,7 +4742,7 @@
                 dealModalContent.removeEventListener('transitionend', handler);
             }, { once: true });
         }
-        
+
         // Fungsi untuk menyimpan atau memperbarui deal
         async function saveDeal() {
             const dealId = document.getElementById('dealId').value;
@@ -5265,24 +4775,24 @@
             
             const productInputs = document.querySelectorAll('#productList select, #productList input[type="text"]');
             const collectedProducts = new Set();
-        
+
             for (let i = 0; i < productInputs.length; i += 2) {
                 const selectElement = productInputs[i];
                 const textInputElement = productInputs[i + 1];
-        
+
                 let productValue = '';
                 if (textInputElement.value.trim() !== '') {
                     productValue = textInputElement.value.trim();
                 } else if (selectElement.value !== '') {
                     productValue = selectElement.value;
                 }
-        
+
                 if (productValue) {
                     collectedProducts.add(productValue);
                 }
             }
             const productsToSave = Array.from(collectedProducts);
-        
+
             let facility = document.getElementById('newFacility').value.trim();
             if (!facility) {
                 facility = facilitySelect.value;
@@ -5306,33 +4816,33 @@
                 await saveDropdownOptions();
                 updateDropdownOptions();
             }
-        
+
             let consultant = consultantHiddenInput.value.trim();
             if (consultant && !uniqueConsultants.has(consultant)) {
                 uniqueConsultants.add(consultant);
                 console.log(`New consultant "${consultant}" added to local list.`);
             }
-        
+
             const contractorInputs = document.querySelectorAll('#contractorList select, #contractorList input[type="text"]');
             const collectedContractors = new Set();
-        
+
             for (let i = 0; i < contractorInputs.length; i += 2) {
                 const selectElement = contractorInputs[i];
                 const textInputElement = contractorInputs[i + 1];
-        
+
                 let contractorValue = '';
                 if (textInputElement.value.trim() !== '') {
                     contractorValue = textInputElement.value.trim();
                 } else if (selectElement.value !== '') {
                     contractorValue = selectElement.value;
                 }
-        
+
                 if (contractorValue) {
                     collectedContractors.add(contractorValue);
                 }
             }
             const contractorsToSave = Array.from(collectedContractors);
-        
+
             let pic = document.getElementById('newPic').value.trim();
             if (!pic) {
                 pic = document.getElementById('pic').value;
@@ -5344,22 +4854,22 @@
                 await saveDropdownOptions();
                 updateDropdownOptions();
             }
-        
+
             const planPO = document.getElementById('planPO').value;
             const stage = document.getElementById('stage').value;
             const priority = document.getElementById('priority').value;
             const remarks = document.getElementById('remarks').value;
-        
+
             if (!dealName) {
                 showToast("Nama Proyek harus diisi.", 3000);
                 return;
             }
-        
+
             if (!beforeDiscount) {
                 showToast("Sebelum Diskon (IDR) harus diisi.", 3000);
                 return;
             }
-        
+
             if (dealId && currentUserRole === 'user') {
                 const deal = deals.find(d => d.id === dealId);
                 if (deal && !canUserEditDeal(deal)) {
@@ -5367,7 +4877,7 @@
                     return;
                 }
             }
-        
+
             const dealData = {
                 dealName: dealName,
                 salesName: salesName,
@@ -5387,7 +4897,7 @@
                 remarks: remarks,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
-        
+
             try {
                 if (dealId) {
                     await dealsCollection.doc(dealId).update(dealData);
@@ -5419,7 +4929,7 @@
                 showToast("Gagal menyimpan deal. Silakan coba lagi.", 3000);
             }
         }
-        
+
         // Fungsi untuk menyiapkan modal edit deal
         function prepareEditDeal(dealId) {
             const deal = deals.find(d => d.id === dealId);
@@ -5435,10 +4945,10 @@
             
             openDealModal(dealId);
         }
-        
+
         let dealToDeleteId = null;
         let dealToDeleteName = '';
-        
+
         // Fungsi untuk menampilkan modal konfirmasi penghapusan
         function confirmDeleteDeal(dealId, dealName) {
             const deal = deals.find(d => d.id === dealId);
@@ -5459,12 +4969,12 @@
             document.getElementById('deleteModalContent').classList.remove('modal-content-leave-active');
             document.getElementById('deleteModalContent').classList.add('modal-content-enter-active');
         }
-        
+
         // Fungsi untuk menutup modal konfirmasi penghapusan
         function closeDeleteModal() {
             const deleteModalContent = document.getElementById('deleteModalContent');
             if (!deleteModalContent) return;
-        
+
             deleteModalContent.classList.remove('modal-content-enter-active');
             deleteModalContent.classList.add('modal-content-leave-active');
             
@@ -5474,11 +4984,11 @@
                 deleteModalContent.removeEventListener('transitionend', handler);
             }, { once: true });
         }
-        
+
         // MODIFIKASI: Fungsi untuk menghapus deal (soft delete)
         async function deleteDeal() {
             if (!dealToDeleteId) return;
-        
+
             const deal = deals.find(d => d.id === dealToDeleteId);
             if (!deal) {
                 showToast("Deal tidak ditemukan.", 3000);
@@ -5489,7 +4999,7 @@
                 showToast("Anda tidak memiliki izin untuk menghapus deal ini.", 3000);
                 return;
             }
-        
+
             try {
                 // Simpan data ke collection deletedDeals terlebih dahulu
                 await deletedDealsCollection.add({
@@ -5499,7 +5009,7 @@
                     deletedBy: auth.currentUser.uid,
                     deletedByEmail: auth.currentUser.email
                 });
-        
+
                 // Hapus dari collection deals
                 await dealsCollection.doc(dealToDeleteId).delete();
                 
@@ -5525,7 +5035,7 @@
                 showToast("Gagal menghapus deal. Silakan coba lagi.", 3000);
             }
         }
-        
+
         // Fungsi untuk membuka modal detail deal
         function openDealDetailModal(dealId) {
             const deal = deals.find(d => d.id === dealId);
@@ -5533,7 +5043,7 @@
                 showToast("Detail deal tidak ditemukan.", 3000);
                 return;
             }
-        
+
             document.getElementById('dealDetailTitle').textContent = deal.dealName || 'Detail Deal';
             document.getElementById('detailSalesName').textContent = deal.salesName || '-';
             document.getElementById('detailValue').textContent = `Rp ${formatNumber(deal.value) || '0'}`;
@@ -5563,17 +5073,17 @@
             document.getElementById('detailPlanPO').textContent = deal.planPO || '-';
             document.getElementById('detailCreatedDate').textContent = formatDate(deal.createdAt) || '-';
             document.getElementById('detailRemarks').textContent = deal.remarks || '-';
-        
+
             document.getElementById('dealDetailModal').classList.remove('hidden');
             document.getElementById('dealDetailModalContent').classList.remove('modal-content-leave-active');
             document.getElementById('dealDetailModalContent').classList.add('modal-content-enter-active');
         }
-        
+
         // Fungsi untuk menutup modal detail deal
         function closeDealDetailModal() {
             const dealDetailModalContent = document.getElementById('dealDetailModalContent');
             if (!dealDetailModalContent) return;
-        
+
             dealDetailModalContent.classList.remove('modal-content-enter-active');
             dealDetailModalContent.classList.add('modal-content-leave-active');
             
@@ -5583,9 +5093,9 @@
                 dealDetailModalContent.removeEventListener('transitionend', handler);
             }, { once: true });
         }
-        
+
         // ==================== INISIALISASI ====================
-        
+
         // Inisialisasi saat DOM siap
         document.addEventListener('DOMContentLoaded', function() {
             facilitySelect = document.getElementById('facility');
@@ -5595,10 +5105,10 @@
             consultantSearchInput = document.getElementById('consultantSearch');
             consultantHiddenInput = document.getElementById('consultant');
             consultantSuggestionsDiv = document.getElementById('consultantSuggestions');
-        
+
             // Nonaktifkan fitur drag & drop
             initSortable();
         });
-        </script>
+    </script>
 </body>
 </html>
