@@ -1897,10 +1897,6 @@
             priorityTimelineChart: null
         };
 
-        // Variabel untuk clickable chart
-        let selectedPriorityForSales = null;
-        let selectedStageForPriority = null;
-
         // ==================== FUNGSI UTAMA ====================
 
         // Fungsi untuk menangani perubahan status autentikasi
@@ -2969,10 +2965,6 @@
             // Set tab aktif ke overview
             switchStatsTab('overview');
             
-            // Reset selected data
-            selectedPriorityForSales = null;
-            selectedStageForPriority = null;
-            
             // Render semua chart
             renderAllCharts();
             
@@ -3053,1135 +3045,1239 @@
             }
         }
 
-// ==================== FUNGSI STATISTIK PER SALES ====================
+        // ==================== FUNGSI STATISTIK PER SALES ====================
 
-// Fungsi untuk memproses data per sales
-function processSalesData(salesName = 'all') {
-    const salesDeals = salesName === 'all' 
-        ? deals 
-        : deals.filter(deal => deal.salesName === salesName);
-    
-    const stats = {
-        totalValue: 0,
-        totalDeals: salesDeals.length,
-        winCount: 0,
-        lostCount: 0,
-        stageDistribution: {},
-        priorityDistribution: {},
-        monthlyTimeline: {},
-        byProduct: {},
-        byFacility: {},
-        maxDealValue: 0,
-        minDealValue: 0,
-        dealsByPriority: {}
-    };
-    
-    if (salesDeals.length > 0) {
-        stats.maxDealValue = salesDeals[0].value || 0;
-        stats.minDealValue = salesDeals[0].value || 0;
-    }
-    
-    salesDeals.forEach(deal => {
-        const dealValue = deal.value || 0;
-        
-        // Total nilai
-        stats.totalValue += dealValue;
-        
-        // Win/Lost count
-        if (deal.stage === 'win') {
-            stats.winCount++;
-        } else if (deal.stage === 'lost') {
-            stats.lostCount++;
-        }
-        
-        // Stage distribution
-        const stage = deal.stage || 'unknown';
-        stats.stageDistribution[stage] = (stats.stageDistribution[stage] || 0) + 1;
-        
-        // Priority distribution
-        const priority = deal.priority || 'Priority';
-        stats.priorityDistribution[priority] = (stats.priorityDistribution[priority] || 0) + 1;
-        
-        // Store deals by priority
-        if (!stats.dealsByPriority[priority]) {
-            stats.dealsByPriority[priority] = [];
-        }
-        stats.dealsByPriority[priority].push(deal);
-        
-        // Monthly timeline
-        if (deal.createdAt) {
-            const monthYear = deal.createdAt.toDate().toLocaleString('id-ID', { 
-                month: 'short', 
-                year: 'numeric' 
-            });
-            if (!stats.monthlyTimeline[monthYear]) {
-                stats.monthlyTimeline[monthYear] = {
-                    count: 0,
-                    value: 0
-                };
+        // Fungsi untuk memproses data per sales
+        function processSalesData(salesName = 'all') {
+            const salesDeals = salesName === 'all' 
+                ? deals 
+                : deals.filter(deal => deal.salesName === salesName);
+            
+            const stats = {
+                totalValue: 0,
+                totalDeals: salesDeals.length,
+                winCount: 0,
+                lostCount: 0,
+                stageDistribution: {},
+                priorityDistribution: {},
+                monthlyTimeline: {},
+                byProduct: {},
+                byFacility: {},
+                maxDealValue: 0,
+                minDealValue: 0,
+                dealsByPriority: {}
+            };
+            
+            if (salesDeals.length > 0) {
+                stats.maxDealValue = salesDeals[0].value || 0;
+                stats.minDealValue = salesDeals[0].value || 0;
             }
-            stats.monthlyTimeline[monthYear].count++;
-            stats.monthlyTimeline[monthYear].value += dealValue;
-        }
-        
-        // By product
-        if (deal.product) {
-            const products = Array.isArray(deal.product) ? deal.product : [deal.product];
-            products.forEach(product => {
-                stats.byProduct[product] = (stats.byProduct[product] || 0) + 1;
+            
+            salesDeals.forEach(deal => {
+                const dealValue = deal.value || 0;
+                
+                // Total nilai
+                stats.totalValue += dealValue;
+                
+                // Win/Lost count
+                if (deal.stage === 'win') {
+                    stats.winCount++;
+                } else if (deal.stage === 'lost') {
+                    stats.lostCount++;
+                }
+                
+                // Stage distribution
+                const stage = deal.stage || 'unknown';
+                stats.stageDistribution[stage] = (stats.stageDistribution[stage] || 0) + 1;
+                
+                // Priority distribution
+                const priority = deal.priority || 'Priority';
+                stats.priorityDistribution[priority] = (stats.priorityDistribution[priority] || 0) + 1;
+                
+                // Store deals by priority
+                if (!stats.dealsByPriority[priority]) {
+                    stats.dealsByPriority[priority] = [];
+                }
+                stats.dealsByPriority[priority].push(deal);
+                
+                // Monthly timeline
+                if (deal.createdAt) {
+                    const monthYear = deal.createdAt.toDate().toLocaleString('id-ID', { 
+                        month: 'short', 
+                        year: 'numeric' 
+                    });
+                    if (!stats.monthlyTimeline[monthYear]) {
+                        stats.monthlyTimeline[monthYear] = {
+                            count: 0,
+                            value: 0
+                        };
+                    }
+                    stats.monthlyTimeline[monthYear].count++;
+                    stats.monthlyTimeline[monthYear].value += dealValue;
+                }
+                
+                // By product
+                if (deal.product) {
+                    const products = Array.isArray(deal.product) ? deal.product : [deal.product];
+                    products.forEach(product => {
+                        stats.byProduct[product] = (stats.byProduct[product] || 0) + 1;
+                    });
+                }
+                
+                // By facility
+                if (deal.facility) {
+                    stats.byFacility[deal.facility] = (stats.byFacility[deal.facility] || 0) + 1;
+                }
+                
+                // Min/Max values
+                if (dealValue > stats.maxDealValue) stats.maxDealValue = dealValue;
+                if (dealValue < stats.minDealValue) stats.minDealValue = dealValue;
             });
+            
+            // Calculate win rate
+            stats.winRate = stats.totalDeals > 0 ? (stats.winCount / stats.totalDeals * 100).toFixed(1) : 0;
+            stats.avgDealValue = stats.totalDeals > 0 ? stats.totalValue / stats.totalDeals : 0;
+            
+            return stats;
         }
-        
-        // By facility
-        if (deal.facility) {
-            stats.byFacility[deal.facility] = (stats.byFacility[deal.facility] || 0) + 1;
-        }
-        
-        // Min/Max values
-        if (dealValue > stats.maxDealValue) stats.maxDealValue = dealValue;
-        if (dealValue < stats.minDealValue) stats.minDealValue = dealValue;
-    });
-    
-    // Calculate win rate
-    stats.winRate = stats.totalDeals > 0 ? (stats.winCount / stats.totalDeals * 100).toFixed(1) : 0;
-    stats.avgDealValue = stats.totalDeals > 0 ? stats.totalValue / stats.totalDeals : 0;
-    
-    return stats;
-}
 
-// Fungsi untuk merender chart per sales dengan clickable features
-function renderSalesCharts() {
-    console.log("Rendering sales charts...");
-    
-    try {
-        const salesFilter = document.getElementById('salesFilter');
-        const selectedSales = salesFilter ? salesFilter.value : 'all';
-        const salesData = processSalesData(selectedSales);
-        
-        // Update metric boxes
-        document.getElementById('salesTotalValue').textContent = `Rp ${formatNumber(salesData.totalValue)}`;
-        document.getElementById('salesWinRate').textContent = `${salesData.winRate}%`;
-        document.getElementById('salesTotalDeals').textContent = salesData.totalDeals;
-        document.getElementById('salesAvgValue').textContent = `Rp ${formatNumber(salesData.avgDealValue)}`;
-        document.getElementById('salesMaxValue').textContent = `Rp ${formatNumber(salesData.maxDealValue)}`;
-        
-        // Render stage distribution chart
-        const stageCtx = document.getElementById('salesStageChart');
-        if (!stageCtx) {
-            console.error("Canvas salesStageChart not found");
-            return;
+        // Fungsi untuk merender chart per sales dengan clickable features
+        function renderSalesCharts() {
+            console.log("Rendering sales charts...");
+            
+            try {
+                const salesFilter = document.getElementById('salesFilter');
+                const selectedSales = salesFilter ? salesFilter.value : 'all';
+                const salesData = processSalesData(selectedSales);
+                
+                // Update metric boxes
+                document.getElementById('salesTotalValue').textContent = `Rp ${formatNumber(salesData.totalValue)}`;
+                document.getElementById('salesWinRate').textContent = `${salesData.winRate}%`;
+                document.getElementById('salesTotalDeals').textContent = salesData.totalDeals;
+                document.getElementById('salesAvgValue').textContent = `Rp ${formatNumber(salesData.avgDealValue)}`;
+                document.getElementById('salesMaxValue').textContent = `Rp ${formatNumber(salesData.maxDealValue)}`;
+                
+                // Render stage distribution chart
+                const stageCtx = document.getElementById('salesStageChart');
+                if (!stageCtx) {
+                    console.error("Canvas salesStageChart not found");
+                    return;
+                }
+                
+                if (salesCharts.salesStageChart) {
+                    salesCharts.salesStageChart.destroy();
+                }
+                
+                const stageLabels = Object.keys(salesData.stageDistribution).map(stage => 
+                    stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                );
+                const stageData = Object.values(salesData.stageDistribution);
+                
+                console.log("Stage distribution data:", stageLabels, stageData);
+                
+                salesCharts.salesStageChart = new Chart(stageCtx.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: stageLabels,
+                        datasets: [{
+                            label: 'Jumlah Deal',
+                            data: stageData,
+                            backgroundColor: [
+                                '#3B82F6', '#60A5FA', '#93C5FD', '#22D3EE', '#A78BFA',
+                                '#10B981', '#EF4444', '#F59E0B'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: `Distribusi Tahap - ${selectedSales === 'all' ? 'Semua Sales' : selectedSales}`
+                            }
+                        }
+                    }
+                });
+                
+                // Render priority distribution chart dengan click handler
+                const priorityCtx = document.getElementById('salesPriorityChart');
+                if (!priorityCtx) {
+                    console.error("Canvas salesPriorityChart not found");
+                    return;
+                }
+                
+                if (salesCharts.salesPriorityChart) {
+                    salesCharts.salesPriorityChart.destroy();
+                }
+                
+                const priorityLabels = Object.keys(salesData.priorityDistribution);
+                const priorityData = Object.values(salesData.priorityDistribution);
+                
+                console.log("Priority distribution data:", priorityLabels, priorityData);
+                
+                salesCharts.salesPriorityChart = new Chart(priorityCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: priorityLabels,
+                        datasets: [{
+                            label: 'Jumlah Deal',
+                            data: priorityData,
+                            backgroundColor: priorityLabels.map(priority => {
+                                switch(priority) {
+                                    case 'Priority': return '#fef3c7';
+                                    case 'Hot Priority': return '#fee2e2';
+                                    case 'Win': return '#d1fae5';
+                                    case 'Lost': return '#f3f4f6';
+                                    case 'Behind': return '#ffedd5';
+                                    case 'On Track': return '#dbeafe';
+                                    case 'Completed': return '#f3e8ff';
+                                    default: return '#e5e7eb';
+                                }
+                            }),
+                            borderColor: priorityLabels.map(priority => {
+                                switch(priority) {
+                                    case 'Priority': return '#d97706';
+                                    case 'Hot Priority': return '#dc2626';
+                                    case 'Win': return '#059669';
+                                    case 'Lost': return '#6b7280';
+                                    case 'Behind': return '#ea580c';
+                                    case 'On Track': return '#1d4ed8';
+                                    case 'Completed': return '#7c3aed';
+                                    default: return '#6b7280';
+                                }
+                            }),
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: `Distribusi Priority - ${selectedSales === 'all' ? 'Semua Sales' : selectedSales}`
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `Klik untuk melihat detail project`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    precision: 0
+                                }
+                            }
+                        },
+                        onClick: (evt, elements) => {
+                            if (elements.length > 0) {
+                                const index = elements[0].index;
+                                const priority = priorityLabels[index];
+                                showDealsByPriority(salesFilter, priority);
+                            }
+                        }
+                    }
+                });
+                
+                // Render timeline chart
+                const timelineCtx = document.getElementById('salesTimelineChart');
+                if (!timelineCtx) {
+                    console.error("Canvas salesTimelineChart not found");
+                    return;
+                }
+                
+                if (salesCharts.salesTimelineChart) {
+                    salesCharts.salesTimelineChart.destroy();
+                }
+                
+                const sortedMonths = Object.keys(salesData.monthlyTimeline).sort((a, b) => {
+                    const [monthStrA, yearStrA] = a.split(' ');
+                    const [monthStrB, yearStrB] = b.split(' ');
+                    const monthIndexA = new Date(Date.parse(monthStrA + " 1, 2000")).getMonth();
+                    const monthIndexB = new Date(Date.parse(monthStrB + " 1, 2000")).getMonth();
+                    const dateA = new Date(parseInt(yearStrA), monthIndexA, 1);
+                    const dateB = new Date(parseInt(yearStrB), monthIndexB, 1);
+                    return dateA - dateB;
+                });
+                
+                const timelineCountData = sortedMonths.map(month => salesData.monthlyTimeline[month].count);
+                const timelineValueData = sortedMonths.map(month => salesData.monthlyTimeline[month].value);
+                
+                console.log("Timeline data:", sortedMonths, timelineCountData, timelineValueData);
+                
+                salesCharts.salesTimelineChart = new Chart(timelineCtx.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: sortedMonths,
+                        datasets: [
+                            {
+                                label: 'Jumlah Deal',
+                                data: timelineCountData,
+                                borderColor: '#3B82F6',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                yAxisID: 'y',
+                                tension: 0.3
+                            },
+                            {
+                                label: 'Total Nilai (IDR)',
+                                data: timelineValueData,
+                                borderColor: '#10B981',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                yAxisID: 'y1',
+                                tension: 0.3
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        stacked: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: `Timeline Deal - ${selectedSales === 'all' ? 'Semua Sales' : selectedSales}`
+                            }
+                        },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Jumlah Deal'
+                                },
+                                ticks: {
+                                    precision: 0
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Total Nilai (IDR)'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return 'Rp ' + formatNumber(value);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                
+            } catch (error) {
+                console.error("Error rendering sales charts:", error);
+                showToast("Gagal merender chart statistik sales", 3000);
+            }
         }
-        
-        if (salesCharts.salesStageChart) {
-            salesCharts.salesStageChart.destroy();
+
+        // ==================== FUNGSI STATISTIK PER PRIORITY ====================
+
+        // Fungsi untuk memproses data per priority
+        function processPriorityData(priority = 'all') {
+            const priorityDeals = priority === 'all' 
+                ? deals 
+                : deals.filter(deal => deal.priority === priority);
+            
+            const stats = {
+                totalValue: 0,
+                totalDeals: priorityDeals.length,
+                winCount: 0,
+                stageDistribution: {},
+                salesDistribution: {},
+                valueByStage: {},
+                monthlyTimeline: {},
+                avgDealValue: 0,
+                maxDealValue: 0,
+                minDealValue: 0,
+                dealsByStage: {}
+            };
+            
+            if (priorityDeals.length > 0) {
+                stats.maxDealValue = priorityDeals[0].value || 0;
+                stats.minDealValue = priorityDeals[0].value || 0;
+            }
+            
+            priorityDeals.forEach(deal => {
+                const dealValue = deal.value || 0;
+                
+                // Total nilai
+                stats.totalValue += dealValue;
+                
+                // Win count
+                if (deal.stage === 'win') {
+                    stats.winCount++;
+                }
+                
+                // Stage distribution
+                const stage = deal.stage || 'unknown';
+                stats.stageDistribution[stage] = (stats.stageDistribution[stage] || 0) + 1;
+                stats.valueByStage[stage] = (stats.valueByStage[stage] || 0) + dealValue;
+                
+                // Store deals by stage
+                if (!stats.dealsByStage[stage]) {
+                    stats.dealsByStage[stage] = [];
+                }
+                stats.dealsByStage[stage].push(deal);
+                
+                // Sales distribution
+                if (deal.salesName) {
+                    stats.salesDistribution[deal.salesName] = (stats.salesDistribution[deal.salesName] || 0) + 1;
+                }
+                
+                // Monthly timeline
+                if (deal.createdAt) {
+                    const monthYear = deal.createdAt.toDate().toLocaleString('id-ID', { 
+                        month: 'short', 
+                        year: 'numeric' 
+                    });
+                    if (!stats.monthlyTimeline[monthYear]) {
+                        stats.monthlyTimeline[monthYear] = {
+                            count: 0,
+                            value: 0
+                        };
+                    }
+                    stats.monthlyTimeline[monthYear].count++;
+                    stats.monthlyTimeline[monthYear].value += dealValue;
+                }
+                
+                // Min/Max values
+                if (dealValue > stats.maxDealValue) stats.maxDealValue = dealValue;
+                if (dealValue < stats.minDealValue) stats.minDealValue = dealValue;
+            });
+            
+            // Calculate statistics
+            stats.avgDealValue = stats.totalDeals > 0 ? stats.totalValue / stats.totalDeals : 0;
+            stats.winRate = stats.totalDeals > 0 ? (stats.winCount / stats.totalDeals * 100).toFixed(1) : 0;
+            
+            return stats;
         }
-        
-        const stageLabels = Object.keys(salesData.stageDistribution).map(stage => 
-            stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-        );
-        const stageData = Object.values(salesData.stageDistribution);
-        
-        console.log("Stage distribution data:", stageLabels, stageData);
-        
-        salesCharts.salesStageChart = new Chart(stageCtx.getContext('2d'), {
-            type: 'doughnut',
-            data: {
-                labels: stageLabels,
-                datasets: [{
-                    label: 'Jumlah Deal',
-                    data: stageData,
-                    backgroundColor: [
+
+        // Fungsi untuk merender chart per priority dengan clickable features
+        function renderPriorityCharts() {
+            console.log("Rendering priority charts...");
+            
+            try {
+                const priorityFilter = document.getElementById('priorityFilter');
+                const selectedPriority = priorityFilter ? priorityFilter.value : 'all';
+                const priorityData = processPriorityData(selectedPriority);
+                
+                // Update metric boxes
+                document.getElementById('priorityTotalValue').textContent = `Rp ${formatNumber(priorityData.totalValue)}`;
+                document.getElementById('priorityAvgValue').textContent = `Rp ${formatNumber(priorityData.avgDealValue)}`;
+                document.getElementById('priorityTotalDeals').textContent = priorityData.totalDeals;
+                document.getElementById('priorityWinRate').textContent = `${priorityData.winRate}%`;
+                document.getElementById('priorityMaxValue').textContent = `Rp ${formatNumber(priorityData.maxDealValue)}`;
+                document.getElementById('priorityMinValue').textContent = `Rp ${formatNumber(priorityData.minDealValue)}`;
+                
+                // Render stage distribution chart dengan click handler
+                const stageCtx = document.getElementById('priorityStageChart');
+                if (!stageCtx) {
+                    console.error("Canvas priorityStageChart not found");
+                    return;
+                }
+                
+                if (salesCharts.priorityStageChart) {
+                    salesCharts.priorityStageChart.destroy();
+                }
+                
+                const stageLabels = Object.keys(priorityData.stageDistribution).map(stage => 
+                    stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                );
+                const stageData = Object.values(priorityData.stageDistribution);
+                const stageValueData = Object.keys(priorityData.valueByStage).map(stage => 
+                    priorityData.valueByStage[stage]
+                );
+                
+                console.log("Stage distribution data:", stageLabels, stageData, stageValueData);
+                
+                const backgroundColors = stageLabels.map((stage, index) => {
+                    const colors = [
                         '#3B82F6', '#60A5FA', '#93C5FD', '#22D3EE', '#A78BFA',
                         '#10B981', '#EF4444', '#F59E0B'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: `Distribusi Tahap - ${selectedSales === 'all' ? 'Semua Sales' : selectedSales}`
-                    }
-                }
-            }
-        });
-        
-        // Render priority distribution chart dengan click handler
-        const priorityCtx = document.getElementById('salesPriorityChart');
-        if (!priorityCtx) {
-            console.error("Canvas salesPriorityChart not found");
-            return;
-        }
-        
-        if (salesCharts.salesPriorityChart) {
-            salesCharts.salesPriorityChart.destroy();
-        }
-        
-        const priorityLabels = Object.keys(salesData.priorityDistribution);
-        const priorityData = Object.values(salesData.priorityDistribution);
-        
-        console.log("Priority distribution data:", priorityLabels, priorityData);
-        
-        salesCharts.salesPriorityChart = new Chart(priorityCtx.getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: priorityLabels,
-                datasets: [{
-                    label: 'Jumlah Deal',
-                    data: priorityData,
-                    backgroundColor: priorityLabels.map(priority => {
-                        switch(priority) {
-                            case 'Priority': return '#fef3c7';
-                            case 'Hot Priority': return '#fee2e2';
-                            case 'Win': return '#d1fae5';
-                            case 'Lost': return '#f3f4f6';
-                            case 'Behind': return '#ffedd5';
-                            case 'On Track': return '#dbeafe';
-                            case 'Completed': return '#f3e8ff';
-                            default: return '#e5e7eb';
-                        }
-                    }),
-                    borderColor: priorityLabels.map(priority => {
-                        switch(priority) {
-                            case 'Priority': return '#d97706';
-                            case 'Hot Priority': return '#dc2626';
-                            case 'Win': return '#059669';
-                            case 'Lost': return '#6b7280';
-                            case 'Behind': return '#ea580c';
-                            case 'On Track': return '#1d4ed8';
-                            case 'Completed': return '#7c3aed';
-                            default: return '#6b7280';
-                        }
-                    }),
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: `Distribusi Priority - ${selectedSales === 'all' ? 'Semua Sales' : selectedSales}`
+                    ];
+                    return colors[index % colors.length];
+                });
+                
+                salesCharts.priorityStageChart = new Chart(stageCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: stageLabels,
+                        datasets: [
+                            {
+                                label: 'Jumlah Deal',
+                                data: stageData,
+                                backgroundColor: backgroundColors.map(color => color + '80'),
+                                borderColor: backgroundColors,
+                                borderWidth: 1,
+                                yAxisID: 'y'
+                            },
+                            {
+                                label: 'Total Nilai (IDR)',
+                                data: stageValueData,
+                                backgroundColor: '#10B98180',
+                                borderColor: '#10B981',
+                                borderWidth: 1,
+                                yAxisID: 'y1'
+                            }
+                        ]
                     },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return `Klik untuk melihat detail project`;
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: `Distribusi per Tahap - ${selectedPriority === 'all' ? 'Semua Priority' : selectedPriority}`
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        if (context.datasetIndex === 0) {
+                                            return `Klik untuk melihat detail project`;
+                                        }
+                                        return `Total Nilai: Rp ${formatNumber(context.raw)}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Jumlah Deal'
+                                },
+                                ticks: {
+                                    precision: 0
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Total Nilai (IDR)'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return 'Rp ' + formatNumber(value);
+                                    }
+                                }
+                            }
+                        },
+                        onClick: (evt, elements) => {
+                            if (elements.length > 0 && elements[0].datasetIndex === 0) {
+                                const index = elements[0].index;
+                                const stage = Object.keys(priorityData.stageDistribution)[index];
+                                showDealsByStage(priorityFilter, stage);
                             }
                         }
                     }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            precision: 0
-                        }
-                    }
-                },
-                onClick: (evt, elements) => {
-                    if (elements.length > 0) {
-                        const index = elements[0].index;
-                        const priority = priorityLabels[index];
-                        showDealsByPriority(salesFilter, priority);
-                    }
+                });
+                
+                // Render sales distribution chart
+                const salesCtx = document.getElementById('prioritySalesChart');
+                if (!salesCtx) {
+                    console.error("Canvas prioritySalesChart not found");
+                    return;
                 }
-            }
-        });
-        
-        // Render timeline chart
-        const timelineCtx = document.getElementById('salesTimelineChart');
-        if (!timelineCtx) {
-            console.error("Canvas salesTimelineChart not found");
-            return;
-        }
-        
-        if (salesCharts.salesTimelineChart) {
-            salesCharts.salesTimelineChart.destroy();
-        }
-        
-        const sortedMonths = Object.keys(salesData.monthlyTimeline).sort((a, b) => {
-            const [monthStrA, yearStrA] = a.split(' ');
-            const [monthStrB, yearStrB] = b.split(' ');
-            const monthIndexA = new Date(Date.parse(monthStrA + " 1, 2000")).getMonth();
-            const monthIndexB = new Date(Date.parse(monthStrB + " 1, 2000")).getMonth();
-            const dateA = new Date(parseInt(yearStrA), monthIndexA, 1);
-            const dateB = new Date(parseInt(yearStrB), monthIndexB, 1);
-            return dateA - dateB;
-        });
-        
-        const timelineCountData = sortedMonths.map(month => salesData.monthlyTimeline[month].count);
-        const timelineValueData = sortedMonths.map(month => salesData.monthlyTimeline[month].value);
-        
-        console.log("Timeline data:", sortedMonths, timelineCountData, timelineValueData);
-        
-        salesCharts.salesTimelineChart = new Chart(timelineCtx.getContext('2d'), {
-            type: 'line',
-            data: {
-                labels: sortedMonths,
-                datasets: [
-                    {
-                        label: 'Jumlah Deal',
-                        data: timelineCountData,
-                        borderColor: '#3B82F6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        yAxisID: 'y',
-                        tension: 0.3
+                
+                if (salesCharts.prioritySalesChart) {
+                    salesCharts.prioritySalesChart.destroy();
+                }
+                
+                // Ambil top 10 sales untuk chart
+                const sortedSales = Object.entries(priorityData.salesDistribution)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 10);
+                
+                const salesLabels = sortedSales.map(([name]) => name);
+                const salesData = sortedSales.map(([, count]) => count);
+                
+                console.log("Sales distribution data:", salesLabels, salesData);
+                
+                salesCharts.prioritySalesChart = new Chart(salesCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: salesLabels,
+                        datasets: [{
+                            label: 'Jumlah Deal',
+                            data: salesData,
+                            backgroundColor: '#8B5CF6'
+                        }]
                     },
-                    {
-                        label: 'Total Nilai (IDR)',
-                        data: timelineValueData,
-                        borderColor: '#10B981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        yAxisID: 'y1',
-                        tension: 0.3
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
-                stacked: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: `Timeline Deal - ${selectedSales === 'all' ? 'Semua Sales' : selectedSales}`
-                    }
-                },
-                scales: {
-                    y: {
-                        type: 'linear',
-                        display: true,
-                        position: 'left',
-                        title: {
-                            display: true,
-                            text: 'Jumlah Deal'
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: `Top 10 Sales - ${selectedPriority === 'all' ? 'Semua Priority' : selectedPriority}`
+                            }
                         },
-                        ticks: {
-                            precision: 0
-                        }
-                    },
-                    y1: {
-                        type: 'linear',
-                        display: true,
-                        position: 'right',
-                        title: {
-                            display: true,
-                            text: 'Total Nilai (IDR)'
-                        },
-                        ticks: {
-                            callback: function(value) {
-                                return 'Rp ' + formatNumber(value);
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                ticks: {
+                                    precision: 0
+                                }
                             }
                         }
                     }
+                });
+                
+                // Render timeline chart
+                const timelineCtx = document.getElementById('priorityTimelineChart');
+                if (!timelineCtx) {
+                    console.error("Canvas priorityTimelineChart not found");
+                    return;
                 }
+                
+                if (salesCharts.priorityTimelineChart) {
+                    salesCharts.priorityTimelineChart.destroy();
+                }
+                
+                const sortedMonths = Object.keys(priorityData.monthlyTimeline).sort((a, b) => {
+                    const [monthStrA, yearStrA] = a.split(' ');
+                    const [monthStrB, yearStrB] = b.split(' ');
+                    const monthIndexA = new Date(Date.parse(monthStrA + " 1, 2000")).getMonth();
+                    const monthIndexB = new Date(Date.parse(monthStrB + " 1, 2000")).getMonth();
+                    const dateA = new Date(parseInt(yearStrA), monthIndexA, 1);
+                    const dateB = new Date(parseInt(yearStrB), monthIndexB, 1);
+                    return dateA - dateB;
+                });
+                
+                const timelineCountData = sortedMonths.map(month => priorityData.monthlyTimeline[month].count);
+                const timelineValueData = sortedMonths.map(month => priorityData.monthlyTimeline[month].value);
+                
+                console.log("Priority timeline data:", sortedMonths, timelineCountData, timelineValueData);
+                
+                salesCharts.priorityTimelineChart = new Chart(timelineCtx.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: sortedMonths,
+                        datasets: [
+                            {
+                                label: 'Jumlah Deal',
+                                data: timelineCountData,
+                                borderColor: '#3B82F6',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                yAxisID: 'y',
+                                tension: 0.3
+                            },
+                            {
+                                label: 'Total Nilai (IDR)',
+                                data: timelineValueData,
+                                borderColor: '#10B981',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                yAxisID: 'y1',
+                                tension: 0.3
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        stacked: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: `Timeline - ${selectedPriority === 'all' ? 'Semua Priority' : selectedPriority}`
+                            }
+                        },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Jumlah Deal'
+                                },
+                                ticks: {
+                                    precision: 0
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Total Nilai (IDR)'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return 'Rp ' + formatNumber(value);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                
+            } catch (error) {
+                console.error("Error rendering priority charts:", error);
+                showToast("Gagal merender chart analisis priority", 3000);
             }
-        });
-        
-    } catch (error) {
-        console.error("Error rendering sales charts:", error);
-        showToast("Gagal merender chart statistik sales", 3000);
-    }
-}
+        }
 
-// ==================== FUNGSI STATISTIK PER PRIORITY ====================
+        // ==================== FUNGSI STATISTIK OVERVIEW ====================
 
-// Fungsi untuk memproses data per priority
-function processPriorityData(priority = 'all') {
-    const priorityDeals = priority === 'all' 
-        ? deals 
-        : deals.filter(deal => deal.priority === priority);
-    
-    const stats = {
-        totalValue: 0,
-        totalDeals: priorityDeals.length,
-        winCount: 0,
-        stageDistribution: {},
-        salesDistribution: {},
-        valueByStage: {},
-        monthlyTimeline: {},
-        avgDealValue: 0,
-        maxDealValue: 0,
-        minDealValue: 0,
-        dealsByStage: {}
-    };
-    
-    if (priorityDeals.length > 0) {
-        stats.maxDealValue = priorityDeals[0].value || 0;
-        stats.minDealValue = priorityDeals[0].value || 0;
-    }
-    
-    priorityDeals.forEach(deal => {
-        const dealValue = deal.value || 0;
-        
-        // Total nilai
-        stats.totalValue += dealValue;
-        
-        // Win count
-        if (deal.stage === 'win') {
-            stats.winCount++;
-        }
-        
-        // Stage distribution
-        const stage = deal.stage || 'unknown';
-        stats.stageDistribution[stage] = (stats.stageDistribution[stage] || 0) + 1;
-        stats.valueByStage[stage] = (stats.valueByStage[stage] || 0) + dealValue;
-        
-        // Store deals by stage
-        if (!stats.dealsByStage[stage]) {
-            stats.dealsByStage[stage] = [];
-        }
-        stats.dealsByStage[stage].push(deal);
-        
-        // Sales distribution
-        if (deal.salesName) {
-            stats.salesDistribution[deal.salesName] = (stats.salesDistribution[deal.salesName] || 0) + 1;
-        }
-        
-        // Monthly timeline
-        if (deal.createdAt) {
-            const monthYear = deal.createdAt.toDate().toLocaleString('id-ID', { 
-                month: 'short', 
-                year: 'numeric' 
+        // Fungsi untuk memproses data deals menjadi format yang siap untuk chart
+        function processDealDataForCharts(dealsData) {
+            console.log("Processing deal data for charts, total deals:", dealsData.length);
+            
+            const stageSelect = document.getElementById('stage');
+            const allStages = Array.from(stageSelect.options).map(option => option.value).filter(value => value !== '');
+            
+            const winRateDataMap = {};
+            allStages.forEach(stage => {
+                winRateDataMap[stage] = 0;
             });
-            if (!stats.monthlyTimeline[monthYear]) {
-                stats.monthlyTimeline[monthYear] = {
-                    count: 0,
-                    value: 0
-                };
-            }
-            stats.monthlyTimeline[monthYear].count++;
-            stats.monthlyTimeline[monthYear].value += dealValue;
-        }
-        
-        // Min/Max values
-        if (dealValue > stats.maxDealValue) stats.maxDealValue = dealValue;
-        if (dealValue < stats.minDealValue) stats.minDealValue = dealValue;
-    });
-    
-    // Calculate statistics
-    stats.avgDealValue = stats.totalDeals > 0 ? stats.totalValue / stats.totalDeals : 0;
-    stats.winRate = stats.totalDeals > 0 ? (stats.winCount / stats.totalDeals * 100).toFixed(1) : 0;
-    
-    return stats;
-}
-
-// Fungsi untuk merender chart per priority dengan clickable features
-function renderPriorityCharts() {
-    console.log("Rendering priority charts...");
-    
-    try {
-        const priorityFilter = document.getElementById('priorityFilter');
-        const selectedPriority = priorityFilter ? priorityFilter.value : 'all';
-        const priorityData = processPriorityData(selectedPriority);
-        
-        // Update metric boxes
-        document.getElementById('priorityTotalValue').textContent = `Rp ${formatNumber(priorityData.totalValue)}`;
-        document.getElementById('priorityAvgValue').textContent = `Rp ${formatNumber(priorityData.avgDealValue)}`;
-        document.getElementById('priorityTotalDeals').textContent = priorityData.totalDeals;
-        document.getElementById('priorityWinRate').textContent = `${priorityData.winRate}%`;
-        document.getElementById('priorityMaxValue').textContent = `Rp ${formatNumber(priorityData.maxDealValue)}`;
-        document.getElementById('priorityMinValue').textContent = `Rp ${formatNumber(priorityData.minDealValue)}`;
-        
-        // Render stage distribution chart dengan click handler
-        const stageCtx = document.getElementById('priorityStageChart');
-        if (!stageCtx) {
-            console.error("Canvas priorityStageChart not found");
-            return;
-        }
-        
-        if (salesCharts.priorityStageChart) {
-            salesCharts.priorityStageChart.destroy();
-        }
-        
-        const stageLabels = Object.keys(priorityData.stageDistribution).map(stage => 
-            stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-        );
-        const stageData = Object.values(priorityData.stageDistribution);
-        const stageValueData = Object.keys(priorityData.valueByStage).map(stage => 
-            priorityData.valueByStage[stage]
-        );
-        
-        console.log("Stage distribution data:", stageLabels, stageData, stageValueData);
-        
-        const backgroundColors = stageLabels.map((stage, index) => {
-            const colors = [
-                '#3B82F6', '#60A5FA', '#93C5FD', '#22D3EE', '#A78BFA',
-                '#10B981', '#EF4444', '#F59E0B'
-            ];
-            return colors[index % colors.length];
-        });
-        
-        salesCharts.priorityStageChart = new Chart(stageCtx.getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: stageLabels,
-                datasets: [
-                    {
-                        label: 'Jumlah Deal',
-                        data: stageData,
-                        backgroundColor: backgroundColors.map(color => color + '80'),
-                        borderColor: backgroundColors,
-                        borderWidth: 1,
-                        yAxisID: 'y'
-                    },
-                    {
-                        label: 'Total Nilai (IDR)',
-                        data: stageValueData,
-                        backgroundColor: '#10B98180',
-                        borderColor: '#10B981',
-                        borderWidth: 1,
-                        yAxisID: 'y1'
+            
+            const stats = {
+                dealSizeLabels: [],
+                dealSizeData: [],
+                winRateLabels: allStages,
+                winRateData: [],
+                dealsBySalesLabels: [],
+                dealsBySalesData: [],
+                dealsByProductLabels: [],
+                dealsByProductData: [],
+                pipelineValueLabels: [],
+                pipelineValueData: [],
+                topSales: { name: '', value: 0 }
+            };
+            
+            const dealSizes = {
+                'Small (< Rp 500 Juta)': 0,
+                'Medium (Rp 500 Juta - Rp 2 Miliar)': 0,
+                'Large (> Rp 2 Miliar)': 0
+            };
+            const dealsBySales = {};
+            let salesValue = {};
+            let salesWinCount = {};
+            const dealsByProduct = {};
+            let productValue = {};
+            const pipelineValueByMonth = {};
+            
+            const uniqueDealsByHighestValue = new Map();
+            
+            dealsData.forEach(deal => {
+                const currentHighestDeal = uniqueDealsByHighestValue.get(deal.dealName);
+                if (!currentHighestDeal || (deal.value || 0) > (currentHighestDeal.value || 0)) {
+                    uniqueDealsByHighestValue.set(deal.dealName, deal);
+                }
+            });
+            
+            const filteredDealsForStats = Array.from(uniqueDealsByHighestValue.values());
+            console.log("Filtered deals for stats:", filteredDealsForStats.length);
+            
+            filteredDealsForStats.forEach(deal => {
+                const dealValue = deal.value || 0;
+                
+                // Deal size distribution
+                if (dealValue < 500000000) {
+                    dealSizes['Small (< Rp 500 Juta)']++;
+                } else if (dealValue >= 500000000 && dealValue <= 2000000000) {
+                    dealSizes['Medium (Rp 500 Juta - Rp 2 Miliar)']++;
+                } else {
+                    dealSizes['Large (> Rp 2 Miliar)']++;
+                }
+                
+                // Win rate data
+                if (deal.stage && winRateDataMap.hasOwnProperty(deal.stage)) {
+                    winRateDataMap[deal.stage]++;
+                } else {
+                    console.warn(`Deal with unknown stage: ${deal.stage}`);
+                }
+                
+                // Deals by sales
+                if (deal.salesName) {
+                    dealsBySales[deal.salesName] = (dealsBySales[deal.salesName] || 0) + 1;
+                    salesValue[deal.salesName] = (salesValue[deal.salesName] || 0) + dealValue;
+                    if (deal.stage === 'win') {
+                        salesWinCount[deal.salesName] = (salesWinCount[deal.salesName] || 0) + 1;
                     }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
-                plugins: {
-                    title: {
-                        display: true,
-                        text: `Distribusi per Tahap - ${selectedPriority === 'all' ? 'Semua Priority' : selectedPriority}`
+                }
+                
+                // Deals by product
+                const productsInDeal = Array.isArray(deal.product) ? deal.product : (deal.product ? [deal.product] : []);
+                productsInDeal.forEach(product => {
+                    const productKey = product || 'Unknown Product';
+                    dealsByProduct[productKey] = (dealsByProduct[productKey] || 0) + 1;
+                    productValue[productKey] = (productValue[productKey] || 0) + dealValue;
+                });
+                
+                // Pipeline value (excluding lost and won deals)
+                if (deal.stage !== 'lost' && deal.stage !== 'win') {
+                    const dateSource = deal.createdAt;
+                    if (dateSource && typeof dateSource.toDate === 'function') {
+                        const date = dateSource.toDate();
+                        const monthYear = date.toLocaleString('id-ID', { month: 'short', year: 'numeric' });
+                        pipelineValueByMonth[monthYear] = (pipelineValueByMonth[monthYear] || 0) + dealValue;
+                    } else {
+                        console.warn(`Deal ID: ${deal.id} has invalid or missing createdAt timestamp for pipeline value calculation.`);
+                    }
+                }
+            });
+            
+            // Find top sales
+            let maxSalesValue = 0;
+            let topSalesName = '';
+            for (const salesName in salesValue) {
+                if (salesValue[salesName] > maxSalesValue) {
+                    maxSalesValue = salesValue[salesName];
+                    topSalesName = salesName;
+                }
+            }
+            stats.topSales = { name: topSalesName, value: maxSalesValue };
+            
+            stats.dealSizeLabels = Object.keys(dealSizes);
+            stats.dealSizeData = Object.values(dealSizes);
+            
+            stats.winRateData = stats.winRateLabels.map(stage => winRateDataMap[stage]);
+            
+            stats.dealsBySalesLabels = Object.keys(dealsBySales);
+            stats.dealsBySalesData = Object.values(dealsBySales);
+            
+            stats.dealsByProductLabels = Object.keys(dealsByProduct);
+            stats.dealsByProductData = Object.values(dealsByProduct);
+            
+            const sortedMonths = Object.keys(pipelineValueByMonth).sort((a, b) => {
+                const [monthStrA, yearStrA] = a.split(' ');
+                const [monthStrB, yearStrB] = b.split(' ');
+                const monthIndexA = new Date(Date.parse(monthStrA + " 1, 2000")).getMonth();
+                const monthIndexB = new Date(Date.parse(monthStrB + " 1, 2000")).getMonth();
+                const dateA = new Date(parseInt(yearStrA), monthIndexA, 1);
+                const dateB = new Date(parseInt(yearStrB), monthIndexB, 1);
+                return dateA - dateB;
+            });
+            stats.pipelineValueLabels = sortedMonths;
+            stats.pipelineValueData = sortedMonths.map(month => pipelineValueByMonth[month]);
+            
+            console.log("Processed stats:", stats);
+            return stats;
+        }
+
+        // Fungsi untuk merender semua chart overview
+        function renderAllCharts() {
+            console.log("Rendering all overview charts...");
+            
+            try {
+                const processedStats = processDealDataForCharts(deals);
+                
+                // Deal Size Chart
+                const dealSizeCtx = document.getElementById('dealSizeChart');
+                if (!dealSizeCtx) {
+                    console.error("Canvas dealSizeChart not found");
+                    return;
+                }
+                
+                if (charts.dealSizeChart) {
+                    charts.dealSizeChart.destroy();
+                }
+                
+                charts.dealSizeChart = new Chart(dealSizeCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: processedStats.dealSizeLabels,
+                        datasets: [{
+                            label: 'Jumlah Deal',
+                            data: processedStats.dealSizeData,
+                            backgroundColor: ['#3B82F6', '#60A5FA', '#93C5FD']
+                        }]
                     },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                if (context.datasetIndex === 0) {
-                                    return `Klik untuk melihat detail project`;
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Distribusi Ukuran Deal'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    precision: 0
                                 }
-                                return `Total Nilai: Rp ${formatNumber(context.raw)}`;
                             }
                         }
                     }
-                },
-                scales: {
-                    y: {
-                        type: 'linear',
-                        display: true,
-                        position: 'left',
-                        title: {
-                            display: true,
-                            text: 'Jumlah Deal'
-                        },
-                        ticks: {
-                            precision: 0
-                        }
+                });
+                
+                // Win Rate Chart
+                const winRateCtx = document.getElementById('winRateChart');
+                if (!winRateCtx) {
+                    console.error("Canvas winRateChart not found");
+                    return;
+                }
+                
+                if (charts.winRateChart) {
+                    charts.winRateChart.destroy();
+                }
+                
+                charts.winRateChart = new Chart(winRateCtx.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: processedStats.winRateLabels.map(label => 
+                            label.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                        ),
+                        datasets: [{
+                            label: 'Jumlah Deal',
+                            data: processedStats.winRateData,
+                            backgroundColor: [
+                                '#10B981',
+                                '#EF4444',
+                                '#F59E0B',
+                                '#6B7280',
+                                '#3B82F6',
+                                '#06B6D4',
+                                '#A855F7',
+                                '#EC4899'
+                            ]
+                        }]
                     },
-                    y1: {
-                        type: 'linear',
-                        display: true,
-                        position: 'right',
-                        title: {
-                            display: true,
-                            text: 'Total Nilai (IDR)'
-                        },
-                        ticks: {
-                            callback: function(value) {
-                                return 'Rp ' + formatNumber(value);
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Distribusi Deal Berdasarkan Tahap'
                             }
                         }
                     }
-                },
-                onClick: (evt, elements) => {
-                    if (elements.length > 0 && elements[0].datasetIndex === 0) {
-                        const index = elements[0].index;
-                        const stage = Object.keys(priorityData.stageDistribution)[index];
-                        showDealsByStage(priorityFilter, stage);
-                    }
+                });
+                
+                // Deals by Sales Chart
+                const dealsBySalesCtx = document.getElementById('dealsBySalesChart');
+                if (!dealsBySalesCtx) {
+                    console.error("Canvas dealsBySalesChart not found");
+                    return;
                 }
-            }
-        });
-        
-        // Render sales distribution chart (PERBAIKAN: ganti horizontalBar menjadi bar)
-        const salesCtx = document.getElementById('prioritySalesChart');
-        if (!salesCtx) {
-            console.error("Canvas prioritySalesChart not found");
-            return;
-        }
-        
-        if (salesCharts.prioritySalesChart) {
-            salesCharts.prioritySalesChart.destroy();
-        }
-        
-        // Ambil top 10 sales untuk chart
-        const sortedSales = Object.entries(priorityData.salesDistribution)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 10);
-        
-        const salesLabels = sortedSales.map(([name]) => name);
-        const salesData = sortedSales.map(([, count]) => count);
-        
-        console.log("Sales distribution data:", salesLabels, salesData);
-        
-        // PERBAIKAN: Gunakan 'bar' dengan indexAxis: 'y' sebagai pengganti 'horizontalBar'
-        salesCharts.prioritySalesChart = new Chart(salesCtx.getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: salesLabels,
-                datasets: [{
-                    label: 'Jumlah Deal',
-                    data: salesData,
-                    backgroundColor: '#8B5CF6'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                indexAxis: 'y', // Ini yang membuat chart menjadi horizontal
-                plugins: {
-                    title: {
-                        display: true,
-                        text: `Top 10 Sales - ${selectedPriority === 'all' ? 'Semua Priority' : selectedPriority}`
-                    }
-                },
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        ticks: {
-                            precision: 0
-                        }
-                    }
+                
+                if (charts.dealsBySalesChart) {
+                    charts.dealsBySalesChart.destroy();
                 }
-            }
-        });
-        
-        // Render timeline chart
-        const timelineCtx = document.getElementById('priorityTimelineChart');
-        if (!timelineCtx) {
-            console.error("Canvas priorityTimelineChart not found");
-            return;
-        }
-        
-        if (salesCharts.priorityTimelineChart) {
-            salesCharts.priorityTimelineChart.destroy();
-        }
-        
-        const sortedMonths = Object.keys(priorityData.monthlyTimeline).sort((a, b) => {
-            const [monthStrA, yearStrA] = a.split(' ');
-            const [monthStrB, yearStrB] = b.split(' ');
-            const monthIndexA = new Date(Date.parse(monthStrA + " 1, 2000")).getMonth();
-            const monthIndexB = new Date(Date.parse(monthStrB + " 1, 2000")).getMonth();
-            const dateA = new Date(parseInt(yearStrA), monthIndexA, 1);
-            const dateB = new Date(parseInt(yearStrB), monthIndexB, 1);
-            return dateA - dateB;
-        });
-        
-        const timelineCountData = sortedMonths.map(month => priorityData.monthlyTimeline[month].count);
-        const timelineValueData = sortedMonths.map(month => priorityData.monthlyTimeline[month].value);
-        
-        console.log("Priority timeline data:", sortedMonths, timelineCountData, timelineValueData);
-        
-        salesCharts.priorityTimelineChart = new Chart(timelineCtx.getContext('2d'), {
-            type: 'line',
-            data: {
-                labels: sortedMonths,
-                datasets: [
-                    {
-                        label: 'Jumlah Deal',
-                        data: timelineCountData,
-                        borderColor: '#3B82F6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        yAxisID: 'y',
-                        tension: 0.3
+                
+                charts.dealsBySalesChart = new Chart(dealsBySalesCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: processedStats.dealsBySalesLabels,
+                        datasets: [{
+                            label: 'Jumlah Deal',
+                            data: processedStats.dealsBySalesData,
+                            backgroundColor: '#6366F1'
+                        }]
                     },
-                    {
-                        label: 'Total Nilai (IDR)',
-                        data: timelineValueData,
-                        borderColor: '#10B981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        yAxisID: 'y1',
-                        tension: 0.3
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
-                stacked: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: `Timeline - ${selectedPriority === 'all' ? 'Semua Priority' : selectedPriority}`
-                    }
-                },
-                scales: {
-                    y: {
-                        type: 'linear',
-                        display: true,
-                        position: 'left',
-                        title: {
-                            display: true,
-                            text: 'Jumlah Deal'
-                        },
-                        ticks: {
-                            precision: 0
-                        }
-                    },
-                    y1: {
-                        type: 'linear',
-                        display: true,
-                        position: 'right',
-                        title: {
-                            display: true,
-                            text: 'Total Nilai (IDR)'
-                        },
-                        ticks: {
-                            callback: function(value) {
-                                return 'Rp ' + formatNumber(value);
-                            }
-                        }
-                    }
-                }
-            }
-        });
-        
-    } catch (error) {
-        console.error("Error rendering priority charts:", error);
-        showToast("Gagal merender chart analisis priority", 3000);
-    }
-}
-
-// ==================== FUNGSI STATISTIK OVERVIEW ====================
-
-// Fungsi untuk memproses data deals menjadi format yang siap untuk chart
-function processDealDataForCharts(dealsData) {
-    console.log("Processing deal data for charts, total deals:", dealsData.length);
-    
-    const stageSelect = document.getElementById('stage');
-    const allStages = Array.from(stageSelect.options).map(option => option.value).filter(value => value !== '');
-    
-    const winRateDataMap = {};
-    allStages.forEach(stage => {
-        winRateDataMap[stage] = 0;
-    });
-    
-    const stats = {
-        dealSizeLabels: [],
-        dealSizeData: [],
-        winRateLabels: allStages,
-        winRateData: [],
-        dealsBySalesLabels: [],
-        dealsBySalesData: [],
-        dealsByProductLabels: [],
-        dealsByProductData: [],
-        pipelineValueLabels: [],
-        pipelineValueData: [],
-        topSales: { name: '', value: 0 }
-    };
-    
-    const dealSizes = {
-        'Small (< Rp 500 Juta)': 0,
-        'Medium (Rp 500 Juta - Rp 2 Miliar)': 0,
-        'Large (> Rp 2 Miliar)': 0
-    };
-    const dealsBySales = {};
-    salesValue = {};
-    salesWinCount = {};
-    const dealsByProduct = {};
-    productValue = {};
-    const pipelineValueByMonth = {};
-    
-    const uniqueDealsByHighestValue = new Map();
-    
-    dealsData.forEach(deal => {
-        const currentHighestDeal = uniqueDealsByHighestValue.get(deal.dealName);
-        if (!currentHighestDeal || (deal.value || 0) > (currentHighestDeal.value || 0)) {
-            uniqueDealsByHighestValue.set(deal.dealName, deal);
-        }
-    });
-    
-    const filteredDealsForStats = Array.from(uniqueDealsByHighestValue.values());
-    console.log("Filtered deals for stats:", filteredDealsForStats.length);
-    
-    filteredDealsForStats.forEach(deal => {
-        const dealValue = deal.value || 0;
-        
-        // Deal size distribution
-        if (dealValue < 500000000) {
-            dealSizes['Small (< Rp 500 Juta)']++;
-        } else if (dealValue >= 500000000 && dealValue <= 2000000000) {
-            dealSizes['Medium (Rp 500 Juta - Rp 2 Miliar)']++;
-        } else {
-            dealSizes['Large (> Rp 2 Miliar)']++;
-        }
-        
-        // Win rate data
-        if (deal.stage && winRateDataMap.hasOwnProperty(deal.stage)) {
-            winRateDataMap[deal.stage]++;
-        } else {
-            console.warn(`Deal with unknown stage: ${deal.stage}`);
-        }
-        
-        // Deals by sales
-        if (deal.salesName) {
-            dealsBySales[deal.salesName] = (dealsBySales[deal.salesName] || 0) + 1;
-            salesValue[deal.salesName] = (salesValue[deal.salesName] || 0) + dealValue;
-            if (deal.stage === 'win') {
-                salesWinCount[deal.salesName] = (salesWinCount[deal.salesName] || 0) + 1;
-            }
-        }
-        
-        // Deals by product
-        const productsInDeal = Array.isArray(deal.product) ? deal.product : (deal.product ? [deal.product] : []);
-        productsInDeal.forEach(product => {
-            const productKey = product || 'Unknown Product';
-            dealsByProduct[productKey] = (dealsByProduct[productKey] || 0) + 1;
-            productValue[productKey] = (productValue[productKey] || 0) + dealValue;
-        });
-        
-        // Pipeline value (excluding lost and won deals)
-        if (deal.stage !== 'lost' && deal.stage !== 'win') {
-            const dateSource = deal.createdAt;
-            if (dateSource && typeof dateSource.toDate === 'function') {
-                const date = dateSource.toDate();
-                const monthYear = date.toLocaleString('id-ID', { month: 'short', year: 'numeric' });
-                pipelineValueByMonth[monthYear] = (pipelineValueByMonth[monthYear] || 0) + dealValue;
-            } else {
-                console.warn(`Deal ID: ${deal.id} has invalid or missing createdAt timestamp for pipeline value calculation.`);
-            }
-        }
-    });
-    
-    // Find top sales
-    let maxSalesValue = 0;
-    let topSalesName = '';
-    for (const salesName in salesValue) {
-        if (salesValue[salesName] > maxSalesValue) {
-            maxSalesValue = salesValue[salesName];
-            topSalesName = salesName;
-        }
-    }
-    stats.topSales = { name: topSalesName, value: maxSalesValue };
-    
-    stats.dealSizeLabels = Object.keys(dealSizes);
-    stats.dealSizeData = Object.values(dealSizes);
-    
-    stats.winRateData = stats.winRateLabels.map(stage => winRateDataMap[stage]);
-    
-    stats.dealsBySalesLabels = Object.keys(dealsBySales);
-    stats.dealsBySalesData = Object.values(dealsBySales);
-    
-    stats.dealsByProductLabels = Object.keys(dealsByProduct);
-    stats.dealsByProductData = Object.values(dealsByProduct);
-    
-    const sortedMonths = Object.keys(pipelineValueByMonth).sort((a, b) => {
-        const [monthStrA, yearStrA] = a.split(' ');
-        const [monthStrB, yearStrB] = b.split(' ');
-        const monthIndexA = new Date(Date.parse(monthStrA + " 1, 2000")).getMonth();
-        const monthIndexB = new Date(Date.parse(monthStrB + " 1, 2000")).getMonth();
-        const dateA = new Date(parseInt(yearStrA), monthIndexA, 1);
-        const dateB = new Date(parseInt(yearStrB), monthIndexB, 1);
-        return dateA - dateB;
-    });
-    stats.pipelineValueLabels = sortedMonths;
-    stats.pipelineValueData = sortedMonths.map(month => pipelineValueByMonth[month]);
-    
-    console.log("Processed stats:", stats);
-    return stats;
-}
-
-// Fungsi untuk merender semua chart overview
-function renderAllCharts() {
-    console.log("Rendering all overview charts...");
-    
-    try {
-        const processedStats = processDealDataForCharts(deals);
-        
-        // Deal Size Chart
-        const dealSizeCtx = document.getElementById('dealSizeChart');
-        if (!dealSizeCtx) {
-            console.error("Canvas dealSizeChart not found");
-            return;
-        }
-        
-        if (charts.dealSizeChart) {
-            charts.dealSizeChart.destroy();
-        }
-        
-        charts.dealSizeChart = new Chart(dealSizeCtx.getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: processedStats.dealSizeLabels,
-                datasets: [{
-                    label: 'Jumlah Deal',
-                    data: processedStats.dealSizeData,
-                    backgroundColor: ['#3B82F6', '#60A5FA', '#93C5FD']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Distribusi Ukuran Deal'
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            precision: 0
-                        }
-                    }
-                }
-            }
-        });
-        
-        // Win Rate Chart
-        const winRateCtx = document.getElementById('winRateChart');
-        if (!winRateCtx) {
-            console.error("Canvas winRateChart not found");
-            return;
-        }
-        
-        if (charts.winRateChart) {
-            charts.winRateChart.destroy();
-        }
-        
-        charts.winRateChart = new Chart(winRateCtx.getContext('2d'), {
-            type: 'doughnut',
-            data: {
-                labels: processedStats.winRateLabels.map(label => 
-                    label.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-                ),
-                datasets: [{
-                    label: 'Jumlah Deal',
-                    data: processedStats.winRateData,
-                    backgroundColor: [
-                        '#10B981',
-                        '#EF4444',
-                        '#F59E0B',
-                        '#6B7280',
-                        '#3B82F6',
-                        '#06B6D4',
-                        '#A855F7',
-                        '#EC4899'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Distribusi Deal Berdasarkan Tahap'
-                    }
-                }
-            }
-        });
-        
-        // Deals by Sales Chart
-        const dealsBySalesCtx = document.getElementById('dealsBySalesChart');
-        if (!dealsBySalesCtx) {
-            console.error("Canvas dealsBySalesChart not found");
-            return;
-        }
-        
-        if (charts.dealsBySalesChart) {
-            charts.dealsBySalesChart.destroy();
-        }
-        
-        charts.dealsBySalesChart = new Chart(dealsBySalesCtx.getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: processedStats.dealsBySalesLabels,
-                datasets: [{
-                    label: 'Jumlah Deal',
-                    data: processedStats.dealsBySalesData,
-                    backgroundColor: '#6366F1'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Total Deals per Sales'
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Total Deals per Sales'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        const salesName = processedStats.dealsBySalesLabels[context.dataIndex];
+                                        const totalValue = salesValue[salesName] || 0;
+                                        const winCount = salesWinCount[salesName] || 0;
+                                        return `${label}${context.raw} (Total IDR: Rp ${formatNumber(totalValue)} / Win: ${winCount})`;
+                                    }
                                 }
-                                const salesName = processedStats.dealsBySalesLabels[context.dataIndex];
-                                const totalValue = salesValue[salesName] || 0;
-                                const winCount = salesWinCount[salesName] || 0;
-                                return `${label}${context.raw} (Total IDR: Rp ${formatNumber(totalValue)} / Win: ${winCount})`;
-                            }
-                        }
-                    },
-                    afterDraw: function(chart) {
-                        const ctx = chart.ctx;
-                        const topSales = processedStats.topSales;
-        
-                        if (topSales.name && topSales.value > 0) {
-                            const text = `TOP IDR Sales = "${topSales.name}"`;
-                            ctx.font = 'bold 12px Arial';
-                            ctx.fillStyle = '#333';
-                            ctx.textAlign = 'center';
-                            ctx.textBaseline = 'bottom';
-        
-                            const x = chart.width / 2;
-                            const y = chart.height - 10;
-        
-                            ctx.fillText(text, x, y);
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            precision: 0
-                        }
-                    }
-                }
-            }
-        });
-        
-        // Deals by Product Chart
-        const dealsByProductPackageCtx = document.getElementById('dealsByProductPackageChart');
-        if (!dealsByProductPackageCtx) {
-            console.error("Canvas dealsByProductPackageChart not found");
-            return;
-        }
-        
-        if (charts.dealsByProductPackageChart) {
-            charts.dealsByProductPackageChart.destroy();
-        }
-        
-        // Limit to top 15 products for better visualization
-        const productEntries = Object.entries(
-            processedStats.dealsByProductLabels.reduce((acc, label, index) => {
-                acc[label] = processedStats.dealsByProductData[index];
-                return acc;
-            }, {})
-        );
-        
-        const sortedProducts = productEntries.sort((a, b) => b[1] - a[1]).slice(0, 15);
-        const topProductLabels = sortedProducts.map(([label]) => label);
-        const topProductData = sortedProducts.map(([, count]) => count);
-        
-        charts.dealsByProductPackageChart = new Chart(dealsByProductPackageCtx.getContext('2d'), {
-            type: 'pie',
-            data: {
-                labels: topProductLabels,
-                datasets: [{
-                    label: 'Jumlah Deal',
-                    data: topProductData,
-                    backgroundColor: [
-                        '#F97316', '#14B8A6', '#8B5CF6', '#EC4899', '#FACC15',
-                        '#3B82F6', '#EF4444', '#06B6D4', '#A855F7', '#F43F5E',
-                        '#4CAF50', '#FFC107', '#9C27B0', '#00BCD4', '#FF5722'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Deal per Produk (Top 15)'
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.label || '';
-                                if (label) {
-                                    label += ': ';
+                            },
+                            afterDraw: function(chart) {
+                                const ctx = chart.ctx;
+                                const topSales = processedStats.topSales;
+                
+                                if (topSales.name && topSales.value > 0) {
+                                    const text = `TOP IDR Sales = "${topSales.name}"`;
+                                    ctx.font = 'bold 12px Arial';
+                                    ctx.fillStyle = '#333';
+                                    ctx.textAlign = 'center';
+                                    ctx.textBaseline = 'bottom';
+                
+                                    const x = chart.width / 2;
+                                    const y = chart.height - 10;
+                
+                                    ctx.fillText(text, x, y);
                                 }
-                                const product = topProductLabels[context.dataIndex];
-                                const totalValue = productValue[product] || 0;
-                                return `${label}${context.raw} (Total IDR: Rp ${formatNumber(totalValue)})`;
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    precision: 0
+                                }
                             }
                         }
                     }
+                });
+                
+                // Deals by Product Chart
+                const dealsByProductPackageCtx = document.getElementById('dealsByProductPackageChart');
+                if (!dealsByProductPackageCtx) {
+                    console.error("Canvas dealsByProductPackageChart not found");
+                    return;
                 }
-            }
-        });
-        
-        // Pipeline Value Chart
-        const pipelineValueCtx = document.getElementById('pipelineValueChart');
-        if (!pipelineValueCtx) {
-            console.error("Canvas pipelineValueChart not found");
-            return;
-        }
-        
-        if (charts.pipelineValueChart) {
-            charts.pipelineValueChart.destroy();
-        }
-        
-        charts.pipelineValueChart = new Chart(pipelineValueCtx.getContext('2d'), {
-            type: 'line',
-            data: {
-                labels: processedStats.pipelineValueLabels,
-                datasets: [{
-                    label: 'Nilai Pipeline (IDR)',
-                    data: processedStats.pipelineValueData,
-                    borderColor: '#0EA5E9',
-                    backgroundColor: 'rgba(14, 165, 233, 0.2)',
-                    tension: 0.3,
-                    fill: true,
-                    pointRadius: 5,
-                    pointBackgroundColor: '#0EA5E9',
-                    pointBorderColor: '#fff',
-                    pointHoverRadius: 7,
-                    pointHoverBackgroundColor: '#0EA5E9',
-                    pointHoverBorderColor: '#fff'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Nilai Pipeline Seiring Waktu'
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return 'Rp ' + formatNumber(value);
+                
+                if (charts.dealsByProductPackageChart) {
+                    charts.dealsByProductPackageChart.destroy();
+                }
+                
+                // Limit to top 15 products for better visualization
+                const productEntries = Object.entries(
+                    processedStats.dealsByProductLabels.reduce((acc, label, index) => {
+                        acc[label] = processedStats.dealsByProductData[index];
+                        return acc;
+                    }, {})
+                );
+                
+                const sortedProducts = productEntries.sort((a, b) => b[1] - a[1]).slice(0, 15);
+                const topProductLabels = sortedProducts.map(([label]) => label);
+                const topProductData = sortedProducts.map(([, count]) => count);
+                
+                charts.dealsByProductPackageChart = new Chart(dealsByProductPackageCtx.getContext('2d'), {
+                    type: 'pie',
+                    data: {
+                        labels: topProductLabels,
+                        datasets: [{
+                            label: 'Jumlah Deal',
+                            data: topProductData,
+                            backgroundColor: [
+                                '#F97316', '#14B8A6', '#8B5CF6', '#EC4899', '#FACC15',
+                                '#3B82F6', '#EF4444', '#06B6D4', '#A855F7', '#F43F5E',
+                                '#4CAF50', '#FFC107', '#9C27B0', '#00BCD4', '#FF5722'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Deal per Produk (Top 15)'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        const product = topProductLabels[context.dataIndex];
+                                        const totalValue = productValue[product] || 0;
+                                        return `${label}${context.raw} (Total IDR: Rp ${formatNumber(totalValue)})`;
+                                    }
+                                }
                             }
                         }
                     }
+                });
+                
+                // Pipeline Value Chart
+                const pipelineValueCtx = document.getElementById('pipelineValueChart');
+                if (!pipelineValueCtx) {
+                    console.error("Canvas pipelineValueChart not found");
+                    return;
                 }
+                
+                if (charts.pipelineValueChart) {
+                    charts.pipelineValueChart.destroy();
+                }
+                
+                charts.pipelineValueChart = new Chart(pipelineValueCtx.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: processedStats.pipelineValueLabels,
+                        datasets: [{
+                            label: 'Nilai Pipeline (IDR)',
+                            data: processedStats.pipelineValueData,
+                            borderColor: '#0EA5E9',
+                            backgroundColor: 'rgba(14, 165, 233, 0.2)',
+                            tension: 0.3,
+                            fill: true,
+                            pointRadius: 5,
+                            pointBackgroundColor: '#0EA5E9',
+                            pointBorderColor: '#fff',
+                            pointHoverRadius: 7,
+                            pointHoverBackgroundColor: '#0EA5E9',
+                            pointHoverBorderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Nilai Pipeline Seiring Waktu'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return 'Rp ' + formatNumber(value);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                console.log("All overview charts rendered successfully");
+                
+            } catch (error) {
+                console.error("Error rendering overview charts:", error);
+                showToast("Gagal merender chart overview", 3000);
             }
-        });
+        }
         
-        console.log("All overview charts rendered successfully");
-        
-    } catch (error) {
-        console.error("Error rendering overview charts:", error);
-        showToast("Gagal merender chart overview", 3000);
-    }
-}
-        
+        // ==================== FUNGSI CLICKABLE CHART ====================
+
+        // Fungsi untuk menampilkan daftar project berdasarkan priority pada chart sales
+        function showDealsByPriority(salesFilter, priority) {
+            const selectedSales = salesFilter.value;
+            const filteredDeals = selectedSales === 'all' 
+                ? deals.filter(deal => deal.priority === priority)
+                : deals.filter(deal => deal.salesName === selectedSales && deal.priority === priority);
+            
+            if (filteredDeals.length === 0) {
+                showToast(`Tidak ada project dengan priority "${priority}" untuk sales "${selectedSales === 'all' ? 'Semua Sales' : selectedSales}"`, 3000);
+                return;
+            }
+            
+            // Tampilkan modal dengan daftar project
+            document.getElementById('clickableChartModalTitle').textContent = `Project dengan Priority "${priority}" - ${selectedSales === 'all' ? 'Semua Sales' : selectedSales}`;
+            const modalContent = document.getElementById('clickableChartModalContent');
+            modalContent.innerHTML = '';
+            
+            // Buat tabel untuk menampilkan project
+            const table = document.createElement('table');
+            table.className = 'min-w-full divide-y divide-gray-200 mt-4';
+            table.innerHTML = `
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Project</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai (IDR)</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tahap</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    ${filteredDeals.map((deal, index) => `
+                        <tr class="hover:bg-gray-50 cursor-pointer" onclick="openDealDetailModal('${deal.id}')">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${deal.dealName || 'No Name'}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${deal.salesName || '-'}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">Rp ${formatNumber(deal.value) || '0'}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${deal.stage === 'win' ? 'bg-green-100 text-green-800' : 
+                                    deal.stage === 'lost' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">
+                                    ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}
+                                </span>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            `;
+            
+            modalContent.appendChild(table);
+            document.getElementById('clickableChartModal').classList.remove('hidden');
+        }
+
+        // Fungsi untuk menampilkan daftar project berdasarkan stage pada chart priority
+        function showDealsByStage(priorityFilter, stage) {
+            const selectedPriority = priorityFilter.value;
+            const filteredDeals = selectedPriority === 'all' 
+                ? deals.filter(deal => deal.stage === stage)
+                : deals.filter(deal => deal.priority === selectedPriority && deal.stage === stage);
+            
+            if (filteredDeals.length === 0) {
+                showToast(`Tidak ada project dengan stage "${stage}" untuk priority "${selectedPriority === 'all' ? 'Semua Priority' : selectedPriority}"`, 3000);
+                return;
+            }
+            
+            // Tampilkan modal dengan daftar project
+            document.getElementById('clickableChartModalTitle').textContent = `Project dengan Stage "${stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}" - ${selectedPriority === 'all' ? 'Semua Priority' : selectedPriority}`;
+            const modalContent = document.getElementById('clickableChartModalContent');
+            modalContent.innerHTML = '';
+            
+            // Buat tabel untuk menampilkan project
+            const table = document.createElement('table');
+            table.className = 'min-w-full divide-y divide-gray-200 mt-4';
+            table.innerHTML = `
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Project</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai (IDR)</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    ${filteredDeals.map((deal, index) => `
+                        <tr class="hover:bg-gray-50 cursor-pointer" onclick="openDealDetailModal('${deal.id}')">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${deal.dealName || 'No Name'}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${deal.salesName || '-'}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">Rp ${formatNumber(deal.value) || '0'}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="priority-badge px-2 py-1 rounded-full ${getPriorityBadgeClass(deal.priority)}">
+                                    ${deal.priority || 'Priority'}
+                                </span>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            `;
+            
+            modalContent.appendChild(table);
+            document.getElementById('clickableChartModal').classList.remove('hidden');
+        }
+
         // ==================== PERBAIKAN PERHITUNGAN NILAI ====================
         
         // Fungsi untuk menghitung nilai berdasarkan sebelum diskon dan diskon
@@ -4197,8 +4293,13 @@ function renderAllCharts() {
             }
             
             const valueInput = document.getElementById('value');
-            valueInput.value = calculatedValue.toFixed(0);
-            formatNumberInput(valueInput);
+            valueInput.value = new Intl.NumberFormat('id-ID').format(Math.round(calculatedValue));
+            
+            // Update format input beforeDiscount
+            const beforeDiscountInput = document.getElementById('beforeDiscount');
+            if (beforeDiscount > 0) {
+                beforeDiscountInput.value = new Intl.NumberFormat('id-ID').format(beforeDiscount);
+            }
         }
         
         // Update event listener untuk beforeDiscount
@@ -4238,357 +4339,6 @@ function renderAllCharts() {
                 disabled: true, // Nonaktifkan drag & drop untuk semua user
                 onEnd: function(evt) {
                     // Tidak ada aksi karena disabled
-                }
-            });
-        }
-        
-        // ==================== FUNGSI STATISTIK ====================
-        
-        // Variabel global untuk menyimpan data agregat sales
-        let salesValue = {};
-        let salesWinCount = {};
-        let productValue = {};
-        
-        // Fungsi untuk memproses data deals menjadi format yang siap untuk chart
-        function processDealDataForCharts(dealsData) {
-            const stageSelect = document.getElementById('stage');
-            const allStages = Array.from(stageSelect.options).map(option => option.value).filter(value => value !== '');
-        
-            const winRateDataMap = {};
-            allStages.forEach(stage => {
-                winRateDataMap[stage] = 0;
-            });
-        
-            const stats = {
-                dealSizeLabels: [],
-                dealSizeData: [],
-                winRateLabels: allStages,
-                winRateData: [],
-                dealsBySalesLabels: [],
-                dealsBySalesData: [],
-                dealsByProductLabels: [],
-                dealsByProductData: [],
-                pipelineValueLabels: [],
-                pipelineValueData: [],
-                topSales: { name: '', value: 0 }
-            };
-        
-            const dealSizes = {
-                'Small (< Rp 500 Juta)': 0,
-                'Medium (Rp 500 Juta - Rp 2 Miliar)': 0,
-                'Large (> Rp 2 Miliar)': 0
-            };
-            const dealsBySales = {};
-            salesValue = {};
-            salesWinCount = {};
-            const dealsByProduct = {};
-            productValue = {};
-            const pipelineValueByMonth = {};
-        
-            const uniqueDealsByHighestValue = new Map();
-        
-            dealsData.forEach(deal => {
-                const currentHighestDeal = uniqueDealsByHighestValue.get(deal.dealName);
-                if (!currentHighestDeal || (deal.value || 0) > (currentHighestDeal.value || 0)) {
-                    uniqueDealsByHighestValue.set(deal.dealName, deal);
-                }
-            });
-        
-            const filteredDealsForStats = Array.from(uniqueDealsByHighestValue.values());
-        
-            filteredDealsForStats.forEach(deal => {
-                if (deal.value < 500000000) {
-                    dealSizes['Small (< Rp 500 Juta)']++;
-                } else if (deal.value >= 500000000 && deal.value <= 2000000000) {
-                    dealSizes['Medium (Rp 500 Juta - Rp 2 Miliar)']++;
-                } else {
-                    dealSizes['Large (> Rp 2 Miliar)']++;
-                }
-        
-                if (deal.stage && winRateDataMap.hasOwnProperty(deal.stage)) {
-                    winRateDataMap[deal.stage]++;
-                } else {
-                    console.warn(`Deal with unknown stage: ${deal.stage}`);
-                }
-        
-                if (deal.salesName) {
-                    dealsBySales[deal.salesName] = (dealsBySales[deal.salesName] || 0) + 1;
-                    salesValue[deal.salesName] = (salesValue[deal.salesName] || 0) + (deal.value || 0);
-                    if (deal.stage === 'win') {
-                        salesWinCount[deal.salesName] = (salesWinCount[deal.salesName] || 0) + 1;
-                    }
-                }
-        
-                const productsInDeal = Array.isArray(deal.product) ? deal.product : (deal.product ? [deal.product] : []);
-                productsInDeal.forEach(product => {
-                    const productKey = product || 'Unknown Product';
-                    dealsByProduct[productKey] = (dealsByProduct[productKey] || 0) + 1;
-                    productValue[productKey] = (productValue[productKey] || 0) + (deal.value || 0);
-                });
-        
-                if (deal.stage !== 'lost' && deal.stage !== 'win') {
-                    const dateSource = deal.createdAt;
-                    if (dateSource && typeof dateSource.toDate === 'function') {
-                        const date = dateSource.toDate();
-                        const monthYear = date.toLocaleString('id-ID', { month: 'short', year: 'numeric' });
-                        pipelineValueByMonth[monthYear] = (pipelineValueByMonth[monthYear] || 0) + deal.value;
-                    } else {
-                        console.warn(`Deal ID: ${deal.id} has invalid or missing createdAt timestamp for pipeline value calculation.`);
-                    }
-                }
-            });
-        
-            let maxSalesValue = 0;
-            let topSalesName = '';
-            for (const salesName in salesValue) {
-                if (salesValue[salesName] > maxSalesValue) {
-                    maxSalesValue = salesValue[salesName];
-                    topSalesName = salesName;
-                }
-            }
-            stats.topSales = { name: topSalesName, value: maxSalesValue };
-        
-            stats.dealSizeLabels = Object.keys(dealSizes);
-            stats.dealSizeData = Object.values(dealSizes);
-        
-            stats.winRateData = stats.winRateLabels.map(stage => winRateDataMap[stage]);
-        
-            stats.dealsBySalesLabels = Object.keys(dealsBySales);
-            stats.dealsBySalesData = Object.values(dealsBySales);
-        
-            stats.dealsByProductLabels = Object.keys(dealsByProduct);
-            stats.dealsByProductData = Object.values(dealsByProduct);
-        
-            const sortedMonths = Object.keys(pipelineValueByMonth).sort((a, b) => {
-                const [monthStrA, yearStrA] = a.split(' ');
-                const [monthStrB, yearStrB] = b.split(' ');
-                const monthIndexA = new Date(Date.parse(monthStrA + " 1, 2000")).getMonth();
-                const monthIndexB = new Date(Date.parse(monthStrB + " 1, 2000")).getMonth();
-                const dateA = new Date(parseInt(yearStrA), monthIndexA, 1);
-                const dateB = new Date(parseInt(yearStrB), monthIndexB, 1);
-                return dateA - dateB;
-            });
-            stats.pipelineValueLabels = sortedMonths;
-            stats.pipelineValueData = sortedMonths.map(month => pipelineValueByMonth[month]);
-        
-            return stats;
-        }
-        
-        // Fungsi untuk merender semua chart
-        function renderAllCharts() {
-            console.log("Rendering all charts...");
-        
-            const processedStats = processDealDataForCharts(deals);
-        
-            const dealSizeCtx = document.getElementById('dealSizeChart').getContext('2d');
-            if (charts.dealSizeChart) charts.dealSizeChart.destroy();
-            charts.dealSizeChart = new Chart(dealSizeCtx, {
-                type: 'bar',
-                data: {
-                    labels: processedStats.dealSizeLabels,
-                    datasets: [{
-                        label: 'Jumlah Deal',
-                        data: processedStats.dealSizeData,
-                        backgroundColor: ['#3B82F6', '#60A5FA', '#93C5FD', '#22D3EE', '#A78BFA']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Distribusi Ukuran Deal'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                precision: 0
-                            }
-                        }
-                    }
-                }
-            });
-        
-            const winRateCtx = document.getElementById('winRateChart').getContext('2d');
-            if (charts.winRateChart) charts.winRateChart.destroy();
-            charts.winRateChart = new Chart(winRateCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: processedStats.winRateLabels,
-                    datasets: [{
-                        label: 'Jumlah Deal',
-                        data: processedStats.winRateData,
-                        backgroundColor: [
-                            '#10B981',
-                            '#EF4444',
-                            '#F59E0B',
-                            '#6B7280',
-                            '#3B82F6',
-                            '#06B6D4',
-                            '#A855F7',
-                            '#EC4899'
-                        ]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Tingkat Kemenangan Berdasarkan Tahap'
-                        }
-                    }
-                }
-            });
-        
-            const dealsBySalesCtx = document.getElementById('dealsBySalesChart').getContext('2d');
-            if (charts.dealsBySalesChart) charts.dealsBySalesChart.destroy();
-            charts.dealsBySalesChart = new Chart(dealsBySalesCtx, {
-                type: 'bar',
-                data: {
-                    labels: processedStats.dealsBySalesLabels,
-                    datasets: [{
-                        label: 'Jumlah Deal',
-                        data: processedStats.dealsBySalesData,
-                        backgroundColor: '#6366F1'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Total Deals / IDR per Sales' 
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    const salesName = processedStats.dealsBySalesLabels[context.dataIndex];
-                                    const totalValue = salesValue[salesName] || 0;
-                                    const winCount = salesWinCount[salesName] || 0;
-                                    return `${label}${context.raw} (Total IDR: Rp ${formatNumber(totalValue)} / Win: ${winCount})`;
-                                }
-                            }
-                        },
-                        afterDraw: function(chart) {
-                            const ctx = chart.ctx;
-                            const topSales = processedStats.topSales;
-        
-                            if (topSales.name && topSales.value > 0) {
-                                const text = `TOP IDR Sales = "${topSales.name}"`;
-                                ctx.font = 'bold 12px Arial';
-                                ctx.fillStyle = '#333';
-                                ctx.textAlign = 'center';
-                                ctx.textBaseline = 'bottom';
-        
-                                const x = chart.width / 2;
-                                const y = chart.height - 10;
-        
-                                ctx.fillText(text, x, y);
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                precision: 0
-                            }
-                        }
-                    }
-                }
-            });
-        
-            const dealsByProductPackageCtx = document.getElementById('dealsByProductPackageChart').getContext('2d');
-            if (charts.dealsByProductPackageChart) charts.dealsByProductPackageChart.destroy();
-            charts.dealsByProductPackageChart = new Chart(dealsByProductPackageCtx, {
-                type: 'pie',
-                data: {
-                    labels: processedStats.dealsByProductLabels,
-                    datasets: [{
-                        label: 'Jumlah Deal',
-                        data: processedStats.dealsByProductData,
-                        backgroundColor: [
-                            '#F97316', '#14B8A6', '#8B5CF6', '#EC4899', '#FACC15',
-                            '#3B82F6', '#EF4444', '#06B6D4', '#A855F7', '#F43F5E',
-                            '#4CAF50', '#FFC107', '#9C27B0', '#00BCD4', '#FF5722'
-                        ]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Deal per Produk'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    const product = processedStats.dealsByProductLabels[context.dataIndex];
-                                    const totalValue = productValue[product] || 0;
-                                    return `${label}${context.raw} (Total IDR: Rp ${formatNumber(totalValue)})`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        
-            const pipelineValueCtx = document.getElementById('pipelineValueChart').getContext('2d');
-            if (charts.pipelineValueChart) charts.pipelineValueChart.destroy();
-            charts.pipelineValueChart = new Chart(pipelineValueCtx, {
-                type: 'line',
-                data: {
-                    labels: processedStats.pipelineValueLabels,
-                    datasets: [{
-                        label: 'Nilai Pipeline (IDR)',
-                        data: processedStats.pipelineValueData,
-                        borderColor: '#0EA5E9',
-                        backgroundColor: 'rgba(14, 165, 233, 0.2)',
-                        tension: 0.3,
-                        fill: true,
-                        pointRadius: 5,
-                        pointBackgroundColor: '#0EA5E9',
-                        pointBorderColor: '#fff',
-                        pointHoverRadius: 7,
-                        pointHoverBackgroundColor: '#0EA5E9',
-                        pointHoverBorderColor: '#fff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Nilai Pipeline Seiring Waktu'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return 'Rp ' + formatNumber(value);
-                                }
-                            }
-                        }
-                    }
                 }
             });
         }
@@ -5692,10 +5442,9 @@ function renderAllCharts() {
                     document.getElementById('salesName').value = deal.salesName || '';
                     document.getElementById('dealName').value = deal.dealName || '';
                     
-                    // Handle value dan beforeDiscount secara terbalik
+                    // Handle value dan beforeDiscount
                     const beforeDiscountInput = document.getElementById('beforeDiscount');
-                    beforeDiscountInput.value = deal.beforeDiscount || '';
-                    formatNumberInput(beforeDiscountInput);
+                    beforeDiscountInput.value = deal.beforeDiscount ? new Intl.NumberFormat('id-ID').format(deal.beforeDiscount) : '';
                     
                     document.getElementById('discount').value = deal.discount || '';
                     calculateValueFromBeforeDiscount();
@@ -5942,7 +5691,7 @@ function renderAllCharts() {
                 salesName: salesName,
                 beforeDiscount: beforeDiscount,
                 discount: discount,
-                value: value,
+                value: Math.round(value),
                 package: packageType,
                 product: productsToSave,
                 facility: facility,
