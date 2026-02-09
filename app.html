@@ -19,6 +19,187 @@
             font-family: 'Inter', sans-serif;
             background-color: #f8fafc;
         }
+        
+        /* Dashboard Priority Styles */
+        .priority-dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .priority-card {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border-left: 5px solid;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .priority-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .priority-card.hot {
+            border-left-color: #dc2626;
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+        }
+        
+        .priority-card.priority {
+            border-left-color: #d97706;
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        }
+        
+        .priority-card.win {
+            border-left-color: #059669;
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        }
+        
+        .priority-card.behind {
+            border-left-color: #ea580c;
+            background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%);
+        }
+        
+        .priority-card.ontrack {
+            border-left-color: #1d4ed8;
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        }
+        
+        .priority-card.completed {
+            border-left-color: #7c3aed;
+            background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+        }
+        
+        .priority-card.lost {
+            border-left-color: #6b7280;
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        }
+        
+        .priority-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .priority-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .priority-count {
+            font-size: 2rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+        
+        .priority-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #374151;
+            margin-top: 0.5rem;
+        }
+        
+        .priority-projects {
+            margin-top: 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            padding-top: 1rem;
+        }
+        
+        .project-item {
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            margin-bottom: 0.25rem;
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            transition: all 0.2s;
+        }
+        
+        .project-item:hover {
+            background: rgba(255, 255, 255, 0.8);
+            transform: translateX(5px);
+        }
+        
+        .project-name {
+            font-weight: 600;
+            font-size: 0.875rem;
+            margin-bottom: 0.125rem;
+        }
+        
+        .project-sales {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+        
+        /* Modal untuk daftar proyek berdasarkan priority */
+        .priority-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+        
+        .priority-modal-content {
+            background-color: white;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            max-width: 900px;
+            max-height: 80vh;
+            overflow-y: auto;
+            width: 90%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .priority-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .priority-modal-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1f2937;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .priority-modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #6b7280;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 0.25rem;
+            transition: all 0.2s;
+        }
+        
+        .priority-modal-close:hover {
+            color: #374151;
+            background-color: #f3f4f6;
+        }
+        
         .pipeline-stage {
             min-height: 480px;
             max-height: 600px;
@@ -220,11 +401,17 @@
             .deal-card {
                 width: calc(50% - 0.5rem);
             }
+            .priority-dashboard {
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            }
         }
 
         @media (max-width: 768px) {
             .deal-card {
                 width: 100%;
+            }
+            .priority-dashboard {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -313,6 +500,10 @@
             transition: width 0.3s ease;
         }
 
+        .progress-fill.onhold {
+            background-color: #ef4444;
+        }
+
         .progress-steps {
             display: flex;
             justify-content: space-between;
@@ -344,6 +535,10 @@
             background-color: #3b82f6;
         }
 
+        .step-dot.onhold {
+            background-color: #ef4444;
+        }
+
         .step-label {
             font-size: 0.7rem;
             color: #6b7280;
@@ -353,6 +548,11 @@
 
         .step-label.active {
             color: #3b82f6;
+            font-weight: 600;
+        }
+
+        .step-label.onhold {
+            color: #ef4444;
             font-weight: 600;
         }
 
@@ -950,6 +1150,11 @@
             font-weight: 600;
         }
 
+        .checkpoint.onhold .checkpoint-value {
+            color: #ef4444;
+            font-weight: 600;
+        }
+
         .checkpoint-line {
             position: absolute;
             top: 6px;
@@ -958,6 +1163,238 @@
             height: 2px;
             background-color: #e5e7eb;
             z-index: -1;
+        }
+
+        /* Comments Section Styles */
+        .comments-section {
+            margin-top: 1.5rem;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 1rem;
+        }
+
+        .comments-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .comments-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+            padding-right: 0.5rem;
+        }
+
+        .comment-item {
+            background: #f9fafb;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+            border-left: 3px solid #3b82f6;
+        }
+
+        .comment-item.manager {
+            border-left-color: #10b981;
+            background: #f0fdf4;
+        }
+
+        .comment-item.sales {
+            border-left-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+
+        .comment-author {
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: #1f2937;
+        }
+
+        .comment-role {
+            font-size: 0.75rem;
+            padding: 0.125rem 0.5rem;
+            border-radius: 0.25rem;
+            background: #dbeafe;
+            color: #1e40af;
+            font-weight: 500;
+        }
+
+        .comment-role.manager {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .comment-time {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        .comment-content {
+            font-size: 0.875rem;
+            color: #374151;
+            line-height: 1.5;
+        }
+
+        .comment-input-container {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .comment-input {
+            flex: 1;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .comment-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .comment-submit-btn {
+            padding: 0.5rem 1rem;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            align-self: flex-end;
+        }
+
+        .comment-submit-btn:hover {
+            background: #2563eb;
+        }
+
+        /* Project Merge Modal Styles */
+        .merge-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+
+        .merge-modal-content {
+            background-color: white;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            width: 90%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .merge-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .merge-modal-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .merge-modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #6b7280;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 0.25rem;
+            transition: all 0.2s;
+        }
+
+        .merge-modal-close:hover {
+            color: #374151;
+            background-color: #f3f4f6;
+        }
+
+        .sales-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 0.5rem;
+        }
+
+        .sales-tab {
+            padding: 0.5rem 1rem;
+            background: #f3f4f6;
+            border: none;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .sales-tab:hover {
+            background: #e5e7eb;
+        }
+
+        .sales-tab.active {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .sales-content {
+            display: none;
+        }
+
+        .sales-content.active {
+            display: block;
+        }
+
+        /* Edit Status Button */
+        .edit-status-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .edit-status-btn:hover {
+            background: #059669;
+        }
+
+        .win-date {
+            font-size: 0.75rem;
+            color: #10b981;
+            font-weight: 600;
+            margin-left: 0.5rem;
         }
     </style>
 </head>
@@ -1005,6 +1442,11 @@
             </div>
         </header>
 
+        <!-- Priority Dashboard -->
+        <div class="priority-dashboard mb-8">
+            <!-- Priority cards akan diisi oleh JavaScript -->
+        </div>
+
         <!-- Pipeline Visualization -->
         <div class="grid grid-cols-1 gap-6 mb-10">
             <div class="pipeline-stage stage-main-pipeline">
@@ -1021,6 +1463,39 @@
                 </div>
                 <div id="pipelines-stage" class="pipeline-stage-content">
                     <!-- Deals akan ditampilkan di sini -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Priority Modal -->
+        <div id="priorityModal" class="priority-modal hidden">
+            <div class="priority-modal-content">
+                <div class="priority-modal-header">
+                    <h3 id="priorityModalTitle" class="priority-modal-title">
+                        <i class="fas fa-fire" style="color: #dc2626;"></i>
+                        <span id="priorityModalTitleText">Hot Priority Projects</span>
+                    </h3>
+                    <button id="priorityModalClose" class="priority-modal-close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="priorityModalContent">
+                    <!-- Daftar proyek akan dimuat di sini -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Merge Project Modal -->
+        <div id="mergeModal" class="merge-modal hidden">
+            <div class="merge-modal-content">
+                <div class="merge-modal-header">
+                    <h3 id="mergeModalTitle" class="merge-modal-title">Proyek dengan Nama Sama</h3>
+                    <button id="mergeModalClose" class="merge-modal-close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="mergeModalContent">
+                    <!-- Konten akan diisi oleh JavaScript -->
                 </div>
             </div>
         </div>
@@ -1271,10 +1746,6 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="mb-3">
-                                <label class="block text-gray-700 text-sm font-semibold mb-2" for="remarks">Remarks</label>
-                                <textarea id="remarks" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" rows="3" placeholder="Tambahkan catatan atau deskripsi tambahan..."></textarea>
-                            </div>
                         </div>
                         <!-- Kolom 2 -->
                         <div>
@@ -1436,16 +1907,27 @@
                             </div>
                             <div class="checkpoint-line"></div>
                         </div>
-                        
-                        <!-- Input Manual untuk Progress -->
-                        <div class="progress-manual-input">
-                            <input type="range" id="progressSlider" class="progress-slider" min="0" max="100" value="0" step="5">
-                            <input type="number" id="progressInput" class="progress-percentage-input" min="0" max="100" value="0">
-                            <span class="text-sm text-gray-600">%</span>
+                    </div>
+                    
+                    <!-- Comments Section -->
+                    <div class="comments-section" id="commentsSection" style="display: none;">
+                        <div class="comments-header">
+                            <h3 class="text-lg font-semibold text-gray-900">Komentar</h3>
+                            <span class="text-sm text-gray-500" id="commentsCount">0 komentar</span>
                         </div>
-                        
-                        <!-- Hidden input untuk menyimpan progress -->
-                        <input type="hidden" id="progressValue" name="progressValue" value="0">
+                        <div class="comments-list" id="commentsList">
+                            <!-- Komentar akan ditampilkan di sini -->
+                        </div>
+                        <div class="comment-input-container">
+                            <textarea id="commentInput" class="comment-input" placeholder="Tulis komentar..."></textarea>
+                            <button type="button" id="commentSubmitBtn" class="comment-submit-btn">Kirim</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Remarks Section -->
+                    <div class="mb-3 mt-6">
+                        <label class="block text-gray-700 text-sm font-semibold mb-2" for="remarks">Remarks</label>
+                        <textarea id="remarks" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" rows="3" placeholder="Tambahkan catatan atau deskripsi tambahan..."></textarea>
                     </div>
                     
                     <div class="flex justify-end space-x-3 mt-6">
@@ -1460,11 +1942,11 @@
             </div>
         </div>
 
-        <!-- Deal Detail Modal -->
+        <!-- Deal Detail Modal dengan Comments -->
         <div id="dealDetailModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
-            <div class="bg-white rounded-xl p-8 w-full max-w-md shadow-2xl modal-content-enter" id="dealDetailModalContent">
+            <div class="bg-white rounded-xl p-8 w-full max-w-4xl shadow-2xl modal-content-enter" id="dealDetailModalContent">
                 <h2 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900" id="dealDetailTitle">Detail Deal</h2>
-                <div class="detail-grid">
+                <div class="detail-grid mb-6">
                     <div class="detail-item">
                         <p class="text-gray-700 font-semibold">Nama Sales:</p>
                         <p id="detailSalesName" class="text-gray-900"></p>
@@ -1514,14 +1996,42 @@
                         <p id="detailPlanPO" class="text-gray-900"></p>
                     </div>
                     <div class="detail-item">
+                        <p class="text-gray-700 font-semibold">Tahap:</p>
+                        <p id="detailStage" class="text-gray-900"></p>
+                    </div>
+                    <div class="detail-item">
+                        <p class="text-gray-700 font-semibold">Priority:</p>
+                        <p id="detailPriority" class="text-gray-900"></p>
+                    </div>
+                    <div class="detail-item">
                         <p class="text-gray-700 font-semibold">Tanggal Dibuat:</p>
                         <p id="detailCreatedDate" class="text-gray-900"></p>
+                    </div>
+                    <div class="detail-item">
+                        <p class="text-gray-700 font-semibold">Progress:</p>
+                        <p id="detailProgress" class="text-gray-900"></p>
                     </div>
                     <div class="detail-item col-span-2">
                         <p class="text-gray-700 font-semibold">Remarks:</p>
                         <p id="detailRemarks" class="text-gray-900"></p>
                     </div>
                 </div>
+                
+                <!-- Comments Section in Detail Modal -->
+                <div class="comments-section">
+                    <div class="comments-header">
+                        <h3 class="text-lg font-semibold text-gray-900">Komentar</h3>
+                        <span class="text-sm text-gray-500" id="detailCommentsCount">0 komentar</span>
+                    </div>
+                    <div class="comments-list" id="detailCommentsList">
+                        <!-- Komentar akan ditampilkan di sini -->
+                    </div>
+                    <div class="comment-input-container">
+                        <textarea id="detailCommentInput" class="comment-input" placeholder="Tulis komentar..."></textarea>
+                        <button type="button" id="detailCommentSubmitBtn" class="comment-submit-btn">Kirim</button>
+                    </div>
+                </div>
+                
                 <div class="flex justify-end space-x-3 mt-6">
                     <button type="button" id="closeDetailBtn" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
                         Tutup
@@ -1820,6 +2330,7 @@
         const activitiesCollection = db.collection('activities');
         const usersCollection = db.collection('users');
         const dropdownOptionsCollection = db.collection('dropdownOptions');
+        const commentsCollection = db.collection('comments');
 
         let deals = [];
         let deletedDeals = [];
@@ -1846,7 +2357,7 @@
         let packageSelect, newPackageInput;
         let consultantSearchInput, consultantHiddenInput, consultantSuggestionsDiv;
 
-        // Variabel untuk menyimpan preferensi tampilan
+        // Variabel untuk menyimpan preferensi tampulan
         let currentView = 'card';
 
         // Variabel untuk menyimpan filter yang sedang aktif
@@ -1896,6 +2407,9 @@
             prioritySalesChart: null,
             priorityTimelineChart: null
         };
+
+        // Variabel untuk menyimpan deal yang sedang dilihat komentarnya
+        let currentDealIdForComments = null;
 
         // ==================== FUNGSI UTAMA ====================
 
@@ -2104,6 +2618,556 @@
             
             // Update pic dropdown
             populateDropdown('pic', uniquePICs);
+        }
+
+        // ==================== FUNGSI PRIORITY DASHBOARD ====================
+
+        // Fungsi untuk membuat priority dashboard
+        function createPriorityDashboard() {
+            const priorityDashboard = document.querySelector('.priority-dashboard');
+            if (!priorityDashboard) return;
+            
+            // Hitung statistik berdasarkan priority
+            const priorityStats = {
+                'Hot Priority': { count: 0, value: 0, deals: [] },
+                'Priority': { count: 0, value: 0, deals: [] },
+                'Win': { count: 0, value: 0, deals: [] },
+                'Behind': { count: 0, value: 0, deals: [] },
+                'On Track': { count: 0, value: 0, deals: [] },
+                'Completed': { count: 0, value: 0, deals: [] },
+                'Lost': { count: 0, value: 0, deals: [] }
+            };
+            
+            deals.forEach(deal => {
+                const priority = deal.priority || 'Priority';
+                if (priorityStats[priority]) {
+                    priorityStats[priority].count++;
+                    priorityStats[priority].value += (deal.value || 0);
+                    priorityStats[priority].deals.push(deal);
+                }
+            });
+            
+            priorityDashboard.innerHTML = '';
+            
+            // Buat card untuk setiap priority
+            const priorities = [
+                { key: 'Hot Priority', icon: 'fa-fire', color: 'hot' },
+                { key: 'Priority', icon: 'fa-exclamation-circle', color: 'priority' },
+                { key: 'Win', icon: 'fa-trophy', color: 'win' },
+                { key: 'Behind', icon: 'fa-clock', color: 'behind' },
+                { key: 'On Track', icon: 'fa-check-circle', color: 'ontrack' },
+                { key: 'Completed', icon: 'fa-flag-checkered', color: 'completed' },
+                { key: 'Lost', icon: 'fa-times-circle', color: 'lost' }
+            ];
+            
+            priorities.forEach(priority => {
+                const stats = priorityStats[priority.key];
+                const card = document.createElement('div');
+                card.className = `priority-card ${priority.color}`;
+                card.dataset.priority = priority.key;
+                
+                card.innerHTML = `
+                    <div class="priority-header">
+                        <div class="priority-title">
+                            <i class="fas ${priority.icon}"></i>
+                            <span>${priority.key}</span>
+                        </div>
+                        <div class="priority-count">${stats.count}</div>
+                    </div>
+                    <div class="priority-value">Rp ${formatNumber(stats.value)}</div>
+                    <div class="priority-projects">
+                        ${stats.deals.slice(0, 5).map(deal => `
+                            <div class="project-item" data-id="${deal.id}">
+                                <div class="project-name">${deal.dealName || 'No Name'}</div>
+                                <div class="project-sales">${deal.salesName || '-'} | Rp ${formatNumber(deal.value)}</div>
+                            </div>
+                        `).join('')}
+                        ${stats.count > 5 ? `<div class="text-center text-sm text-gray-500 mt-2">+ ${stats.count - 5} more projects</div>` : ''}
+                    </div>
+                `;
+                
+                priorityDashboard.appendChild(card);
+            });
+            
+            // Tambahkan event listener untuk card priority
+            document.querySelectorAll('.priority-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    const priority = this.dataset.priority;
+                    const stats = priorityStats[priority];
+                    openPriorityModal(priority, stats.deals);
+                });
+            });
+            
+            // Tambahkan event listener untuk project item
+            document.querySelectorAll('.project-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const dealId = this.dataset.id;
+                    openDealDetailModal(dealId);
+                });
+            });
+        }
+
+        // Fungsi untuk membuka modal priority
+        function openPriorityModal(priority, deals) {
+            const modal = document.getElementById('priorityModal');
+            const modalTitle = document.getElementById('priorityModalTitleText');
+            const modalContent = document.getElementById('priorityModalContent');
+            
+            if (!modal || !modalTitle || !modalContent) return;
+            
+            modalTitle.textContent = `${priority} Projects`;
+            modalContent.innerHTML = '';
+            
+            if (deals.length === 0) {
+                modalContent.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-inbox text-3xl mb-2"></i>
+                        <p>Tidak ada project dengan priority "${priority}"</p>
+                    </div>
+                `;
+            } else {
+                // Urutkan berdasarkan nilai tertinggi
+                const sortedDeals = [...deals].sort((a, b) => (b.value || 0) - (a.value || 0));
+                
+                const table = document.createElement('table');
+                table.className = 'min-w-full divide-y divide-gray-200';
+                table.innerHTML = `
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Project</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai (IDR)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tahap</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        ${sortedDeals.map((deal, index) => `
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${deal.dealName || 'No Name'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${deal.salesName || '-'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">Rp ${formatNumber(deal.value) || '0'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${deal.stage === 'win' ? 'bg-green-100 text-green-800' : 
+                                        deal.stage === 'lost' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">
+                                        ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button class="text-blue-600 hover:text-blue-900 mr-3 view-detail-btn" data-id="${deal.id}">
+                                        <i class="fas fa-eye"></i> Detail
+                                    </button>
+                                    ${canUserEditDeal(deal) ? `
+                                    <button class="text-green-600 hover:text-green-900 edit-status-btn" data-id="${deal.id}">
+                                        <i class="fas fa-edit"></i> Edit Status
+                                    </button>
+                                    ` : ''}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                `;
+                
+                modalContent.appendChild(table);
+                
+                // Tambahkan event listener untuk tombol
+                modalContent.querySelectorAll('.view-detail-btn').forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const dealId = this.dataset.id;
+                        closePriorityModal();
+                        openDealDetailModal(dealId);
+                    });
+                });
+                
+                modalContent.querySelectorAll('.edit-status-btn').forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const dealId = this.dataset.id;
+                        closePriorityModal();
+                        prepareEditDeal(dealId);
+                    });
+                });
+            }
+            
+            modal.classList.remove('hidden');
+        }
+
+        // Fungsi untuk menutup modal priority
+        function closePriorityModal() {
+            const modal = document.getElementById('priorityModal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }
+
+        // ==================== FUNGSI PROGRESS BAR ====================
+
+        // Fungsi untuk mengupdate progress bar berdasarkan stage
+        function updateProgressBarFromStage(stage) {
+            let progress = 0;
+            let isOnHold = false;
+            
+            switch (stage) {
+                case 'identified':
+                    progress = 20;
+                    break;
+                case 'prospect':
+                    progress = 40;
+                    break;
+                case 'tender-me':
+                    progress = 60;
+                    break;
+                case 'tender-main-con':
+                case 'contract-award':
+                    progress = 80;
+                    break;
+                case 'win':
+                case 'lost':
+                    progress = 100;
+                    break;
+                case 'on-hold':
+                    progress = 0;
+                    isOnHold = true;
+                    break;
+                default:
+                    progress = 0;
+            }
+            
+            updateProgressBarUI(progress, isOnHold);
+        }
+
+        // Fungsi untuk mengupdate UI progress bar
+        function updateProgressBarUI(progress, isOnHold = false) {
+            const progressPercentage = document.getElementById('progressPercentage');
+            const progressFill = document.getElementById('progressFill');
+            const progressValueInput = document.getElementById('progressValue');
+            
+            // Update UI elements
+            progressPercentage.textContent = `${progress}%`;
+            progressFill.style.width = `${progress}%`;
+            progressValueInput.value = progress;
+            
+            // Update class untuk on-hold
+            if (isOnHold) {
+                progressFill.classList.add('onhold');
+                progressPercentage.style.color = '#ef4444';
+            } else {
+                progressFill.classList.remove('onhold');
+                progressPercentage.style.color = '#3b82f6';
+            }
+            
+            // Update checkpoints
+            updateCheckpoints(progress, isOnHold);
+        }
+
+        // Fungsi untuk mengupdate checkpoint
+        function updateCheckpoints(progress, isOnHold = false) {
+            const checkpoints = document.querySelectorAll('.checkpoint');
+            const stepDots = document.querySelectorAll('.step-dot');
+            const stepLabels = document.querySelectorAll('.step-label');
+            
+            checkpoints.forEach(checkpoint => {
+                const checkpointValue = parseInt(checkpoint.dataset.percentage);
+                const stepDot = checkpoint.querySelector('.step-dot');
+                const stepLabel = checkpoint.querySelector('.checkpoint-value');
+                
+                if (progress >= checkpointValue) {
+                    if (isOnHold) {
+                        stepDot.classList.add('onhold');
+                        stepLabel.classList.add('onhold');
+                        checkpoint.classList.add('onhold');
+                    } else {
+                        stepDot.classList.add('completed');
+                        stepLabel.classList.add('active');
+                        checkpoint.classList.add('active');
+                    }
+                } else {
+                    stepDot.classList.remove('completed', 'active', 'onhold');
+                    stepLabel.classList.remove('active', 'onhold');
+                    checkpoint.classList.remove('active', 'onhold');
+                }
+            });
+        }
+
+        // ==================== FUNGSI COMMENTS ====================
+
+        // Fungsi untuk memuat komentar
+        async function loadComments(dealId) {
+            try {
+                const querySnapshot = await commentsCollection
+                    .where('dealId', '==', dealId)
+                    .orderBy('timestamp', 'asc')
+                    .get();
+                
+                const comments = [];
+                querySnapshot.forEach((doc) => {
+                    comments.push({ id: doc.id, ...doc.data() });
+                });
+                
+                return comments;
+            } catch (error) {
+                console.error("Error loading comments:", error);
+                return [];
+            }
+        }
+
+        // Fungsi untuk merender komentar
+        function renderComments(comments, containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            if (comments.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-gray-500 py-4">
+                        <i class="fas fa-comments text-2xl mb-2"></i>
+                        <p>Belum ada komentar</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            comments.forEach(comment => {
+                const commentItem = document.createElement('div');
+                const isManager = managerEmails.includes(comment.userEmail);
+                const isCurrentUser = comment.userEmail === auth.currentUser?.email;
+                
+                commentItem.className = `comment-item ${isManager ? 'manager' : 'sales'}`;
+                commentItem.innerHTML = `
+                    <div class="comment-header">
+                        <div>
+                            <span class="comment-author">${comment.userEmail}</span>
+                            <span class="comment-role ${isManager ? 'manager' : 'sales'} ml-2">
+                                ${isManager ? 'Manager' : 'Sales'}
+                            </span>
+                        </div>
+                        <div class="comment-time">${formatDateTime(comment.timestamp)}</div>
+                    </div>
+                    <div class="comment-content">${comment.content}</div>
+                `;
+                
+                container.appendChild(commentItem);
+            });
+            
+            // Update comments count
+            const commentsCountElement = document.getElementById(containerId === 'commentsList' ? 'commentsCount' : 'detailCommentsCount');
+            if (commentsCountElement) {
+                commentsCountElement.textContent = `${comments.length} komentar`;
+            }
+        }
+
+        // Fungsi untuk menambahkan komentar
+        async function addComment(dealId, content) {
+            if (!content.trim()) {
+                showToast("Komentar tidak boleh kosong", 3000);
+                return;
+            }
+            
+            try {
+                const commentData = {
+                    dealId: dealId,
+                    content: content.trim(),
+                    userEmail: auth.currentUser.email,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                await commentsCollection.add(commentData);
+                
+                // Reload comments
+                if (currentDealIdForComments === dealId) {
+                    const comments = await loadComments(dealId);
+                    renderComments(comments, 'commentsList');
+                    renderComments(comments, 'detailCommentsList');
+                }
+                
+                // Reset input
+                document.getElementById('commentInput').value = '';
+                document.getElementById('detailCommentInput').value = '';
+                
+                showToast("Komentar berhasil ditambahkan", 2000);
+                
+            } catch (error) {
+                console.error("Error adding comment:", error);
+                showToast("Gagal menambahkan komentar", 3000);
+            }
+        }
+
+        // ==================== FUNGSI MERGE PROJECT ====================
+
+        // Fungsi untuk mengelompokkan deal dengan nama yang sama
+        function groupDealsByName() {
+            const groupedDeals = {};
+            
+            deals.forEach(deal => {
+                const dealName = deal.dealName?.trim().toLowerCase();
+                if (!dealName) return;
+                
+                if (!groupedDeals[dealName]) {
+                    groupedDeals[dealName] = [];
+                }
+                
+                groupedDeals[dealName].push(deal);
+            });
+            
+            // Filter hanya yang memiliki lebih dari 1 deal
+            const mergedGroups = {};
+            Object.keys(groupedDeals).forEach(dealName => {
+                if (groupedDeals[dealName].length > 1) {
+                    mergedGroups[dealName] = groupedDeals[dealName];
+                }
+            });
+            
+            return mergedGroups;
+        }
+
+        // Fungsi untuk membuka modal merge project
+        function openMergeModal() {
+            const mergedGroups = groupDealsByName();
+            const modal = document.getElementById('mergeModal');
+            const modalContent = document.getElementById('mergeModalContent');
+            
+            if (!modal || !modalContent) return;
+            
+            if (Object.keys(mergedGroups).length === 0) {
+                modalContent.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-check-circle text-3xl mb-2"></i>
+                        <p>Tidak ada project dengan nama yang sama</p>
+                    </div>
+                `;
+            } else {
+                let html = '<div class="space-y-6">';
+                
+                Object.keys(mergedGroups).forEach((dealName, index) => {
+                    const dealsInGroup = mergedGroups[dealName];
+                    const highestValueDeal = dealsInGroup.reduce((max, deal) => 
+                        (deal.value || 0) > (max.value || 0) ? deal : max, dealsInGroup[0]
+                    );
+                    
+                    html += `
+                        <div class="border rounded-lg p-4">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h4 class="text-lg font-semibold text-gray-900">${dealName}</h4>
+                                    <p class="text-sm text-gray-600">${dealsInGroup.length} versi oleh ${dealsInGroup.map(d => d.salesName).join(', ')}</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm font-semibold text-green-600">Rp ${formatNumber(highestValueDeal.value)}</p>
+                                    <p class="text-xs text-gray-500">Nilai tertinggi</p>
+                                </div>
+                            </div>
+                            
+                            <div class="sales-tabs">
+                                ${dealsInGroup.map((deal, i) => `
+                                    <button class="sales-tab ${i === 0 ? 'active' : ''}" data-group="${index}" data-index="${i}">
+                                        ${deal.salesName}
+                                    </button>
+                                `).join('')}
+                            </div>
+                            
+                            ${dealsInGroup.map((deal, i) => `
+                                <div class="sales-content ${i === 0 ? 'active' : ''}" data-group="${index}" data-index="${i}">
+                                    <div class="grid grid-cols-2 gap-4 mt-4">
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-700">Sales</p>
+                                            <p class="text-sm text-gray-900">${deal.salesName || '-'}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-700">Nilai (IDR)</p>
+                                            <p class="text-sm text-gray-900 font-semibold">Rp ${formatNumber(deal.value) || '0'}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-700">Tahap</p>
+                                            <p class="text-sm text-gray-900">${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-700">Priority</p>
+                                            <p class="text-sm text-gray-900">${deal.priority || 'Priority'}</p>
+                                        </div>
+                                        <div class="col-span-2">
+                                            <p class="text-sm font-medium text-gray-700">Remarks</p>
+                                            <p class="text-sm text-gray-900">${deal.remarks || '-'}</p>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 flex justify-end">
+                                        <button class="text-blue-600 hover:text-blue-900 text-sm font-medium view-detail-btn" data-id="${deal.id}">
+                                            <i class="fas fa-eye mr-1"></i> Lihat Detail
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                modalContent.innerHTML = html;
+                
+                // Tambahkan event listener untuk tabs
+                modalContent.querySelectorAll('.sales-tab').forEach(tab => {
+                    tab.addEventListener('click', function() {
+                        const group = this.dataset.group;
+                        const index = this.dataset.index;
+                        
+                        // Update active tab
+                        modalContent.querySelectorAll(`.sales-tab[data-group="${group}"]`).forEach(t => {
+                            t.classList.remove('active');
+                        });
+                        this.classList.add('active');
+                        
+                        // Update active content
+                        modalContent.querySelectorAll(`.sales-content[data-group="${group}"]`).forEach(c => {
+                            c.classList.remove('active');
+                        });
+                        modalContent.querySelector(`.sales-content[data-group="${group}"][data-index="${index}"]`).classList.add('active');
+                    });
+                });
+                
+                // Tambahkan event listener untuk tombol detail
+                modalContent.querySelectorAll('.view-detail-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const dealId = this.dataset.id;
+                        closeMergeModal();
+                        openDealDetailModal(dealId);
+                    });
+                });
+            }
+            
+            modal.classList.remove('hidden');
+        }
+
+        // Fungsi untuk menutup modal merge
+        function closeMergeModal() {
+            const modal = document.getElementById('mergeModal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }
+
+        // ==================== FUNGSI WIN DATE ====================
+
+        // Fungsi untuk mendapatkan tanggal win
+        function getWinDate(deal) {
+            if (deal.stage !== 'win' || !deal.updatedAt) return null;
+            
+            // Cari di aktivitas kapan status berubah menjadi win
+            const winActivity = activities.find(act => 
+                act.message && 
+                act.message.includes(`"${deal.dealName}"`) && 
+                act.message.includes('diperbarui') && 
+                act.message.includes('stage: win')
+            );
+            
+            if (winActivity) {
+                return winActivity.timestamp;
+            }
+            
+            return deal.updatedAt;
         }
 
         // ==================== FUNGSI RECYCLE BIN ====================
@@ -2698,6 +3762,9 @@
                 populateYearDropdown();
                 populateFilterDropdowns();
                 
+                // Buat priority dashboard
+                createPriorityDashboard();
+                
                 // Terapkan filter yang aktif
                 applyActiveFilters();
                 
@@ -2821,6 +3888,7 @@
             
             const canEdit = canUserEditDeal(deal);
             const priorityBadgeClass = getPriorityBadgeClass(deal.priority);
+            const winDate = getWinDate(deal);
             
             row.innerHTML = `
                 <td>${index + 1}</td>
@@ -2833,6 +3901,7 @@
                     <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
                         ${deal.priority || 'Priority'}
                     </span>
+                    ${winDate ? `<span class="win-date"><i class="fas fa-calendar-check mr-1"></i>${formatDate(winDate)}</span>` : ''}
                 </td>
                 <td class="deal-actions">
                     <button class="view-detail-btn text-blue-600 hover:text-blue-800">
@@ -2909,46 +3978,6 @@
             }
             
             inputElement.value = new Intl.NumberFormat('id-ID').format(numberValue);
-        }
-
-        // ==================== PROGRESS BAR FUNCTIONS ====================
-
-        // Fungsi untuk mengupdate progress bar berdasarkan input manual
-        function updateProgressBarFromInput(progress) {
-            // Ensure progress is between 0 and 100
-            progress = Math.max(0, Math.min(100, parseInt(progress) || 0));
-            
-            const progressPercentage = document.getElementById('progressPercentage');
-            const progressFill = document.getElementById('progressFill');
-            const progressSlider = document.getElementById('progressSlider');
-            const progressInput = document.getElementById('progressInput');
-            const progressValueInput = document.getElementById('progressValue');
-            
-            // Update UI elements
-            progressPercentage.textContent = `${progress}%`;
-            progressFill.style.width = `${progress}%`;
-            progressSlider.value = progress;
-            progressInput.value = progress;
-            progressValueInput.value = progress;
-            
-            // Update checkpoints
-            updateCheckpoints(progress);
-        }
-
-        // Fungsi untuk mengupdate checkpoint
-        function updateCheckpoints(progress) {
-            const checkpoints = document.querySelectorAll('.checkpoint');
-            
-            checkpoints.forEach(checkpoint => {
-                const checkpointValue = parseInt(checkpoint.dataset.percentage);
-                if (progress >= checkpointValue) {
-                    checkpoint.querySelector('.step-dot').classList.add('completed', 'active');
-                    checkpoint.classList.add('active');
-                } else {
-                    checkpoint.querySelector('.step-dot').classList.remove('completed', 'active');
-                    checkpoint.classList.remove('active');
-                }
-            });
         }
 
         // ==================== FUNGSI STATISTIK MODAL ====================
@@ -3788,19 +4817,23 @@
             let productValue = {};
             const pipelineValueByMonth = {};
             
-            const uniqueDealsByHighestValue = new Map();
-            
+            // Group deals by name and take the highest value
+            const dealsByName = {};
             dealsData.forEach(deal => {
-                const currentHighestDeal = uniqueDealsByHighestValue.get(deal.dealName);
-                if (!currentHighestDeal || (deal.value || 0) > (currentHighestDeal.value || 0)) {
-                    uniqueDealsByHighestValue.set(deal.dealName, deal);
+                const dealName = deal.dealName?.toLowerCase().trim();
+                if (!dealName) return;
+                
+                if (!dealsByName[dealName]) {
+                    dealsByName[dealName] = deal;
+                } else if ((deal.value || 0) > (dealsByName[dealName].value || 0)) {
+                    dealsByName[dealName] = deal;
                 }
             });
             
-            const filteredDealsForStats = Array.from(uniqueDealsByHighestValue.values());
-            console.log("Filtered deals for stats:", filteredDealsForStats.length);
+            const uniqueDeals = Object.values(dealsByName);
+            console.log("Unique deals for stats:", uniqueDeals.length);
             
-            filteredDealsForStats.forEach(deal => {
+            uniqueDeals.forEach(deal => {
                 const dealValue = deal.value || 0;
                 
                 // Deal size distribution
@@ -4503,6 +5536,24 @@
                             document.getElementById('clickableChartModal').classList.add('hidden');
                         }
                     }
+                    
+                    // Tombol close priority modal
+                    if (e.target.closest('#priorityModalClose') || e.target.closest('#priorityModal')) {
+                        if (e.target.closest('#priorityModal') && !e.target.closest('.priority-modal-content')) {
+                            closePriorityModal();
+                        } else if (e.target.closest('#priorityModalClose')) {
+                            closePriorityModal();
+                        }
+                    }
+                    
+                    // Tombol close merge modal
+                    if (e.target.closest('#mergeModalClose') || e.target.closest('#mergeModal')) {
+                        if (e.target.closest('#mergeModal') && !e.target.closest('.merge-modal-content')) {
+                            closeMergeModal();
+                        } else if (e.target.closest('#mergeModalClose')) {
+                            closeMergeModal();
+                        }
+                    }
                 });
         
                 const dealForm = document.getElementById('dealForm');
@@ -4524,27 +5575,26 @@
                 document.getElementById('cancelDealBtn').addEventListener('click', closeDealModal);
                 document.getElementById('addContractorBtn').addEventListener('click', () => addContractorField());
                 document.getElementById('addProductBtn').addEventListener('click', () => addProductField());
+                document.getElementById('commentSubmitBtn').addEventListener('click', function() {
+                    const comment = document.getElementById('commentInput').value;
+                    if (currentDealIdForComments) {
+                        addComment(currentDealIdForComments, comment);
+                    }
+                });
                 
-                // Progress bar manual input
-                const progressSlider = document.getElementById('progressSlider');
-                const progressInput = document.getElementById('progressInput');
-                
-                if (progressSlider && progressInput) {
-                    progressSlider.addEventListener('input', function() {
-                        updateProgressBarFromInput(this.value);
-                    });
-                    
-                    progressInput.addEventListener('input', function() {
-                        updateProgressBarFromInput(this.value);
-                    });
-                    
-                    progressInput.addEventListener('change', function() {
-                        updateProgressBarFromInput(this.value);
-                    });
-                }
+                // Event listener untuk stage change
+                document.getElementById('stage').addEventListener('change', function() {
+                    updateProgressBarFromStage(this.value);
+                });
                 
                 // Tombol di modal detail deal
                 document.getElementById('closeDetailBtn').addEventListener('click', closeDealDetailModal);
+                document.getElementById('detailCommentSubmitBtn').addEventListener('click', function() {
+                    const comment = document.getElementById('detailCommentInput').value;
+                    if (currentDealIdForComments) {
+                        addComment(currentDealIdForComments, comment);
+                    }
+                });
                 
                 // Tombol di modal aktivitas
                 document.getElementById('closeActivityBtn').addEventListener('click', closeActivityModal);
@@ -4598,6 +5648,20 @@
                 
                 // Tampilkan/sembunyikan tombol hapus pada dropdown berdasarkan role
                 toggleDeleteOptionButtons();
+                
+                // Tombol untuk merge project (hanya untuk admin/manager)
+                if (currentUserRole === 'admin' || currentUserRole === 'manager') {
+                    const mergeBtn = document.createElement('button');
+                    mergeBtn.id = 'mergeProjectsBtn';
+                    mergeBtn.className = 'bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm ml-4';
+                    mergeBtn.innerHTML = '<i class="fas fa-code-branch mr-2"></i> Merge Projects';
+                    mergeBtn.addEventListener('click', openMergeModal);
+                    
+                    const headerButtons = document.querySelector('.flex.flex-col.sm\\:flex-row.space-y-2.sm\\:space-y-0.sm\\:space-x-4.mt-4.sm\\:mt-0');
+                    if (headerButtons) {
+                        headerButtons.appendChild(mergeBtn);
+                    }
+                }
                 
             } catch (error) {
                 console.error("Error initializing event listeners:", error);
@@ -5335,9 +6399,9 @@
             Array.from(uniqueProducts).sort().forEach(value => {
                 if (value && !['Fire', 'Suppresion', 'Vesda', 'Maintenance', 'Fire - Water', 'Mechanical', 'FAS-FSS-FF', 'FAS&FSS'].includes(value)) {
                     const option = document.createElement('option');
-                    option.value = value;
-                    option.textContent = value;
-                    newSelect.appendChild(option);
+                        option.value = value;
+                        option.textContent = value;
+                        newSelect.appendChild(option);
                 }
             });
         
@@ -5370,10 +6434,11 @@
         }
         
         // Fungsi untuk membuka modal deal
-        function openDealModal(dealId = null) {
+        async function openDealModal(dealId = null) {
             const dealModal = document.getElementById('dealModal');
             const modalTitle = document.getElementById('modalTitle');
             const dealForm = document.getElementById('dealForm');
+            const commentsSection = document.getElementById('commentsSection');
             
             dealForm.reset();
             document.getElementById('dealId').value = '';
@@ -5508,9 +6573,14 @@
                     document.getElementById('priority').value = deal.priority || 'Priority';
                     document.getElementById('remarks').value = deal.remarks || '';
                     
-                    // Update progress bar dengan progress yang ada atau default
-                    const progress = deal.progress || 0;
-                    updateProgressBarFromInput(progress);
+                    // Update progress bar dengan stage yang ada
+                    updateProgressBarFromStage(deal.stage);
+                    
+                    // Load dan tampilkan komentar
+                    currentDealIdForComments = deal.id;
+                    const comments = await loadComments(deal.id);
+                    renderComments(comments, 'commentsList');
+                    commentsSection.style.display = 'block';
                 }
             } else {
                 modalTitle.textContent = 'Tambah Deal Baru';
@@ -5526,8 +6596,12 @@
                 addContractorField();
                 addProductField();
                 
-                // Set progress bar ke default 0%
-                updateProgressBarFromInput(0);
+                // Set progress bar ke default berdasarkan stage
+                updateProgressBarFromStage(DEFAULT_STAGE);
+                
+                // Sembunyikan comments section untuk deal baru
+                commentsSection.style.display = 'none';
+                currentDealIdForComments = null;
             }
             
             dealModal.classList.remove('hidden');
@@ -5712,7 +6786,7 @@
                     await dealsCollection.doc(dealId).update(dealData);
                     showToast("Deal berhasil diperbarui!", 2000);
                     await activitiesCollection.add({
-                        message: `Deal "${dealName}" diperbarui oleh ${auth.currentUser.email}.`,
+                        message: `Deal "${dealName}" diperbarui oleh ${auth.currentUser.email}. (stage: ${stage})`,
                         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                         userEmail: auth.currentUser.email,
                         read: false
@@ -5846,7 +6920,7 @@
         }
         
         // Fungsi untuk membuka modal detail deal
-        function openDealDetailModal(dealId) {
+        async function openDealDetailModal(dealId) {
             const deal = deals.find(d => d.id === dealId);
             if (!deal) {
                 showToast("Detail deal tidak ditemukan.", 3000);
@@ -5880,8 +6954,16 @@
             }
             document.getElementById('detailPIC').textContent = deal.pic || '-';
             document.getElementById('detailPlanPO').textContent = deal.planPO || '-';
+            document.getElementById('detailStage').textContent = deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-';
+            document.getElementById('detailPriority').textContent = deal.priority || '-';
             document.getElementById('detailCreatedDate').textContent = formatDate(deal.createdAt) || '-';
+            document.getElementById('detailProgress').textContent = `${deal.progress || 0}%`;
             document.getElementById('detailRemarks').textContent = deal.remarks || '-';
+            
+            // Load dan tampilkan komentar
+            currentDealIdForComments = deal.id;
+            const comments = await loadComments(deal.id);
+            renderComments(comments, 'detailCommentsList');
         
             document.getElementById('dealDetailModal').classList.remove('hidden');
             document.getElementById('dealDetailModalContent').classList.remove('modal-content-leave-active');
@@ -5918,6 +7000,6 @@
             // Nonaktifkan fitur drag & drop
             initSortable();
         });
-        </script>
+    </script>
 </body>
 </html>
