@@ -2776,16 +2776,19 @@
             updateProgressBarUI(progress, isOnHold);
         }
 
-        // Fungsi untuk mengupdate UI progress bar
+        // PERBAIKAN: Fungsi untuk mengupdate UI progress bar dengan error handling
         function updateProgressBarUI(progress, isOnHold = false) {
             const progressPercentage = document.getElementById('progressPercentage');
             const progressFill = document.getElementById('progressFill');
-            const progressValueInput = document.getElementById('progressValue');
+            
+            if (!progressPercentage || !progressFill) {
+                console.warn("Progress bar elements not found");
+                return;
+            }
             
             // Update UI elements
             progressPercentage.textContent = `${progress}%`;
             progressFill.style.width = `${progress}%`;
-            progressValueInput.value = progress;
             
             // Update class untuk on-hold
             if (isOnHold) {
@@ -3526,7 +3529,7 @@
             }
         }
 
-        // Fungsi untuk memuat deals dari Firebase
+        // PERBAIKAN: Fungsi untuk memuat deals dari Firebase dengan error handling
         async function loadDealsFromFirebase() {
             console.log("Loading deals from Firebase...");
             
@@ -3630,7 +3633,7 @@
             return deal.salesName === userSalesName;
         }
 
-        // Fungsi untuk render deal card dengan fitur merge
+        // PERBAIKAN: Fungsi untuk render deal card dengan fitur merge dan tanpa event listener di dalam fungsi
         function renderDeal(deal) {
             const mergedDealsInfo = identifyMergedDeals();
             const dealNameLower = deal.dealName?.toLowerCase().trim();
@@ -3727,48 +3730,59 @@
                 </div>
             `;
             
-            // Tambahkan event listener untuk multiple sales indicator
+            return dealCard;
+        }
+
+        // PERBAIKAN: Fungsi untuk setup event listener merge deal card yang dipanggil setelah render
+        function setupMergeDealCardEvents(dealCard, deal) {
+            const mergedDealsInfo = identifyMergedDeals();
+            const dealNameLower = deal.dealName?.toLowerCase().trim();
+            const hasMultipleSales = mergedDealsInfo[dealNameLower] && mergedDealsInfo[dealNameLower].count > 1;
+            
             if (hasMultipleSales) {
                 const indicator = dealCard.querySelector('.multiple-sales-indicator');
                 const dropdown = dealCard.querySelector('.sales-dropdown');
                 
-                indicator.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    dropdown.classList.toggle('show');
-                });
-                
-                // Tutup dropdown ketika klik di luar
-                document.addEventListener('click', function(e) {
-                    if (!dealCard.contains(e.target)) {
-                        dropdown.classList.remove('show');
-                    }
-                });
-                
-                // Event listener untuk item dropdown
-                dropdown.querySelectorAll('.sales-dropdown-item').forEach(item => {
-                    item.addEventListener('click', function(e) {
+                if (indicator && dropdown) {
+                    indicator.addEventListener('click', function(e) {
                         e.stopPropagation();
-                        const selectedSales = this.dataset.sales;
-                        
-                        // Update active item
-                        dropdown.querySelectorAll('.sales-dropdown-item').forEach(i => {
-                            i.classList.remove('active');
-                        });
-                        this.classList.add('active');
-                        
-                        // Update sales name in deal details
-                        const salesNameElement = dealCard.querySelector('.deal-details p:first-child');
-                        if (salesNameElement) {
-                            salesNameElement.innerHTML = `<i class="fas fa-user-tie mr-1"></i> ${selectedSales}`;
-                        }
-                        
-                        // Tutup dropdown
-                        dropdown.classList.remove('show');
+                        dropdown.classList.toggle('show');
                     });
-                });
+                    
+                    // Event listener untuk item dropdown
+                    dropdown.querySelectorAll('.sales-dropdown-item').forEach(item => {
+                        item.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            const selectedSales = this.dataset.sales;
+                            
+                            // Update active item
+                            dropdown.querySelectorAll('.sales-dropdown-item').forEach(i => {
+                                i.classList.remove('active');
+                            });
+                            this.classList.add('active');
+                            
+                            // Update sales name in deal details
+                            const salesNameElement = dealCard.querySelector('.deal-details p:first-child');
+                            if (salesNameElement) {
+                                salesNameElement.innerHTML = `<i class="fas fa-user-tie mr-1"></i> ${selectedSales}`;
+                            }
+                            
+                            // Tutup dropdown
+                            dropdown.classList.remove('show');
+                        });
+                    });
+                }
             }
             
-            return dealCard;
+            // Tutup dropdown ketika klik di luar
+            document.addEventListener('click', function(e) {
+                if (hasMultipleSales && dealCard && !dealCard.contains(e.target)) {
+                    const dropdown = dealCard.querySelector('.sales-dropdown');
+                    if (dropdown) {
+                        dropdown.classList.remove('show');
+                    }
+                }
+            });
         }
 
         // Fungsi untuk render deal dalam format list dengan win date di bawah
@@ -3844,7 +3858,9 @@
                 }
             });
 
-            selectElement.value = selectedValue;
+            if (selectedValue) {
+                selectElement.value = selectedValue;
+            }
         }
 
         // Fungsi untuk mengisi dropdown filter tambahan
@@ -5218,11 +5234,13 @@
             }
             
             const valueInput = document.getElementById('value');
-            valueInput.value = new Intl.NumberFormat('id-ID').format(Math.round(calculatedValue));
+            if (valueInput) {
+                valueInput.value = new Intl.NumberFormat('id-ID').format(Math.round(calculatedValue));
+            }
             
             // Update format input beforeDiscount
             const beforeDiscountInput = document.getElementById('beforeDiscount');
-            if (beforeDiscount > 0) {
+            if (beforeDiscount > 0 && beforeDiscountInput) {
                 beforeDiscountInput.value = new Intl.NumberFormat('id-ID').format(beforeDiscount);
             }
         }
@@ -5460,51 +5478,89 @@
                     console.error("New Deal button not found!");
                 }
                 
-                document.getElementById('viewStatsBtn').addEventListener('click', openStatsModal);
-                document.getElementById('activityBtn').addEventListener('click', openActivityModal);
-                document.getElementById('authButton').addEventListener('click', logout);
-                document.getElementById('openFilterPanelBtn').addEventListener('click', openFilterPanel);
+                const viewStatsBtn = document.getElementById('viewStatsBtn');
+                if (viewStatsBtn) viewStatsBtn.addEventListener('click', openStatsModal);
+                
+                const activityBtn = document.getElementById('activityBtn');
+                if (activityBtn) activityBtn.addEventListener('click', openActivityModal);
+                
+                const authButton = document.getElementById('authButton');
+                if (authButton) authButton.addEventListener('click', logout);
+                
+                const openFilterPanelBtn = document.getElementById('openFilterPanelBtn');
+                if (openFilterPanelBtn) openFilterPanelBtn.addEventListener('click', openFilterPanel);
         
                 // Tombol di modal deal
-                document.getElementById('cancelDealBtn').addEventListener('click', closeDealModal);
-                document.getElementById('addContractorBtn').addEventListener('click', () => addContractorField());
-                document.getElementById('addProductBtn').addEventListener('click', () => addProductField());
-                document.getElementById('commentSubmitBtn').addEventListener('click', function() {
-                    const comment = document.getElementById('commentInput').value;
-                    if (currentDealIdForComments) {
-                        addComment(currentDealIdForComments, comment);
-                    }
-                });
+                const cancelDealBtn = document.getElementById('cancelDealBtn');
+                if (cancelDealBtn) cancelDealBtn.addEventListener('click', closeDealModal);
+                
+                const addContractorBtn = document.getElementById('addContractorBtn');
+                if (addContractorBtn) addContractorBtn.addEventListener('click', () => addContractorField());
+                
+                const addProductBtn = document.getElementById('addProductBtn');
+                if (addProductBtn) addProductBtn.addEventListener('click', () => addProductField());
+                
+                const commentSubmitBtn = document.getElementById('commentSubmitBtn');
+                if (commentSubmitBtn) {
+                    commentSubmitBtn.addEventListener('click', function() {
+                        const commentInput = document.getElementById('commentInput');
+                        const comment = commentInput ? commentInput.value : '';
+                        if (currentDealIdForComments) {
+                            addComment(currentDealIdForComments, comment);
+                        }
+                    });
+                }
                 
                 // Event listener untuk stage change
-                document.getElementById('stage').addEventListener('change', function() {
-                    updateProgressBarFromStage(this.value);
-                });
+                const stageSelect = document.getElementById('stage');
+                if (stageSelect) {
+                    stageSelect.addEventListener('change', function() {
+                        updateProgressBarFromStage(this.value);
+                    });
+                }
                 
                 // Tombol di modal detail deal
-                document.getElementById('closeDetailBtn').addEventListener('click', closeDealDetailModal);
-                document.getElementById('detailCommentSubmitBtn').addEventListener('click', function() {
-                    const comment = document.getElementById('detailCommentInput').value;
-                    if (currentDealIdForComments) {
-                        addComment(currentDealIdForComments, comment);
-                    }
-                });
+                const closeDetailBtn = document.getElementById('closeDetailBtn');
+                if (closeDetailBtn) closeDetailBtn.addEventListener('click', closeDealDetailModal);
+                
+                const detailCommentSubmitBtn = document.getElementById('detailCommentSubmitBtn');
+                if (detailCommentSubmitBtn) {
+                    detailCommentSubmitBtn.addEventListener('click', function() {
+                        const detailCommentInput = document.getElementById('detailCommentInput');
+                        const comment = detailCommentInput ? detailCommentInput.value : '';
+                        if (currentDealIdForComments) {
+                            addComment(currentDealIdForComments, comment);
+                        }
+                    });
+                }
                 
                 // Tombol di modal aktivitas
-                document.getElementById('closeActivityBtn').addEventListener('click', closeActivityModal);
-                document.getElementById('closeActivityFooterBtn').addEventListener('click', closeActivityModal);
+                const closeActivityBtn = document.getElementById('closeActivityBtn');
+                if (closeActivityBtn) closeActivityBtn.addEventListener('click', closeActivityModal);
+                
+                const closeActivityFooterBtn = document.getElementById('closeActivityFooterBtn');
+                if (closeActivityFooterBtn) closeActivityFooterBtn.addEventListener('click', closeActivityModal);
                 
                 // Tombol di modal konfirmasi hapus
-                document.getElementById('cancelDeleteBtn').addEventListener('click', closeDeleteModal);
-                document.getElementById('confirmDeleteBtn').addEventListener('click', deleteDeal);
+                const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+                if (cancelDeleteBtn) cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+                
+                const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+                if (confirmDeleteBtn) confirmDeleteBtn.addEventListener('click', deleteDeal);
                 
                 // Tombol di panel filter
-                document.getElementById('closeFilterBtn').addEventListener('click', closeFilterPanel);
-                document.getElementById('resetFilterBtn').addEventListener('click', resetFilters);
-                document.getElementById('applyFilterBtn').addEventListener('click', applyFiltersAndClosePanel);
+                const closeFilterBtn = document.getElementById('closeFilterBtn');
+                if (closeFilterBtn) closeFilterBtn.addEventListener('click', closeFilterPanel);
+                
+                const resetFilterBtn = document.getElementById('resetFilterBtn');
+                if (resetFilterBtn) resetFilterBtn.addEventListener('click', resetFilters);
+                
+                const applyFilterBtn = document.getElementById('applyFilterBtn');
+                if (applyFilterBtn) applyFilterBtn.addEventListener('click', applyFiltersAndClosePanel);
                 
                 // Tombol di stats modal
-                document.getElementById('closeStatsBtn').addEventListener('click', closeStatsModal);
+                const closeStatsBtn = document.getElementById('closeStatsBtn');
+                if (closeStatsBtn) closeStatsBtn.addEventListener('click', closeStatsModal);
         
                 // Tab navigation
                 document.querySelectorAll('.stats-tab').forEach(tab => {
@@ -5515,13 +5571,16 @@
                 });
                 
                 // Sales filter change
-                document.getElementById('salesFilter').addEventListener('change', renderSalesCharts);
+                const salesFilter = document.getElementById('salesFilter');
+                if (salesFilter) salesFilter.addEventListener('change', renderSalesCharts);
                 
                 // Priority filter change
-                document.getElementById('priorityFilter').addEventListener('change', renderPriorityCharts);
+                const priorityFilter = document.getElementById('priorityFilter');
+                if (priorityFilter) priorityFilter.addEventListener('change', renderPriorityCharts);
         
                 // Input events
-                document.getElementById('searchDeals').addEventListener('keyup', filterDeals);
+                const searchDeals = document.getElementById('searchDeals');
+                if (searchDeals) searchDeals.addEventListener('keyup', filterDeals);
                 
                 // Update event listeners untuk perhitungan nilai
                 updateBeforeDiscountEventListeners();
@@ -5550,26 +5609,26 @@
         }
         
         function handleFacilitySelectChange() {
-            if (facilitySelect.value !== '') {
-                newFacilityInput.value = '';
+            if (facilitySelect && facilitySelect.value !== '') {
+                if (newFacilityInput) newFacilityInput.value = '';
             }
         }
         
         function handleNewFacilityInput() {
-            if (newFacilityInput.value.trim() !== '') {
-                facilitySelect.value = '';
+            if (newFacilityInput && newFacilityInput.value.trim() !== '') {
+                if (facilitySelect) facilitySelect.value = '';
             }
         }
         
         function handlePackageSelectChange() {
-            if (packageSelect.value !== '') {
-                newPackageInput.value = '';
+            if (packageSelect && packageSelect.value !== '') {
+                if (newPackageInput) newPackageInput.value = '';
             }
         }
         
         function handleNewPackageInput() {
-            if (newPackageInput.value.trim() !== '') {
-                packageSelect.value = '';
+            if (newPackageInput && newPackageInput.value.trim() !== '') {
+                if (packageSelect) packageSelect.value = '';
             }
         }
         
@@ -5606,18 +5665,21 @@
             
             currentView = viewType;
             
-            document.getElementById('cardViewBtn').classList.toggle('active', viewType === 'card');
-            document.getElementById('listViewBtn').classList.toggle('active', viewType === 'list');
+            const cardViewBtn = document.getElementById('cardViewBtn');
+            const listViewBtn = document.getElementById('listViewBtn');
+            
+            if (cardViewBtn) cardViewBtn.classList.toggle('active', viewType === 'card');
+            if (listViewBtn) listViewBtn.classList.toggle('active', viewType === 'list');
             
             // Terapkan filter yang aktif dengan view baru
             applyActiveFilters();
         }
         
-        // Fungsi untuk menerapkan filter yang aktif
+        // PERBAIKAN: Fungsi untuk menerapkan filter yang aktif dengan error handling
         function applyActiveFilters() {
             try {
                 let baseDeals = deals;
-                if (currentUserRole !== 'admin') {
+                if (currentUserRole !== 'admin' && currentUserRole !== 'manager') {
                     baseDeals = deals.filter(deal => deal.stage !== 'lost');
                 }
         
@@ -5671,20 +5733,24 @@
             }
         }
         
-        // Fungsi untuk menyimpan filter yang aktif
+        // PERBAIKAN: Fungsi untuk menyimpan filter yang aktif dengan error handling
         function saveActiveFilters() {
-            activeFilters = {
-                searchTerm: document.getElementById('searchDeals').value.toLowerCase(),
-                priority: document.getElementById('filterPriority').value,
-                year: document.getElementById('filterYear').value,
-                stage: document.getElementById('filterStage').value,
-                sales: document.getElementById('filterSales').value,
-                consultant: document.getElementById('filterConsultant').value,
-                contractor: document.getElementById('filterContractor').value,
-                facility: document.getElementById('filterFacility').value,
-                product: document.getElementById('filterProduct').value,
-                package: document.getElementById('filterPackage').value
-            };
+            try {
+                activeFilters = {
+                    searchTerm: document.getElementById('searchDeals') ? document.getElementById('searchDeals').value.toLowerCase() : '',
+                    priority: document.getElementById('filterPriority') ? document.getElementById('filterPriority').value : 'all',
+                    year: document.getElementById('filterYear') ? document.getElementById('filterYear').value : 'all',
+                    stage: document.getElementById('filterStage') ? document.getElementById('filterStage').value : 'all',
+                    sales: document.getElementById('filterSales') ? document.getElementById('filterSales').value : 'all',
+                    consultant: document.getElementById('filterConsultant') ? document.getElementById('filterConsultant').value : 'all',
+                    contractor: document.getElementById('filterContractor') ? document.getElementById('filterContractor').value : 'all',
+                    facility: document.getElementById('filterFacility') ? document.getElementById('filterFacility').value : 'all',
+                    product: document.getElementById('filterProduct') ? document.getElementById('filterProduct').value : 'all',
+                    package: document.getElementById('filterPackage') ? document.getElementById('filterPackage').value : 'all'
+                };
+            } catch (error) {
+                console.error("Error saving active filters:", error);
+            }
         }
         
         // Fungsi untuk filter deals
@@ -5700,7 +5766,7 @@
             }
         }
         
-        // Fungsi untuk render deals yang sudah difilter
+        // PERBAIKAN: Fungsi untuk render deals yang sudah difilter dengan merge deal card
         function renderFilteredDeals(filteredDeals) {
             const pipelineStage = document.getElementById('pipelines-stage');
             if (!pipelineStage) return;
@@ -5718,10 +5784,34 @@
             }
             
             if (currentView === 'card') {
+                // Group deals by name untuk merge
+                const dealsByName = {};
                 filteredDeals.forEach(deal => {
-                    const dealCard = renderDeal(deal);
-                    pipelineStage.appendChild(dealCard);
+                    const dealName = deal.dealName?.toLowerCase().trim();
+                    if (!dealName) return;
+                    
+                    if (!dealsByName[dealName]) {
+                        dealsByName[dealName] = [];
+                    }
+                    dealsByName[dealName].push(deal);
                 });
+                
+                // Render hanya satu card per nama deal (merge)
+                Object.values(dealsByName).forEach(dealGroup => {
+                    if (dealGroup.length > 0) {
+                        // Ambil deal dengan nilai tertinggi atau deal pertama
+                        const displayDeal = dealGroup.reduce((prev, current) => {
+                            return (prev.value || 0) > (current.value || 0) ? prev : current;
+                        });
+                        
+                        const dealCard = renderDeal(displayDeal);
+                        pipelineStage.appendChild(dealCard);
+                        
+                        // Setup event listeners untuk merge feature
+                        setupMergeDealCardEvents(dealCard, displayDeal);
+                    }
+                });
+                
                 initSortable();
             } else {
                 const table = document.createElement('table');
@@ -5820,16 +5910,27 @@
         // Fungsi untuk mereset semua filter
         function resetFilters() {
             // Reset filter di UI
-            document.getElementById('filterPriority').value = 'all';
-            document.getElementById('filterYear').value = 'all';
-            document.getElementById('filterStage').value = 'all';
-            document.getElementById('filterSales').value = 'all';
-            document.getElementById('filterConsultant').value = 'all';
-            document.getElementById('filterContractor').value = 'all';
-            document.getElementById('filterFacility').value = 'all';
-            document.getElementById('filterProduct').value = 'all';
-            document.getElementById('filterPackage').value = 'all';
-            document.getElementById('searchDeals').value = '';
+            const filterPriority = document.getElementById('filterPriority');
+            const filterYear = document.getElementById('filterYear');
+            const filterStage = document.getElementById('filterStage');
+            const filterSales = document.getElementById('filterSales');
+            const filterConsultant = document.getElementById('filterConsultant');
+            const filterContractor = document.getElementById('filterContractor');
+            const filterFacility = document.getElementById('filterFacility');
+            const filterProduct = document.getElementById('filterProduct');
+            const filterPackage = document.getElementById('filterPackage');
+            const searchDeals = document.getElementById('searchDeals');
+            
+            if (filterPriority) filterPriority.value = 'all';
+            if (filterYear) filterYear.value = 'all';
+            if (filterStage) filterStage.value = 'all';
+            if (filterSales) filterSales.value = 'all';
+            if (filterConsultant) filterConsultant.value = 'all';
+            if (filterContractor) filterContractor.value = 'all';
+            if (filterFacility) filterFacility.value = 'all';
+            if (filterProduct) filterProduct.value = 'all';
+            if (filterPackage) filterPackage.value = 'all';
+            if (searchDeals) searchDeals.value = '';
             
             // Reset filter aktif
             activeFilters = {
@@ -5936,9 +6037,14 @@
                 exportExcelBtn.addEventListener('click', openExportModal);
             }
             
-            document.getElementById('cancelExportBtn').addEventListener('click', closeExportModal);
-            document.getElementById('confirmExportBtn').addEventListener('click', exportToExcel);
-            document.getElementById('exportDateRange').addEventListener('change', toggleCustomDateRange);
+            const cancelExportBtn = document.getElementById('cancelExportBtn');
+            if (cancelExportBtn) cancelExportBtn.addEventListener('click', closeExportModal);
+            
+            const confirmExportBtn = document.getElementById('confirmExportBtn');
+            if (confirmExportBtn) confirmExportBtn.addEventListener('click', exportToExcel);
+            
+            const exportDateRange = document.getElementById('exportDateRange');
+            if (exportDateRange) exportDateRange.addEventListener('change', toggleCustomDateRange);
         }
         
         // Fungsi untuk menampilkan/menyembunyikan export button berdasarkan role
@@ -5961,9 +6067,13 @@
             if (!exportExcelModal || !exportExcelModalContent) return;
             
             // Reset form
-            document.getElementById('exportDateRange').value = 'all';
-            document.getElementById('exportFormat').value = 'detailed';
-            document.getElementById('customDateRange').classList.add('hidden');
+            const exportDateRange = document.getElementById('exportDateRange');
+            const exportFormat = document.getElementById('exportFormat');
+            const customDateRange = document.getElementById('customDateRange');
+            
+            if (exportDateRange) exportDateRange.value = 'all';
+            if (exportFormat) exportFormat.value = 'detailed';
+            if (customDateRange) customDateRange.classList.add('hidden');
             
             exportExcelModal.classList.remove('hidden');
             exportExcelModalContent.classList.remove('modal-content-leave-active');
@@ -5987,10 +6097,12 @@
         
         // Fungsi untuk menampilkan/menyembunyikan input tanggal kustom
         function toggleCustomDateRange() {
-            const dateRange = document.getElementById('exportDateRange').value;
+            const dateRange = document.getElementById('exportDateRange');
             const customDateRange = document.getElementById('customDateRange');
             
-            if (dateRange === 'custom') {
+            if (!dateRange || !customDateRange) return;
+            
+            if (dateRange.value === 'custom') {
                 customDateRange.classList.remove('hidden');
             } else {
                 customDateRange.classList.add('hidden');
@@ -5999,14 +6111,16 @@
         
         // Fungsi untuk mendapatkan data berdasarkan rentang tanggal
         function getDealsByDateRange() {
-            const dateRange = document.getElementById('exportDateRange').value;
+            const dateRange = document.getElementById('exportDateRange');
             const startDateInput = document.getElementById('exportStartDate');
             const endDateInput = document.getElementById('exportEndDate');
             
+            if (!dateRange) return deals;
+            
             let startDate, endDate;
             
-            if (dateRange === 'custom') {
-                if (!startDateInput.value || !endDateInput.value) {
+            if (dateRange.value === 'custom') {
+                if (!startDateInput || !endDateInput || !startDateInput.value || !endDateInput.value) {
                     showToast("Harap pilih tanggal mulai dan tanggal akhir", 3000);
                     return null;
                 }
@@ -6016,7 +6130,7 @@
             } else {
                 const now = new Date();
                 
-                switch (dateRange) {
+                switch (dateRange.value) {
                     case 'this_month':
                         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
                         endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
@@ -6060,12 +6174,13 @@
                 return;
             }
             
-            const exportFormat = document.getElementById('exportFormat').value;
+            const exportFormat = document.getElementById('exportFormat');
+            const formatValue = exportFormat ? exportFormat.value : 'detailed';
             
             try {
                 let worksheetData;
                 
-                if (exportFormat === 'detailed') {
+                if (formatValue === 'detailed') {
                     worksheetData = prepareDetailedExportData(filteredDeals);
                 } else {
                     worksheetData = prepareSummaryExportData(filteredDeals);
@@ -6079,9 +6194,10 @@
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Sales Pipeline Data");
                 
                 // Generate nama file
-                const dateRange = document.getElementById('exportDateRange').value;
-                const formatType = exportFormat === 'detailed' ? 'Detail' : 'Ringkasan';
-                const fileName = `Sales_Pipeline_${formatType}_${dateRange}_${new Date().toISOString().split('T')[0]}.xlsx`;
+                const dateRange = document.getElementById('exportDateRange');
+                const dateRangeValue = dateRange ? dateRange.value : 'all';
+                const formatType = formatValue === 'detailed' ? 'Detail' : 'Ringkasan';
+                const fileName = `Sales_Pipeline_${formatType}_${dateRangeValue}_${new Date().toISOString().split('T')[0]}.xlsx`;
                 
                 // Export ke file
                 XLSX.writeFile(workbook, fileName);
@@ -6091,7 +6207,7 @@
                 
                 // Log aktivitas
                 activitiesCollection.add({
-                    message: `Data diekspor ke Excel (${formatType}, ${dateRange}) oleh ${auth.currentUser.email}.`,
+                    message: `Data diekspor ke Excel (${formatType}, ${dateRangeValue}) oleh ${auth.currentUser.email}.`,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                     userEmail: auth.currentUser.email,
                     read: false
@@ -6193,6 +6309,8 @@
         // Fungsi untuk menambahkan field kontraktor baru
         function addContractorField(initialValue = '') {
             const contractorListDiv = document.getElementById('contractorList');
+            if (!contractorListDiv) return;
+            
             const newContractorDiv = document.createElement('div');
             newContractorDiv.className = 'flex items-center space-x-2 mb-2';
         
@@ -6217,37 +6335,43 @@
                 const newTextInput = document.getElementById(inputId);
                 if (uniqueContractors.has(initialValue)) {
                     newSelect.value = initialValue;
-                    newTextInput.value = '';
+                    if (newTextInput) newTextInput.value = '';
                 } else {
-                    newSelect.value = '';
-                    newTextInput.value = initialValue;
+                    if (newSelect) newSelect.value = '';
+                    if (newTextInput) newTextInput.value = initialValue;
                 }
             }
         
             const newSelect = document.getElementById(selectId);
             const newTextInput = document.getElementById(inputId);
         
-            newSelect.addEventListener('change', () => {
-                if (newSelect.value !== '') {
-                    newTextInput.value = '';
-                }
-            });
+            if (newSelect && newTextInput) {
+                newSelect.addEventListener('change', () => {
+                    if (newSelect.value !== '') {
+                        newTextInput.value = '';
+                    }
+                });
         
-            newTextInput.addEventListener('input', () => {
-                if (newTextInput.value.trim() !== '') {
-                    newSelect.value = '';
-                }
-            });
+                newTextInput.addEventListener('input', () => {
+                    if (newTextInput.value.trim() !== '') {
+                        newSelect.value = '';
+                    }
+                });
+            }
         }
         
         // Fungsi untuk menghapus field kontraktor
         function removeContractorField(buttonElement) {
-            buttonElement.closest('.flex').remove();
+            if (buttonElement && buttonElement.closest('.flex')) {
+                buttonElement.closest('.flex').remove();
+            }
         }
         
         // Fungsi untuk menambahkan field produk baru
         function addProductField(initialValue = '') {
             const productListDiv = document.getElementById('productList');
+            if (!productListDiv) return;
+            
             const newProductDiv = document.createElement('div');
             newProductDiv.className = 'flex items-center space-x-2 mb-2';
         
@@ -6276,44 +6400,52 @@
             const newSelect = document.getElementById(selectId);
             const newTextInput = document.getElementById(inputId);
         
-            Array.from(uniqueProducts).sort().forEach(value => {
-                if (value && !['Fire', 'Suppresion', 'Vesda', 'Maintenance', 'Fire - Water', 'Mechanical', 'FAS-FSS-FF', 'FAS&FSS'].includes(value)) {
-                    const option = document.createElement('option');
+            if (newSelect) {
+                Array.from(uniqueProducts).sort().forEach(value => {
+                    if (value && !['Fire', 'Suppresion', 'Vesda', 'Maintenance', 'Fire - Water', 'Mechanical', 'FAS-FSS-FF', 'FAS&FSS'].includes(value)) {
+                        const option = document.createElement('option');
                         option.value = value;
                         option.textContent = value;
                         newSelect.appendChild(option);
-                }
-            });
+                    }
+                });
         
-            if (initialValue) {
-                if (Array.from(newSelect.options).some(option => option.value === initialValue)) {
-                    newSelect.value = initialValue;
-                    newTextInput.value = '';
-                } else {
-                    newSelect.value = '';
-                    newTextInput.value = initialValue;
+                if (initialValue) {
+                    const options = Array.from(newSelect.options);
+                    const hasOption = options.some(option => option.value === initialValue);
+                    if (hasOption) {
+                        newSelect.value = initialValue;
+                        if (newTextInput) newTextInput.value = '';
+                    } else {
+                        newSelect.value = '';
+                        if (newTextInput) newTextInput.value = initialValue;
+                    }
+                }
+        
+                if (newTextInput) {
+                    newSelect.addEventListener('change', () => {
+                        if (newSelect.value !== '') {
+                            newTextInput.value = '';
+                        }
+                    });
+        
+                    newTextInput.addEventListener('input', () => {
+                        if (newTextInput.value.trim() !== '') {
+                            newSelect.value = '';
+                        }
+                    });
                 }
             }
-        
-            newSelect.addEventListener('change', () => {
-                if (newSelect.value !== '') {
-                    newTextInput.value = '';
-                }
-            });
-        
-            newTextInput.addEventListener('input', () => {
-                if (newTextInput.value.trim() !== '') {
-                    newSelect.value = '';
-                }
-            });
         }
         
         // Fungsi untuk menghapus field produk
         function removeProductField(buttonElement) {
-            buttonElement.closest('.flex').remove();
+            if (buttonElement && buttonElement.closest('.flex')) {
+                buttonElement.closest('.flex').remove();
+            }
         }
         
-        // Fungsi untuk membuka modal deal
+        // PERBAIKAN: Fungsi untuk membuka modal deal dengan error handling lengkap
         async function openDealModal(dealId = null) {
             const dealModal = document.getElementById('dealModal');
             const modalTitle = document.getElementById('modalTitle');
@@ -6327,15 +6459,26 @@
             }
             
             try {
-                dealForm.reset();
-                document.getElementById('dealId').value = '';
-                document.getElementById('value').value = '';
-                document.getElementById('beforeDiscount').value = '';
+                // Reset form
+                if (dealForm) dealForm.reset();
+                
+                const dealIdInput = document.getElementById('dealId');
+                const valueInput = document.getElementById('value');
+                const beforeDiscountInput = document.getElementById('beforeDiscount');
+                
+                if (dealIdInput) dealIdInput.value = '';
+                if (valueInput) valueInput.value = '';
+                if (beforeDiscountInput) beforeDiscountInput.value = '';
             
-                document.getElementById('newOwner').value = '';
-                document.getElementById('newPic').value = '';
-                document.getElementById('newPackage').value = '';
-                document.getElementById('newFacility').value = '';
+                const newOwnerInput = document.getElementById('newOwner');
+                const newPicInput = document.getElementById('newPic');
+                const newPackageInput = document.getElementById('newPackage');
+                const newFacilityInput = document.getElementById('newFacility');
+                
+                if (newOwnerInput) newOwnerInput.value = '';
+                if (newPicInput) newPicInput.value = '';
+                if (newPackageInput) newPackageInput.value = '';
+                if (newFacilityInput) newFacilityInput.value = '';
                 
                 if (consultantSearchInput) {
                     consultantSearchInput.value = '';
@@ -6351,7 +6494,8 @@
                 populateDropdown('pic', uniquePICs);
                 populateDropdown('owner', uniqueOwners);
             
-                document.getElementById('productList').innerHTML = '';
+                const productList = document.getElementById('productList');
+                if (productList) productList.innerHTML = '';
             
                 // Update facility dropdown
                 if (facilitySelect) {
@@ -6394,55 +6538,76 @@
                     });
                 }
             
-                document.getElementById('contractorList').innerHTML = '';
+                const contractorList = document.getElementById('contractorList');
+                if (contractorList) contractorList.innerHTML = '';
                 
                 if (dealId) {
                     modalTitle.textContent = 'Edit Deal';
                     const deal = deals.find(d => d.id === dealId);
                     if (deal) {
-                        document.getElementById('dealId').value = deal.id;
-                        document.getElementById('salesName').value = deal.salesName || '';
-                        document.getElementById('dealName').value = deal.dealName || '';
+                        const dealIdElement = document.getElementById('dealId');
+                        if (dealIdElement) dealIdElement.value = deal.id;
+                        
+                        const salesNameSelect = document.getElementById('salesName');
+                        if (salesNameSelect) salesNameSelect.value = deal.salesName || '';
+                        
+                        const dealNameInput = document.getElementById('dealName');
+                        if (dealNameInput) dealNameInput.value = deal.dealName || '';
                         
                         // Handle value dan beforeDiscount
                         const beforeDiscountInput = document.getElementById('beforeDiscount');
-                        beforeDiscountInput.value = deal.beforeDiscount ? new Intl.NumberFormat('id-ID').format(deal.beforeDiscount) : '';
+                        if (beforeDiscountInput) {
+                            beforeDiscountInput.value = deal.beforeDiscount ? new Intl.NumberFormat('id-ID').format(deal.beforeDiscount) : '';
+                        }
                         
-                        document.getElementById('discount').value = deal.discount || '';
+                        const discountInput = document.getElementById('discount');
+                        if (discountInput) discountInput.value = deal.discount || '';
+                        
                         calculateValueFromBeforeDiscount();
                         
                         // Handle package
-                        if (deal.package && packageSelect && Array.from(packageSelect.options).some(option => option.value === deal.package)) {
-                            packageSelect.value = deal.package;
-                            document.getElementById('newPackage').value = '';
-                        } else {
-                            if (packageSelect) packageSelect.value = '';
-                            document.getElementById('newPackage').value = deal.package || '';
+                        if (deal.package && packageSelect) {
+                            const options = Array.from(packageSelect.options);
+                            const hasOption = options.some(option => option.value === deal.package);
+                            if (hasOption) {
+                                packageSelect.value = deal.package;
+                                if (newPackageInput) newPackageInput.value = '';
+                            } else {
+                                packageSelect.value = '';
+                                if (newPackageInput) newPackageInput.value = deal.package || '';
+                            }
                         }
-                        
-                        if (deal.product && Array.isArray(deal.product) && deal.product.length > 0) {
-                            deal.product.forEach(product => {
-                                addProductField(product);
-                            });
-                        } else if (deal.product) {
-                            addProductField(deal.product);
+            
+                        if (deal.product) {
+                            if (Array.isArray(deal.product) && deal.product.length > 0) {
+                                deal.product.forEach(product => {
+                                    addProductField(product);
+                                });
+                            } else {
+                                addProductField(deal.product);
+                            }
                         } else {
                             addProductField(); 
                         }
             
-                        if (deal.facility && facilitySelect && Array.from(facilitySelect.options).some(option => option.value === deal.facility)) {
-                            facilitySelect.value = deal.facility;
-                            document.getElementById('newFacility').value = '';
-                        } else {
-                            if (facilitySelect) facilitySelect.value = '';
-                            document.getElementById('newFacility').value = deal.facility || '';
+                        if (deal.facility && facilitySelect) {
+                            const options = Array.from(facilitySelect.options);
+                            const hasOption = options.some(option => option.value === deal.facility);
+                            if (hasOption) {
+                                facilitySelect.value = deal.facility;
+                                if (newFacilityInput) newFacilityInput.value = '';
+                            } else {
+                                facilitySelect.value = '';
+                                if (newFacilityInput) newFacilityInput.value = deal.facility || '';
+                            }
                         }
                         
+                        const ownerSelect = document.getElementById('owner');
                         if (deal.owner && uniqueOwners.has(deal.owner)) {
-                            document.getElementById('owner').value = deal.owner;
+                            if (ownerSelect) ownerSelect.value = deal.owner;
                         } else {
-                            document.getElementById('owner').value = '';
-                            document.getElementById('newOwner').value = deal.owner || '';
+                            if (ownerSelect) ownerSelect.value = '';
+                            if (newOwnerInput) newOwnerInput.value = deal.owner || '';
                         }
             
                         if (consultantSearchInput) {
@@ -6452,27 +6617,37 @@
                             consultantHiddenInput.value = deal.consultant || '';
                         }
             
-                        if (deal.contractor && Array.isArray(deal.contractor) && deal.contractor.length > 0) {
-                            deal.contractor.forEach(contractor => {
-                                addContractorField(contractor);
-                            });
-                        } else if (deal.contractor) {
-                            addContractorField(deal.contractor);
-                        } else {
-                            addContractorField(); 
+                        if (deal.contractor) {
+                            if (Array.isArray(deal.contractor) && deal.contractor.length > 0) {
+                                deal.contractor.forEach(contractor => {
+                                    addContractorField(contractor);
+                                });
+                            } else if (deal.contractor) {
+                                addContractorField(deal.contractor);
+                            } else {
+                                addContractorField(); 
+                            }
                         }
             
+                        const picSelect = document.getElementById('pic');
                         if (deal.pic && uniquePICs.has(deal.pic)) {
-                            document.getElementById('pic').value = deal.pic;
+                            if (picSelect) picSelect.value = deal.pic;
                         } else {
-                            document.getElementById('pic').value = '';
-                            document.getElementById('newPic').value = deal.pic || '';
+                            if (picSelect) picSelect.value = '';
+                            if (newPicInput) newPicInput.value = deal.pic || '';
                         }
             
-                        document.getElementById('planPO').value = deal.planPO || '';
-                        document.getElementById('stage').value = deal.stage || DEFAULT_STAGE;
-                        document.getElementById('priority').value = deal.priority || 'Priority';
-                        document.getElementById('remarks').value = deal.remarks || '';
+                        const planPOSelect = document.getElementById('planPO');
+                        if (planPOSelect) planPOSelect.value = deal.planPO || '';
+                        
+                        const stageSelect = document.getElementById('stage');
+                        if (stageSelect) stageSelect.value = deal.stage || DEFAULT_STAGE;
+                        
+                        const prioritySelect = document.getElementById('priority');
+                        if (prioritySelect) prioritySelect.value = deal.priority || 'Priority';
+                        
+                        const remarksTextarea = document.getElementById('remarks');
+                        if (remarksTextarea) remarksTextarea.value = deal.remarks || '';
                         
                         // Update progress bar dengan stage yang ada
                         updateProgressBarFromStage(deal.stage);
@@ -6487,13 +6662,18 @@
                     }
                 } else {
                     modalTitle.textContent = 'Tambah Deal Baru';
-                    document.getElementById('stage').value = DEFAULT_STAGE;
-                    document.getElementById('priority').value = 'Priority';
+                    
+                    const stageSelect = document.getElementById('stage');
+                    if (stageSelect) stageSelect.value = DEFAULT_STAGE;
+                    
+                    const prioritySelect = document.getElementById('priority');
+                    if (prioritySelect) prioritySelect.value = 'Priority';
                     
                     const currentUser = auth.currentUser;
                     if (currentUser && currentUserRole === 'user') {
                         const userSalesName = getSalesNameFromEmail(currentUser.email);
-                        document.getElementById('salesName').value = userSalesName;
+                        const salesNameSelect = document.getElementById('salesName');
+                        if (salesNameSelect) salesNameSelect.value = userSalesName;
                     }
                     
                     addContractorField();
@@ -6510,8 +6690,11 @@
                 }
                 
                 dealModal.classList.remove('hidden');
-                document.getElementById('dealModalContent').classList.remove('modal-content-leave-active');
-                document.getElementById('dealModalContent').classList.add('modal-content-enter-active');
+                const dealModalContent = document.getElementById('dealModalContent');
+                if (dealModalContent) {
+                    dealModalContent.classList.remove('modal-content-leave-active');
+                    dealModalContent.classList.add('modal-content-enter-active');
+                }
                 
             } catch (error) {
                 console.error("Error opening deal modal:", error);
@@ -6536,15 +6719,17 @@
         
         // Fungsi untuk menyimpan atau memperbarui deal
         async function saveDeal() {
-            const dealId = document.getElementById('dealId').value;
-            const dealName = document.getElementById('dealName').value;
-            const salesName = document.getElementById('salesName').value;
+            const dealId = document.getElementById('dealId') ? document.getElementById('dealId').value : '';
+            const dealName = document.getElementById('dealName') ? document.getElementById('dealName').value : '';
+            const salesName = document.getElementById('salesName') ? document.getElementById('salesName').value : '';
             
             // Ambil beforeDiscount sebagai input utama
-            const beforeDiscountRaw = document.getElementById('beforeDiscount').value.replace(/[^0-9]/g, '');
+            const beforeDiscountInput = document.getElementById('beforeDiscount');
+            const beforeDiscountRaw = beforeDiscountInput ? beforeDiscountInput.value.replace(/[^0-9]/g, '') : '0';
             const beforeDiscount = parseFloat(beforeDiscountRaw) || 0;
             
-            const discount = parseFloat(document.getElementById('discount').value) || 0;
+            const discountInput = document.getElementById('discount');
+            const discount = discountInput ? parseFloat(discountInput.value) || 0 : 0;
             
             // Hitung value dari beforeDiscount dan discount
             let value = beforeDiscount;
@@ -6552,9 +6737,11 @@
                 value = beforeDiscount * (1 - (discount / 100));
             }
             
-            let packageType = document.getElementById('newPackage').value.trim();
+            const newPackageInput = document.getElementById('newPackage');
+            let packageType = newPackageInput ? newPackageInput.value.trim() : '';
             if (!packageType) {
-                packageType = document.getElementById('package').value;
+                const packageSelect = document.getElementById('package');
+                packageType = packageSelect ? packageSelect.value : '';
             }
             
             // Tambahkan package baru ke uniquePackages jika belum ada
@@ -6564,27 +6751,31 @@
                 updateDropdownOptions();
             }
             
-            const productInputs = document.querySelectorAll('#productList select, #productList input[type="text"]');
+            const productList = document.getElementById('productList');
             const collectedProducts = new Set();
-        
-            for (let i = 0; i < productInputs.length; i += 2) {
-                const selectElement = productInputs[i];
-                const textInputElement = productInputs[i + 1];
-        
-                let productValue = '';
-                if (textInputElement.value.trim() !== '') {
-                    productValue = textInputElement.value.trim();
-                } else if (selectElement.value !== '') {
-                    productValue = selectElement.value;
-                }
-        
-                if (productValue) {
-                    collectedProducts.add(productValue);
+            
+            if (productList) {
+                const productInputs = productList.querySelectorAll('select, input[type="text"]');
+                for (let i = 0; i < productInputs.length; i += 2) {
+                    const selectElement = productInputs[i];
+                    const textInputElement = productInputs[i + 1];
+            
+                    let productValue = '';
+                    if (textInputElement && textInputElement.value.trim() !== '') {
+                        productValue = textInputElement.value.trim();
+                    } else if (selectElement && selectElement.value !== '') {
+                        productValue = selectElement.value;
+                    }
+            
+                    if (productValue) {
+                        collectedProducts.add(productValue);
+                    }
                 }
             }
             const productsToSave = Array.from(collectedProducts);
         
-            let facility = document.getElementById('newFacility').value.trim();
+            const newFacilityInput = document.getElementById('newFacility');
+            let facility = newFacilityInput ? newFacilityInput.value.trim() : '';
             if (!facility) {
                 facility = facilitySelect ? facilitySelect.value : '';
             }
@@ -6596,9 +6787,11 @@
                 updateDropdownOptions();
             }
             
-            let owner = document.getElementById('newOwner').value.trim();
+            const newOwnerInput = document.getElementById('newOwner');
+            let owner = newOwnerInput ? newOwnerInput.value.trim() : '';
             if (!owner) {
-                owner = document.getElementById('owner').value;
+                const ownerSelect = document.getElementById('owner');
+                owner = ownerSelect ? ownerSelect.value : '';
             }
             
             // Tambahkan owner baru ke uniqueOwners jika belum ada
@@ -6614,29 +6807,34 @@
                 console.log(`New consultant "${consultant}" added to local list.`);
             }
         
-            const contractorInputs = document.querySelectorAll('#contractorList select, #contractorList input[type="text"]');
+            const contractorList = document.getElementById('contractorList');
             const collectedContractors = new Set();
-        
-            for (let i = 0; i < contractorInputs.length; i += 2) {
-                const selectElement = contractorInputs[i];
-                const textInputElement = contractorInputs[i + 1];
-        
-                let contractorValue = '';
-                if (textInputElement.value.trim() !== '') {
-                    contractorValue = textInputElement.value.trim();
-                } else if (selectElement.value !== '') {
-                    contractorValue = selectElement.value;
-                }
-        
-                if (contractorValue) {
-                    collectedContractors.add(contractorValue);
+            
+            if (contractorList) {
+                const contractorInputs = contractorList.querySelectorAll('select, input[type="text"]');
+                for (let i = 0; i < contractorInputs.length; i += 2) {
+                    const selectElement = contractorInputs[i];
+                    const textInputElement = contractorInputs[i + 1];
+            
+                    let contractorValue = '';
+                    if (textInputElement && textInputElement.value.trim() !== '') {
+                        contractorValue = textInputElement.value.trim();
+                    } else if (selectElement && selectElement.value !== '') {
+                        contractorValue = selectElement.value;
+                    }
+            
+                    if (contractorValue) {
+                        collectedContractors.add(contractorValue);
+                    }
                 }
             }
             const contractorsToSave = Array.from(collectedContractors);
         
-            let pic = document.getElementById('newPic').value.trim();
+            const newPicInput = document.getElementById('newPic');
+            let pic = newPicInput ? newPicInput.value.trim() : '';
             if (!pic) {
-                pic = document.getElementById('pic').value;
+                const picSelect = document.getElementById('pic');
+                pic = picSelect ? picSelect.value : '';
             }
             
             // Tambahkan pic baru ke uniquePICs jika belum ada
@@ -6646,11 +6844,20 @@
                 updateDropdownOptions();
             }
         
-            const planPO = document.getElementById('planPO').value;
-            const stage = document.getElementById('stage').value;
-            const priority = document.getElementById('priority').value;
-            const remarks = document.getElementById('remarks').value;
-            const progress = document.getElementById('progressValue') ? document.getElementById('progressValue').value : 0;
+            const planPOSelect = document.getElementById('planPO');
+            const planPO = planPOSelect ? planPOSelect.value : '';
+            
+            const stageSelect = document.getElementById('stage');
+            const stage = stageSelect ? stageSelect.value : DEFAULT_STAGE;
+            
+            const prioritySelect = document.getElementById('priority');
+            const priority = prioritySelect ? prioritySelect.value : 'Priority';
+            
+            const remarksTextarea = document.getElementById('remarks');
+            const remarks = remarksTextarea ? remarksTextarea.value : '';
+            
+            const progressValueInput = document.getElementById('progressValue');
+            const progress = progressValueInput ? parseInt(progressValueInput.value) || 0 : 0;
         
             if (!dealName) {
                 showToast("Nama Proyek harus diisi.", 3000);
@@ -6687,7 +6894,7 @@
                 stage: stage,
                 priority: priority,
                 remarks: remarks,
-                progress: parseInt(progress) || 0,
+                progress: progress,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
         
@@ -6757,10 +6964,17 @@
             
             dealToDeleteId = dealId;
             dealToDeleteName = dealName;
-            document.getElementById('dealToDeleteName').textContent = dealName;
-            document.getElementById('deleteModal').classList.remove('hidden');
-            document.getElementById('deleteModalContent').classList.remove('modal-content-leave-active');
-            document.getElementById('deleteModalContent').classList.add('modal-content-enter-active');
+            const dealToDeleteNameElement = document.getElementById('dealToDeleteName');
+            if (dealToDeleteNameElement) dealToDeleteNameElement.textContent = dealName;
+            
+            const deleteModal = document.getElementById('deleteModal');
+            const deleteModalContent = document.getElementById('deleteModalContent');
+            
+            if (deleteModal) deleteModal.classList.remove('hidden');
+            if (deleteModalContent) {
+                deleteModalContent.classList.remove('modal-content-leave-active');
+                deleteModalContent.classList.add('modal-content-enter-active');
+            }
         }
         
         // Fungsi untuk menutup modal konfirmasi penghapusan
@@ -6836,25 +7050,62 @@
             const modal = document.getElementById('dealDetailModal');
             const modalContent = document.getElementById('dealDetailModalContent');
             
+            if (!modal || !modalContent) return;
+            
             // Isi data deal
-            document.getElementById('dealDetailTitle').textContent = deal.dealName || 'Detail Deal';
-            document.getElementById('detailSalesName').textContent = deal.salesName || '-';
-            document.getElementById('detailValue').textContent = `Rp ${formatNumber(deal.value) || '0'}`;
-            document.getElementById('detailDiscount').textContent = deal.discount ? `${deal.discount}%` : '-';
-            document.getElementById('detailBeforeDiscount').textContent = deal.beforeDiscount ? `Rp ${formatNumber(deal.beforeDiscount)}` : '-';
-            document.getElementById('detailPackage').textContent = deal.package || '-';
-            document.getElementById('detailProduct').textContent = Array.isArray(deal.product) ? deal.product.join(', ') : (deal.product || '-');
-            document.getElementById('detailFacility').textContent = deal.facility || '-';
-            document.getElementById('detailOwner').textContent = deal.owner || '-';
-            document.getElementById('detailConsultant').textContent = deal.consultant || '-';
-            document.getElementById('detailContractor').textContent = Array.isArray(deal.contractor) ? deal.contractor.join(', ') : (deal.contractor || '-');
-            document.getElementById('detailPIC').textContent = deal.pic || '-';
-            document.getElementById('detailPlanPO').textContent = deal.planPO || '-';
-            document.getElementById('detailStage').textContent = deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-';
-            document.getElementById('detailPriority').textContent = deal.priority || 'Priority';
-            document.getElementById('detailCreatedDate').textContent = formatDate(deal.createdAt);
-            document.getElementById('detailProgress').textContent = `${deal.progress || 0}%`;
-            document.getElementById('detailRemarks').textContent = deal.remarks || '-';
+            const dealDetailTitle = document.getElementById('dealDetailTitle');
+            if (dealDetailTitle) dealDetailTitle.textContent = deal.dealName || 'Detail Deal';
+            
+            const detailSalesName = document.getElementById('detailSalesName');
+            if (detailSalesName) detailSalesName.textContent = deal.salesName || '-';
+            
+            const detailValue = document.getElementById('detailValue');
+            if (detailValue) detailValue.textContent = `Rp ${formatNumber(deal.value) || '0'}`;
+            
+            const detailDiscount = document.getElementById('detailDiscount');
+            if (detailDiscount) detailDiscount.textContent = deal.discount ? `${deal.discount}%` : '-';
+            
+            const detailBeforeDiscount = document.getElementById('detailBeforeDiscount');
+            if (detailBeforeDiscount) detailBeforeDiscount.textContent = deal.beforeDiscount ? `Rp ${formatNumber(deal.beforeDiscount)}` : '-';
+            
+            const detailPackage = document.getElementById('detailPackage');
+            if (detailPackage) detailPackage.textContent = deal.package || '-';
+            
+            const detailProduct = document.getElementById('detailProduct');
+            if (detailProduct) detailProduct.textContent = Array.isArray(deal.product) ? deal.product.join(', ') : (deal.product || '-');
+            
+            const detailFacility = document.getElementById('detailFacility');
+            if (detailFacility) detailFacility.textContent = deal.facility || '-';
+            
+            const detailOwner = document.getElementById('detailOwner');
+            if (detailOwner) detailOwner.textContent = deal.owner || '-';
+            
+            const detailConsultant = document.getElementById('detailConsultant');
+            if (detailConsultant) detailConsultant.textContent = deal.consultant || '-';
+            
+            const detailContractor = document.getElementById('detailContractor');
+            if (detailContractor) detailContractor.textContent = Array.isArray(deal.contractor) ? deal.contractor.join(', ') : (deal.contractor || '-');
+            
+            const detailPIC = document.getElementById('detailPIC');
+            if (detailPIC) detailPIC.textContent = deal.pic || '-';
+            
+            const detailPlanPO = document.getElementById('detailPlanPO');
+            if (detailPlanPO) detailPlanPO.textContent = deal.planPO || '-';
+            
+            const detailStage = document.getElementById('detailStage');
+            if (detailStage) detailStage.textContent = deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-';
+            
+            const detailPriority = document.getElementById('detailPriority');
+            if (detailPriority) detailPriority.textContent = deal.priority || 'Priority';
+            
+            const detailCreatedDate = document.getElementById('detailCreatedDate');
+            if (detailCreatedDate) detailCreatedDate.textContent = formatDate(deal.createdAt);
+            
+            const detailProgress = document.getElementById('detailProgress');
+            if (detailProgress) detailProgress.textContent = `${deal.progress || 0}%`;
+            
+            const detailRemarks = document.getElementById('detailRemarks');
+            if (detailRemarks) detailRemarks.textContent = deal.remarks || '-';
             
             // Load dan tampilkan komentar
             currentDealIdForComments = deal.id;
@@ -6892,7 +7143,15 @@
             consultantSuggestionsDiv = document.getElementById('consultantSuggestions');
             
             console.log("DOM loaded, elements initialized");
+            
+            // Setup initial event listeners
+            if (window.location.pathname.includes('app.html')) {
+                // Event listener sudah diinisialisasi di initEventListeners()
+            }
         });
+        
+        // Fungsi global untuk dipanggil dari HTML
+        window.openDealDetailModal = openDealDetailModal;
     </script>
 </body>
 </html>
