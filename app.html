@@ -20,12 +20,30 @@
             background-color: #f8fafc;
         }
         
-        /* Dashboard Priority Styles - Disederhanakan */
+        /* Dashboard Priority Styles - DIMODIFIKASI: Hanya 5 priority dalam 1 row */
         .priority-dashboard {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(5, 1fr);
             gap: 1rem;
             margin-bottom: 2rem;
+        }
+        
+        @media (max-width: 1200px) {
+            .priority-dashboard {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .priority-dashboard {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .priority-dashboard {
+                grid-template-columns: 1fr;
+            }
         }
         
         .priority-card {
@@ -68,16 +86,6 @@
         .priority-card.ontrack {
             border-left-color: #1d4ed8;
             background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-        }
-        
-        .priority-card.completed {
-            border-left-color: #7c3aed;
-            background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
-        }
-        
-        .priority-card.lost {
-            border-left-color: #6b7280;
-            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
         }
         
         .priority-header {
@@ -368,17 +376,11 @@
             .deal-card {
                 width: calc(50% - 0.5rem);
             }
-            .priority-dashboard {
-                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            }
         }
 
         @media (max-width: 768px) {
             .deal-card {
                 width: 100%;
-            }
-            .priority-dashboard {
-                grid-template-columns: 1fr;
             }
         }
 
@@ -546,13 +548,42 @@
             margin-bottom: 1rem;
         }
 
-        /* CSS untuk modal detail deal 2 kolom */
+        /* CSS untuk modal detail deal DIMODIFIKASI: 2 kolom dengan komentar di kanan */
+        #dealDetailModalContent {
+            max-width: 1000px !important;
+            width: 95% !important;
+        }
+        
+        #dealDetailModalContent .detail-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+        }
+        
         #dealDetailModalContent .detail-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 1rem;
         }
-        #dealDetailModalContent .detail-item {
+        
+        #dealDetailModalContent .comments-section {
+            margin-top: 0;
+            border-top: none;
+            padding-top: 0;
+            border-left: 1px solid #e5e7eb;
+            padding-left: 2rem;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #dealDetailModalContent .comments-list {
+            flex-grow: 1;
+            max-height: 400px;
+        }
+        
+        .detail-item {
             /* Gaya untuk setiap item detail jika diperlukan */
         }
 
@@ -661,6 +692,19 @@
             .list-view th,
             .list-view td {
                 padding: 0.5rem 0.75rem;
+            }
+            
+            #dealDetailModalContent .detail-container {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+            
+            #dealDetailModalContent .comments-section {
+                border-left: none;
+                border-top: 1px solid #e5e7eb;
+                padding-left: 0;
+                padding-top: 1.5rem;
+                margin-top: 1.5rem;
             }
         }
 
@@ -966,11 +1010,6 @@
             color: #065f46;
         }
 
-        .priority-badge-lost {
-            background-color: #f3f4f6;
-            color: #374151;
-        }
-
         .priority-badge-behind {
             background-color: #ffedd5;
             color: #9a3412;
@@ -979,11 +1018,6 @@
         .priority-badge-ontrack {
             background-color: #dbeafe;
             color: #1e40af;
-        }
-
-        .priority-badge-completed {
-            background-color: #f3e8ff;
-            color: #6b21a8;
         }
 
         /* Modal untuk daftar detail project */
@@ -1326,6 +1360,17 @@
         .edit-status-btn:hover {
             background: #059669;
         }
+        
+        /* PERBAIKAN: Tombol Tutup Modal yang Selalu Terlihat */
+        .modal-actions {
+            position: sticky;
+            bottom: 0;
+            background: white;
+            padding-top: 1rem;
+            border-top: 1px solid #e5e7eb;
+            margin-top: auto;
+            z-index: 10;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -1372,7 +1417,7 @@
             </div>
         </header>
 
-        <!-- Priority Dashboard - Disederhanakan -->
+        <!-- Priority Dashboard - DIMODIFIKASI: Hanya 5 priority (tanpa Lost dan Completed) -->
         <div class="priority-dashboard mb-8">
             <!-- Priority cards akan diisi oleh JavaScript -->
         </div>
@@ -1524,10 +1569,8 @@
                                 <option value="Priority">Priority</option>
                                 <option value="Hot Priority">Hot Priority</option>
                                 <option value="Win">Win</option>
-                                <option value="Lost">Lost</option>
                                 <option value="Behind">Behind</option>
                                 <option value="On Track">On Track</option>
-                                <option value="Completed">Completed</option>
                             </select>
                         </div>
                         
@@ -1654,10 +1697,8 @@
                                         <option value="Priority">Priority</option>
                                         <option value="Hot Priority">Hot Priority</option>
                                         <option value="Win">Win</option>
-                                        <option value="Lost">Lost</option>
                                         <option value="Behind">Behind</option>
                                         <option value="On Track">On Track</option>
-                                        <option value="Completed">Completed</option>
                                     </select>
                                 </div>
                             </div>
@@ -1845,7 +1886,7 @@
                         <textarea id="remarks" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" rows="3" placeholder="Tambahkan catatan atau deskripsi tambahan..."></textarea>
                     </div>
                     
-                    <div class="flex justify-end space-x-3 mt-6">
+                    <div class="flex justify-end space-x-3 mt-6 modal-actions">
                         <button type="button" id="cancelDealBtn" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
                             Batal
                         </button>
@@ -1857,97 +1898,101 @@
             </div>
         </div>
 
-        <!-- Deal Detail Modal dengan Comments -->
+        <!-- Deal Detail Modal dengan Comments - DIMODIFIKASI: Layout 2 kolom -->
         <div id="dealDetailModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
-            <div class="bg-white rounded-xl p-8 w-full max-w-4xl shadow-2xl modal-content-enter" id="dealDetailModalContent">
+            <div class="bg-white rounded-xl p-8 w-full max-w-6xl shadow-2xl modal-content-enter max-h-[90vh] overflow-y-auto" id="dealDetailModalContent">
                 <h2 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900" id="dealDetailTitle">Detail Deal</h2>
-                <div class="detail-grid mb-6">
-                    <div class="detail-item">
-                        <p class="text-gray-700 font-semibold">Nama Sales:</p>
-                        <p id="detailSalesName" class="text-gray-900"></p>
+                
+                <div class="detail-container mb-6">
+                    <!-- Kolom kiri: Detail deal -->
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <p class="text-gray-700 font-semibold">Nama Sales:</p>
+                            <p id="detailSalesName" class="text-gray-900"></p>
+                        </div>
+                        <div class="detail-item">
+                            <p class="text-gray-700 font-semibold">Nilai (IDR):</p>
+                            <p id="detailValue" class="text-gray-900"></p>
+                        </div>
+                        <div class="detail-item">
+                            <p class="text-gray-700 font-semibold">Diskon:</p>
+                            <p id="detailDiscount" class="text-gray-900"></p>
+                        </div>
+                        <div class="detail-item">
+                            <p class="text-gray-700 font-semibold">Sebelum Diskon (IDR):</p>
+                            <p id="detailBeforeDiscount" class="text-gray-900"></p>
+                        </div>
+                        <div class="detail-item">
+                            <p class="text-gray-700 font-semibold">Paket:</p>
+                            <p id="detailPackage" class="text-gray-900"></p>
+                        </div>
+                        <div class="detail-item">
+                            <p class="text-gray-700 font-semibold">Produk:</p>
+                            <p id="detailProduct" class="text-gray-900"></p>
+                        </div>
+                        <div class="detail-item">
+                            <p class="text-gray-700 font-semibold">Fasilitas:</p>
+                            <p id="detailFacility" class="text-gray-900"></p>
+                        </div>
+                        <div class="detail-item">
+                            <p class="text-gray-700 font-semibold">Owner:</p>
+                            <p id="detailOwner" class="text-gray-900"></p>
+                        </div>
+                        <div class="detail-item">
+                            <p class="text-gray-700 font-semibold">Konsultan:</p>
+                            <p id="detailConsultant" class="text-gray-900"></p>
+                        </div>
+                        <div class="detail-item">
+                            <p class="text-gray-700 font-semibold">Kontraktor:</p>
+                            <p id="detailContractor" class="text-gray-900"></p>
+                        </div>
+                        <div class="detail-item">
+                            <p class="text-gray-700 font-semibold">PIC:</p>
+                            <p id="detailPIC" class="text-gray-900"></p>
+                        </div>
+                        <div class="detail-item">
+                            <p class="text-gray-700 font-semibold">Plan PO:</p>
+                            <p id="detailPlanPO" class="text-gray-900"></p>
+                        </div>
+                        <div class="detail-item">
+                            <p class="text-gray-700 font-semibold">Tahap:</p>
+                            <p id="detailStage" class="text-gray-900"></p>
+                        </div>
+                        <div class="detail-item">
+                            <p class="text-gray-700 font-semibold">Priority:</p>
+                            <p id="detailPriority" class="text-gray-900"></p>
+                        </div>
+                        <div class="detail-item">
+                            <p class="text-gray-700 font-semibold">Tanggal Dibuat:</p>
+                            <p id="detailCreatedDate" class="text-gray-900"></p>
+                        </div>
+                        <div class="detail-item">
+                            <p class="text-gray-700 font-semibold">Progress:</p>
+                            <p id="detailProgress" class="text-gray-900"></p>
+                        </div>
+                        <div class="detail-item col-span-2">
+                            <p class="text-gray-700 font-semibold">Remarks:</p>
+                            <p id="detailRemarks" class="text-gray-900"></p>
+                        </div>
                     </div>
-                    <div class="detail-item">
-                        <p class="text-gray-700 font-semibold">Nilai (IDR):</p>
-                        <p id="detailValue" class="text-gray-900"></p>
-                    </div>
-                    <div class="detail-item">
-                        <p class="text-gray-700 font-semibold">Diskon:</p>
-                        <p id="detailDiscount" class="text-gray-900"></p>
-                    </div>
-                    <div class="detail-item">
-                        <p class="text-gray-700 font-semibold">Sebelum Diskon (IDR):</p>
-                        <p id="detailBeforeDiscount" class="text-gray-900"></p>
-                    </div>
-                    <div class="detail-item">
-                        <p class="text-gray-700 font-semibold">Paket:</p>
-                        <p id="detailPackage" class="text-gray-900"></p>
-                    </div>
-                    <div class="detail-item">
-                        <p class="text-gray-700 font-semibold">Produk:</p>
-                        <p id="detailProduct" class="text-gray-900"></p>
-                    </div>
-                    <div class="detail-item">
-                        <p class="text-gray-700 font-semibold">Fasilitas:</p>
-                        <p id="detailFacility" class="text-gray-900"></p>
-                    </div>
-                    <div class="detail-item">
-                        <p class="text-gray-700 font-semibold">Owner:</p>
-                        <p id="detailOwner" class="text-gray-900"></p>
-                    </div>
-                    <div class="detail-item">
-                        <p class="text-gray-700 font-semibold">Konsultan:</p>
-                        <p id="detailConsultant" class="text-gray-900"></p>
-                    </div>
-                    <div class="detail-item">
-                        <p class="text-gray-700 font-semibold">Kontraktor:</p>
-                        <p id="detailContractor" class="text-gray-900"></p>
-                    </div>
-                    <div class="detail-item">
-                        <p class="text-gray-700 font-semibold">PIC:</p>
-                        <p id="detailPIC" class="text-gray-900"></p>
-                    </div>
-                    <div class="detail-item">
-                        <p class="text-gray-700 font-semibold">Plan PO:</p>
-                        <p id="detailPlanPO" class="text-gray-900"></p>
-                    </div>
-                    <div class="detail-item">
-                        <p class="text-gray-700 font-semibold">Tahap:</p>
-                        <p id="detailStage" class="text-gray-900"></p>
-                    </div>
-                    <div class="detail-item">
-                        <p class="text-gray-700 font-semibold">Priority:</p>
-                        <p id="detailPriority" class="text-gray-900"></p>
-                    </div>
-                    <div class="detail-item">
-                        <p class="text-gray-700 font-semibold">Tanggal Dibuat:</p>
-                        <p id="detailCreatedDate" class="text-gray-900"></p>
-                    </div>
-                    <div class="detail-item">
-                        <p class="text-gray-700 font-semibold">Progress:</p>
-                        <p id="detailProgress" class="text-gray-900"></p>
-                    </div>
-                    <div class="detail-item col-span-2">
-                        <p class="text-gray-700 font-semibold">Remarks:</p>
-                        <p id="detailRemarks" class="text-gray-900"></p>
+                    
+                    <!-- Kolom kanan: Comments Section -->
+                    <div class="comments-section">
+                        <div class="comments-header">
+                            <h3 class="text-lg font-semibold text-gray-900">Komentar</h3>
+                            <span class="text-sm text-gray-500" id="detailCommentsCount">0 komentar</span>
+                        </div>
+                        <div class="comments-list" id="detailCommentsList">
+                            <!-- Komentar akan ditampilkan di sini -->
+                        </div>
+                        <div class="comment-input-container">
+                            <textarea id="detailCommentInput" class="comment-input" placeholder="Tulis komentar..."></textarea>
+                            <button type="button" id="detailCommentSubmitBtn" class="comment-submit-btn">Kirim</button>
+                        </div>
                     </div>
                 </div>
                 
-                <!-- Comments Section in Detail Modal -->
-                <div class="comments-section">
-                    <div class="comments-header">
-                        <h3 class="text-lg font-semibold text-gray-900">Komentar</h3>
-                        <span class="text-sm text-gray-500" id="detailCommentsCount">0 komentar</span>
-                    </div>
-                    <div class="comments-list" id="detailCommentsList">
-                        <!-- Komentar akan ditampilkan di sini -->
-                    </div>
-                    <div class="comment-input-container">
-                        <textarea id="detailCommentInput" class="comment-input" placeholder="Tulis komentar..."></textarea>
-                        <button type="button" id="detailCommentSubmitBtn" class="comment-submit-btn">Kirim</button>
-                    </div>
-                </div>
-                
-                <div class="flex justify-end space-x-3 mt-6">
+                <div class="flex justify-end space-x-3 mt-6 modal-actions">
                     <button type="button" id="closeDetailBtn" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
                         Tutup
                     </button>
@@ -1957,7 +2002,7 @@
 
         <!-- Activity Modal -->
         <div id="activityModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
-            <div class="bg-white rounded-xl p-8 w-full max-w-lg shadow-2xl modal-content-enter" id="activityModalContent">
+            <div class="bg-white rounded-xl p-8 w-full max-w-lg shadow-2xl modal-content-enter max-h-[80vh] overflow-y-auto" id="activityModalContent">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center"><i class="fas fa-history mr-3 text-gray-500"></i> Aktivitas Terakhir</h2>
                     <button id="closeActivityBtn" class="text-gray-500 hover:text-gray-700 transition duration-200">
@@ -1967,7 +2012,7 @@
                 <div id="activity-feed-modal" class="space-y-3">
                     <!-- Aktivitas akan dimuat di sini -->
                 </div>
-                <div class="flex justify-end mt-6">
+                <div class="flex justify-end mt-6 modal-actions">
                     <button id="closeActivityFooterBtn" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
                         Tutup
                     </button>
@@ -2034,7 +2079,7 @@
                     </div>
                 </div>
                 
-                <div class="flex justify-end mt-6">
+                <div class="flex justify-end mt-6 modal-actions">
                     <button class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm close-recycle-bin">
                         Tutup
                     </button>
@@ -2092,10 +2137,8 @@
                             <option value="Priority">Priority</option>
                             <option value="Hot Priority">Hot Priority</option>
                             <option value="Win">Win</option>
-                            <option value="Lost">Lost</option>
                             <option value="Behind">Behind</option>
                             <option value="On Track">On Track</option>
-                            <option value="Completed">Completed</option>
                         </select>
                     </div>
                     <div>
@@ -2166,7 +2209,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="flex justify-end space-x-3 mt-6">
+                <div class="flex justify-end space-x-3 mt-6 modal-actions">
                     <button type="button" id="resetFilterBtn" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
                         Reset Filter
                     </button>
@@ -2210,7 +2253,7 @@
                             <option value="summary">Ringkasan</option>
                         </select>
                     </div>
-                    <div class="flex justify-end space-x-3 mt-6">
+                    <div class="flex justify-end space-x-3 mt-6 modal-actions">
                         <button type="button" id="cancelExportBtn" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
                             Batal
                         </button>
@@ -2535,22 +2578,20 @@
             populateDropdown('pic', uniquePICs);
         }
 
-        // ==================== FUNGSI PRIORITY DASHBOARD - DISEDERHANAKAN ====================
+        // ==================== FUNGSI PRIORITY DASHBOARD - DIMODIFIKASI: Hanya 5 priority ====================
 
         // Fungsi untuk membuat priority dashboard yang disederhanakan
         function createPriorityDashboard() {
             const priorityDashboard = document.querySelector('.priority-dashboard');
             if (!priorityDashboard) return;
             
-            // Hitung statistik berdasarkan priority
+            // Hitung statistik berdasarkan priority - HANYA 5 PRIORITY
             const priorityStats = {
                 'Hot Priority': { count: 0, value: 0, deals: [] },
                 'Priority': { count: 0, value: 0, deals: [] },
                 'Win': { count: 0, value: 0, deals: [] },
                 'Behind': { count: 0, value: 0, deals: [] },
-                'On Track': { count: 0, value: 0, deals: [] },
-                'Completed': { count: 0, value: 0, deals: [] },
-                'Lost': { count: 0, value: 0, deals: [] }
+                'On Track': { count: 0, value: 0, deals: [] }
             };
             
             deals.forEach(deal => {
@@ -2564,15 +2605,13 @@
             
             priorityDashboard.innerHTML = '';
             
-            // Buat card untuk setiap priority - hanya total nilai
+            // Buat card untuk setiap priority - hanya 5 priority
             const priorities = [
                 { key: 'Hot Priority', icon: 'fa-fire', color: 'hot' },
                 { key: 'Priority', icon: 'fa-exclamation-circle', color: 'priority' },
                 { key: 'Win', icon: 'fa-trophy', color: 'win' },
                 { key: 'Behind', icon: 'fa-clock', color: 'behind' },
-                { key: 'On Track', icon: 'fa-check-circle', color: 'ontrack' },
-                { key: 'Completed', icon: 'fa-flag-checkered', color: 'completed' },
-                { key: 'Lost', icon: 'fa-times-circle', color: 'lost' }
+                { key: 'On Track', icon: 'fa-check-circle', color: 'ontrack' }
             ];
             
             priorities.forEach(priority => {
@@ -3436,14 +3475,10 @@
                     return 'priority-badge-hot';
                 case 'Win':
                     return 'priority-badge-win';
-                case 'Lost':
-                    return 'priority-badge-lost';
                 case 'Behind':
                     return 'priority-badge-behind';
                 case 'On Track':
                     return 'priority-badge-ontrack';
-                case 'Completed':
-                    return 'priority-badge-completed';
                 default:
                     return 'priority-badge-priority';
             }
@@ -3814,7 +3849,7 @@
 
         // Fungsi untuk mengisi dropdown filter tambahan
         function populateFilterDropdowns() {
-            populateDropdown('filterPriority', ['Priority', 'Hot Priority', 'Win', 'Lost', 'Behind', 'On Track', 'Completed'], activeFilters.priority);
+            populateDropdown('filterPriority', ['Priority', 'Hot Priority', 'Win', 'Behind', 'On Track'], activeFilters.priority);
             populateDropdown('filterStage', ['identified', 'prospect', 'tender-me', 'tender-main-con', 'contract-award', 'win', 'lost', 'on-hold'], activeFilters.stage);
             populateDropdown('filterSales', uniqueSales, activeFilters.sales);
             populateDropdown('filterConsultant', uniqueConsultants, activeFilters.consultant);
@@ -4118,10 +4153,8 @@
                                     case 'Priority': return '#fef3c7';
                                     case 'Hot Priority': return '#fee2e2';
                                     case 'Win': return '#d1fae5';
-                                    case 'Lost': return '#f3f4f6';
                                     case 'Behind': return '#ffedd5';
                                     case 'On Track': return '#dbeafe';
-                                    case 'Completed': return '#f3e8ff';
                                     default: return '#e5e7eb';
                                 }
                             }),
@@ -4130,10 +4163,8 @@
                                     case 'Priority': return '#d97706';
                                     case 'Hot Priority': return '#dc2626';
                                     case 'Win': return '#059669';
-                                    case 'Lost': return '#6b7280';
                                     case 'Behind': return '#ea580c';
                                     case 'On Track': return '#1d4ed8';
-                                    case 'Completed': return '#7c3aed';
                                     default: return '#6b7280';
                                 }
                             }),
@@ -5281,7 +5312,7 @@
         
         // ==================== FUNGSI EVENT LISTENERS ====================
         
-        // PERBAIKAN: Event delegation untuk tombol aksi
+        // PERBAIKAN: Event delegation untuk tombol aksi dengan perbaikan tombol new deal
         function initEventListeners() {
             console.log("Initializing event listeners...");
             
@@ -5416,8 +5447,19 @@
                     });
                 }
         
-                // Tombol utama di header
-                document.getElementById('newDealBtn').addEventListener('click', () => openDealModal());
+                // PERBAIKAN: Tombol New Deal dengan event listener yang benar
+                const newDealBtn = document.getElementById('newDealBtn');
+                if (newDealBtn) {
+                    newDealBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log("New Deal button clicked");
+                        openDealModal();
+                    });
+                } else {
+                    console.error("New Deal button not found!");
+                }
+                
                 document.getElementById('viewStatsBtn').addEventListener('click', openStatsModal);
                 document.getElementById('activityBtn').addEventListener('click', openActivityModal);
                 document.getElementById('authButton').addEventListener('click', logout);
@@ -6278,173 +6320,203 @@
             const dealForm = document.getElementById('dealForm');
             const commentsSection = document.getElementById('commentsSection');
             
-            dealForm.reset();
-            document.getElementById('dealId').value = '';
-            document.getElementById('value').value = '';
-            document.getElementById('beforeDiscount').value = '';
-        
-            document.getElementById('newOwner').value = '';
-            document.getElementById('newPic').value = '';
-            document.getElementById('newPackage').value = '';
-            document.getElementById('newFacility').value = '';
-            
-            consultantSearchInput.value = '';
-            consultantHiddenInput.value = '';
-            consultantSuggestionsDiv.innerHTML = '';
-            consultantSuggestionsDiv.classList.add('hidden');
-        
-            populateDropdown('pic', uniquePICs);
-            populateDropdown('owner', uniqueOwners);
-        
-            document.getElementById('productList').innerHTML = '';
-        
-            // Update facility dropdown
-            facilitySelect.innerHTML = `
-                <option value="">Pilih Fasilitas</option>
-                <option value="Industrial">Industrial</option>
-                <option value="Office">Office</option>
-                <option value="Hotel">Hotel</option>
-                <option value="Data Center">Data Center</option>
-                <option value="Oil & Gas">Oil & Gas</option>
-                <option value="Warehouse">Warehouse</option>
-                <option value="Other">Other</option>
-            `;
-            Array.from(uniqueFacilities).sort().forEach(value => {
-                if (value && !['Industrial', 'Office', 'Hotel', 'Data Center', 'Oil & Gas', 'Warehouse', 'Other'].includes(value)) {
-                    const option = document.createElement('option');
-                    option.value = value;
-                    option.textContent = value;
-                    facilitySelect.appendChild(option);
-                }
-            });
-        
-            // Update package dropdown
-            packageSelect.innerHTML = `
-                <option value="">Pilih Paket</option>
-                <option value="Electronic Package">Electronic Package</option>
-                <option value="M&E">M&E</option>
-                <option value="Fire Fighting Cont">Fire Fighting Cont</option>
-                <option value="Main Kontraktor">Main Kontraktor</option>
-            `;
-            Array.from(uniquePackages).sort().forEach(value => {
-                if (value && !['Electronic Package', 'M&E', 'Fire Fighting Cont', 'Main Kontraktor'].includes(value)) {
-                    const option = document.createElement('option');
-                    option.value = value;
-                    option.textContent = value;
-                    packageSelect.appendChild(option);
-                }
-            });
-        
-            document.getElementById('contractorList').innerHTML = '';
-            
-            if (dealId) {
-                modalTitle.textContent = 'Edit Deal';
-                const deal = deals.find(d => d.id === dealId);
-                if (deal) {
-                    document.getElementById('dealId').value = deal.id;
-                    document.getElementById('salesName').value = deal.salesName || '';
-                    document.getElementById('dealName').value = deal.dealName || '';
-                    
-                    // Handle value dan beforeDiscount
-                    const beforeDiscountInput = document.getElementById('beforeDiscount');
-                    beforeDiscountInput.value = deal.beforeDiscount ? new Intl.NumberFormat('id-ID').format(deal.beforeDiscount) : '';
-                    
-                    document.getElementById('discount').value = deal.discount || '';
-                    calculateValueFromBeforeDiscount();
-                    
-                    // Handle package
-                    if (deal.package && Array.from(packageSelect.options).some(option => option.value === deal.package)) {
-                        packageSelect.value = deal.package;
-                        document.getElementById('newPackage').value = '';
-                    } else {
-                        packageSelect.value = '';
-                        document.getElementById('newPackage').value = deal.package || '';
-                    }
-                    
-                    if (deal.product && Array.isArray(deal.product) && deal.product.length > 0) {
-                        deal.product.forEach(product => {
-                            addProductField(product);
-                        });
-                    } else if (deal.product) {
-                        addProductField(deal.product);
-                    } else {
-                        addProductField(); 
-                    }
-        
-                    if (deal.facility && Array.from(facilitySelect.options).some(option => option.value === deal.facility)) {
-                        facilitySelect.value = deal.facility;
-                        document.getElementById('newFacility').value = '';
-                    } else {
-                        facilitySelect.value = '';
-                        document.getElementById('newFacility').value = deal.facility || '';
-                    }
-                    
-                    if (deal.owner && uniqueOwners.has(deal.owner)) {
-                        document.getElementById('owner').value = deal.owner;
-                    } else {
-                        document.getElementById('owner').value = '';
-                        document.getElementById('newOwner').value = deal.owner || '';
-                    }
-        
-                    consultantSearchInput.value = deal.consultant || '';
-                    consultantHiddenInput.value = deal.consultant || '';
-        
-                    if (deal.contractor && Array.isArray(deal.contractor) && deal.contractor.length > 0) {
-                        deal.contractor.forEach(contractor => {
-                            addContractorField(contractor);
-                        });
-                    } else if (deal.contractor) {
-                        addContractorField(deal.contractor);
-                    } else {
-                        addContractorField(); 
-                    }
-        
-                    if (deal.pic && uniquePICs.has(deal.pic)) {
-                        document.getElementById('pic').value = deal.pic;
-                    } else {
-                        document.getElementById('pic').value = '';
-                        document.getElementById('newPic').value = deal.pic || '';
-                    }
-        
-                    document.getElementById('planPO').value = deal.planPO || '';
-                    document.getElementById('stage').value = deal.stage || DEFAULT_STAGE;
-                    document.getElementById('priority').value = deal.priority || 'Priority';
-                    document.getElementById('remarks').value = deal.remarks || '';
-                    
-                    // Update progress bar dengan stage yang ada
-                    updateProgressBarFromStage(deal.stage);
-                    
-                    // Load dan tampilkan komentar
-                    currentDealIdForComments = deal.id;
-                    const comments = await loadComments(deal.id);
-                    renderComments(comments, 'commentsList');
-                    commentsSection.style.display = 'block';
-                }
-            } else {
-                modalTitle.textContent = 'Tambah Deal Baru';
-                document.getElementById('stage').value = DEFAULT_STAGE;
-                document.getElementById('priority').value = 'Priority';
-                
-                const currentUser = auth.currentUser;
-                if (currentUser && currentUserRole === 'user') {
-                    const userSalesName = getSalesNameFromEmail(currentUser.email);
-                    document.getElementById('salesName').value = userSalesName;
-                }
-                
-                addContractorField();
-                addProductField();
-                
-                // Set progress bar ke default berdasarkan stage
-                updateProgressBarFromStage(DEFAULT_STAGE);
-                
-                // Sembunyikan comments section untuk deal baru
-                commentsSection.style.display = 'none';
-                currentDealIdForComments = null;
+            if (!dealModal || !modalTitle || !dealForm) {
+                console.error("Modal elements not found");
+                showToast("Gagal membuka modal deal", 3000);
+                return;
             }
             
-            dealModal.classList.remove('hidden');
-            document.getElementById('dealModalContent').classList.remove('modal-content-leave-active');
-            document.getElementById('dealModalContent').classList.add('modal-content-enter-active');
+            try {
+                dealForm.reset();
+                document.getElementById('dealId').value = '';
+                document.getElementById('value').value = '';
+                document.getElementById('beforeDiscount').value = '';
+            
+                document.getElementById('newOwner').value = '';
+                document.getElementById('newPic').value = '';
+                document.getElementById('newPackage').value = '';
+                document.getElementById('newFacility').value = '';
+                
+                if (consultantSearchInput) {
+                    consultantSearchInput.value = '';
+                }
+                if (consultantHiddenInput) {
+                    consultantHiddenInput.value = '';
+                }
+                if (consultantSuggestionsDiv) {
+                    consultantSuggestionsDiv.innerHTML = '';
+                    consultantSuggestionsDiv.classList.add('hidden');
+                }
+            
+                populateDropdown('pic', uniquePICs);
+                populateDropdown('owner', uniqueOwners);
+            
+                document.getElementById('productList').innerHTML = '';
+            
+                // Update facility dropdown
+                if (facilitySelect) {
+                    facilitySelect.innerHTML = `
+                        <option value="">Pilih Fasilitas</option>
+                        <option value="Industrial">Industrial</option>
+                        <option value="Office">Office</option>
+                        <option value="Hotel">Hotel</option>
+                        <option value="Data Center">Data Center</option>
+                        <option value="Oil & Gas">Oil & Gas</option>
+                        <option value="Warehouse">Warehouse</option>
+                        <option value="Other">Other</option>
+                    `;
+                    Array.from(uniqueFacilities).sort().forEach(value => {
+                        if (value && !['Industrial', 'Office', 'Hotel', 'Data Center', 'Oil & Gas', 'Warehouse', 'Other'].includes(value)) {
+                            const option = document.createElement('option');
+                            option.value = value;
+                            option.textContent = value;
+                            facilitySelect.appendChild(option);
+                        }
+                    });
+                }
+            
+                // Update package dropdown
+                if (packageSelect) {
+                    packageSelect.innerHTML = `
+                        <option value="">Pilih Paket</option>
+                        <option value="Electronic Package">Electronic Package</option>
+                        <option value="M&E">M&E</option>
+                        <option value="Fire Fighting Cont">Fire Fighting Cont</option>
+                        <option value="Main Kontraktor">Main Kontraktor</option>
+                    `;
+                    Array.from(uniquePackages).sort().forEach(value => {
+                        if (value && !['Electronic Package', 'M&E', 'Fire Fighting Cont', 'Main Kontraktor'].includes(value)) {
+                            const option = document.createElement('option');
+                            option.value = value;
+                            option.textContent = value;
+                            packageSelect.appendChild(option);
+                        }
+                    });
+                }
+            
+                document.getElementById('contractorList').innerHTML = '';
+                
+                if (dealId) {
+                    modalTitle.textContent = 'Edit Deal';
+                    const deal = deals.find(d => d.id === dealId);
+                    if (deal) {
+                        document.getElementById('dealId').value = deal.id;
+                        document.getElementById('salesName').value = deal.salesName || '';
+                        document.getElementById('dealName').value = deal.dealName || '';
+                        
+                        // Handle value dan beforeDiscount
+                        const beforeDiscountInput = document.getElementById('beforeDiscount');
+                        beforeDiscountInput.value = deal.beforeDiscount ? new Intl.NumberFormat('id-ID').format(deal.beforeDiscount) : '';
+                        
+                        document.getElementById('discount').value = deal.discount || '';
+                        calculateValueFromBeforeDiscount();
+                        
+                        // Handle package
+                        if (deal.package && packageSelect && Array.from(packageSelect.options).some(option => option.value === deal.package)) {
+                            packageSelect.value = deal.package;
+                            document.getElementById('newPackage').value = '';
+                        } else {
+                            if (packageSelect) packageSelect.value = '';
+                            document.getElementById('newPackage').value = deal.package || '';
+                        }
+                        
+                        if (deal.product && Array.isArray(deal.product) && deal.product.length > 0) {
+                            deal.product.forEach(product => {
+                                addProductField(product);
+                            });
+                        } else if (deal.product) {
+                            addProductField(deal.product);
+                        } else {
+                            addProductField(); 
+                        }
+            
+                        if (deal.facility && facilitySelect && Array.from(facilitySelect.options).some(option => option.value === deal.facility)) {
+                            facilitySelect.value = deal.facility;
+                            document.getElementById('newFacility').value = '';
+                        } else {
+                            if (facilitySelect) facilitySelect.value = '';
+                            document.getElementById('newFacility').value = deal.facility || '';
+                        }
+                        
+                        if (deal.owner && uniqueOwners.has(deal.owner)) {
+                            document.getElementById('owner').value = deal.owner;
+                        } else {
+                            document.getElementById('owner').value = '';
+                            document.getElementById('newOwner').value = deal.owner || '';
+                        }
+            
+                        if (consultantSearchInput) {
+                            consultantSearchInput.value = deal.consultant || '';
+                        }
+                        if (consultantHiddenInput) {
+                            consultantHiddenInput.value = deal.consultant || '';
+                        }
+            
+                        if (deal.contractor && Array.isArray(deal.contractor) && deal.contractor.length > 0) {
+                            deal.contractor.forEach(contractor => {
+                                addContractorField(contractor);
+                            });
+                        } else if (deal.contractor) {
+                            addContractorField(deal.contractor);
+                        } else {
+                            addContractorField(); 
+                        }
+            
+                        if (deal.pic && uniquePICs.has(deal.pic)) {
+                            document.getElementById('pic').value = deal.pic;
+                        } else {
+                            document.getElementById('pic').value = '';
+                            document.getElementById('newPic').value = deal.pic || '';
+                        }
+            
+                        document.getElementById('planPO').value = deal.planPO || '';
+                        document.getElementById('stage').value = deal.stage || DEFAULT_STAGE;
+                        document.getElementById('priority').value = deal.priority || 'Priority';
+                        document.getElementById('remarks').value = deal.remarks || '';
+                        
+                        // Update progress bar dengan stage yang ada
+                        updateProgressBarFromStage(deal.stage);
+                        
+                        // Load dan tampilkan komentar
+                        currentDealIdForComments = deal.id;
+                        const comments = await loadComments(deal.id);
+                        renderComments(comments, 'commentsList');
+                        if (commentsSection) {
+                            commentsSection.style.display = 'block';
+                        }
+                    }
+                } else {
+                    modalTitle.textContent = 'Tambah Deal Baru';
+                    document.getElementById('stage').value = DEFAULT_STAGE;
+                    document.getElementById('priority').value = 'Priority';
+                    
+                    const currentUser = auth.currentUser;
+                    if (currentUser && currentUserRole === 'user') {
+                        const userSalesName = getSalesNameFromEmail(currentUser.email);
+                        document.getElementById('salesName').value = userSalesName;
+                    }
+                    
+                    addContractorField();
+                    addProductField();
+                    
+                    // Set progress bar ke default berdasarkan stage
+                    updateProgressBarFromStage(DEFAULT_STAGE);
+                    
+                    // Sembunyikan comments section untuk deal baru
+                    if (commentsSection) {
+                        commentsSection.style.display = 'none';
+                    }
+                    currentDealIdForComments = null;
+                }
+                
+                dealModal.classList.remove('hidden');
+                document.getElementById('dealModalContent').classList.remove('modal-content-leave-active');
+                document.getElementById('dealModalContent').classList.add('modal-content-enter-active');
+                
+            } catch (error) {
+                console.error("Error opening deal modal:", error);
+                showToast("Gagal membuka modal deal", 3000);
+            }
         }
         
         // Fungsi untuk menutup modal deal
@@ -6514,7 +6586,7 @@
         
             let facility = document.getElementById('newFacility').value.trim();
             if (!facility) {
-                facility = facilitySelect.value;
+                facility = facilitySelect ? facilitySelect.value : '';
             }
             
             // Tambahkan facility baru ke uniqueFacilities jika belum ada
@@ -6536,7 +6608,7 @@
                 updateDropdownOptions();
             }
         
-            let consultant = consultantHiddenInput.value.trim();
+            let consultant = consultantHiddenInput ? consultantHiddenInput.value.trim() : '';
             if (consultant && !uniqueConsultants.has(consultant)) {
                 uniqueConsultants.add(consultant);
                 console.log(`New consultant "${consultant}" added to local list.`);
@@ -6578,7 +6650,7 @@
             const stage = document.getElementById('stage').value;
             const priority = document.getElementById('priority').value;
             const remarks = document.getElementById('remarks').value;
-            const progress = document.getElementById('progressValue').value || 0;
+            const progress = document.getElementById('progressValue') ? document.getElementById('progressValue').value : 0;
         
             if (!dealName) {
                 showToast("Nama Proyek harus diisi.", 3000);
