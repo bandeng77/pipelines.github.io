@@ -307,70 +307,6 @@ function updateDropdownOptions() {
     populateDropdown('pic', uniquePICs);
 }
 
-// ==================== FUNGSI FILTER TAHUN ====================
-
-// Fungsi untuk menerapkan filter tahun
-function applyYearFilter(year) {
-    if (year === 'all') {
-        return deals;
-    }
-    
-    return deals.filter(deal => {
-        if (!deal.createdAt) return false;
-        
-        const dealYear = deal.createdAt.toDate().getFullYear().toString();
-        return dealYear === year;
-    });
-}
-
-// Fungsi untuk menginisialisasi event listener filter tahun
-function initYearFilter() {
-    const yearFilter = document.getElementById('yearFilter');
-    if (yearFilter) {
-        yearFilter.addEventListener('change', function() {
-            const selectedYear = this.value;
-            const filteredDeals = applyYearFilter(selectedYear);
-            renderFilteredDealsWithMerge(filteredDeals);
-            
-            // Update active filters
-            activeFilters.year = selectedYear;
-        });
-    }
-}
-
-// Fungsi untuk mengupdate dropdown filter tahun di header
-function updateYearFilterDropdown() {
-    const yearFilter = document.getElementById('yearFilter');
-    if (!yearFilter) return;
-    
-    // Simpan nilai yang dipilih
-    const currentValue = yearFilter.value;
-    
-    // Tambahkan opsi tahun
-    const sortedYears = Array.from(uniqueYears).sort((a, b) => parseInt(b) - parseInt(a));
-    
-    // Pastikan 2026 dan 2025 ada
-    if (!sortedYears.includes('2026')) sortedYears.unshift('2026');
-    if (!sortedYears.includes('2025')) sortedYears.unshift('2025');
-    if (!sortedYears.includes('2024')) sortedYears.push('2024');
-    
-    // Update dropdown
-    yearFilter.innerHTML = '<option value="all">Semua Tahun</option>';
-    sortedYears.forEach(year => {
-        const option = document.createElement('option');
-        option.value = year;
-        option.textContent = year;
-        yearFilter.appendChild(option);
-    });
-    
-    // Kembalikan nilai yang dipilih
-    if (currentValue && Array.from(yearFilter.options).some(opt => opt.value === currentValue)) {
-        yearFilter.value = currentValue;
-    } else {
-        yearFilter.value = 'all';
-    }
-}
-
 // ==================== FUNGSI PRIORITY DASHBOARD - DIMODIFIKASI: Hanya 5 priority ====================
 
 // Fungsi untuk membuat priority dashboard yang disederhanakan
@@ -633,45 +569,7 @@ async function loadComments(dealId) {
     }
 }
 
-// ==================== FUNGSI DELETE COMMENT ====================
-
-// Fungsi untuk menghapus komentar
-async function deleteComment(commentId, dealId) {
-    if (!commentId || !dealId) return;
-    
-    // Konfirmasi sebelum menghapus
-    if (!confirm('Apakah Anda yakin ingin menghapus komentar ini?')) {
-        return;
-    }
-    
-    try {
-        // Hapus komentar dari Firestore
-        await commentsCollection.doc(commentId).delete();
-        
-        // Reload comments
-        const comments = await loadComments(dealId);
-        
-        // Update tampilan komentar
-        renderComments(comments, 'commentsList');
-        renderComments(comments, 'detailCommentsList');
-        
-        showToast("Komentar berhasil dihapus", 2000);
-        
-        // Log aktivitas
-        await activitiesCollection.add({
-            message: `Komentar dihapus oleh ${auth.currentUser.email}.`,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            userEmail: auth.currentUser.email,
-            read: false
-        });
-        
-    } catch (error) {
-        console.error("Error deleting comment:", error);
-        showToast("Gagal menghapus komentar", 3000);
-    }
-}
-
-// Fungsi untuk merender komentar dengan tombol hapus
+// Fungsi untuk merender komentar
 function renderComments(comments, containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -692,7 +590,6 @@ function renderComments(comments, containerId) {
         const commentItem = document.createElement('div');
         const isManager = managerEmails.includes(comment.userEmail);
         const isCurrentUser = comment.userEmail === auth.currentUser?.email;
-        const canDelete = isCurrentUser || currentUserRole === 'admin' || currentUserRole === 'manager';
         
         commentItem.className = `comment-item ${isManager ? 'manager' : 'sales'}`;
         commentItem.innerHTML = `
@@ -703,16 +600,7 @@ function renderComments(comments, containerId) {
                         ${isManager ? 'Manager' : 'Sales'}
                     </span>
                 </div>
-                <div class="flex items-center space-x-2">
-                    <div class="comment-time">${formatDateTime(comment.timestamp)}</div>
-                    ${canDelete ? `
-                    <button class="delete-comment-btn text-red-500 hover:text-red-700" 
-                            data-comment-id="${comment.id}" 
-                            data-deal-id="${comment.dealId}">
-                        <i class="fas fa-trash-alt text-xs"></i>
-                    </button>
-                    ` : ''}
-                </div>
+                <div class="comment-time">${formatDateTime(comment.timestamp)}</div>
             </div>
             <div class="comment-content">${comment.content}</div>
         `;
@@ -725,15 +613,6 @@ function renderComments(comments, containerId) {
     if (commentsCountElement) {
         commentsCountElement.textContent = `${comments.length} komentar`;
     }
-    
-    // Add event listeners for delete buttons
-    container.querySelectorAll('.delete-comment-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const commentId = this.dataset.commentId;
-            const dealId = this.dataset.dealId;
-            deleteComment(commentId, dealId);
-        });
-    });
 }
 
 // Fungsi untuk menambahkan komentar
@@ -820,290 +699,6 @@ function identifyMergedDeals() {
 
 // Variabel untuk menyimpan pilihan sales aktif per deal card
 let activeSalesPerDeal = {};
-
-// ==================== FUNGSI RENDER DENGAN MERGE DEAL CARDS ====================
-
-// Fungsi untuk mengelompokkan dan merender deal dengan merge
-function renderFilteredDealsWithMerge(filteredDeals) {
-    const pipelineStage = document.getElementById('pipelines-stage');
-    if (!pipelineStage) return;
-    
-    pipelineStage.innerHTML = '';
-    
-    if (filteredDeals.length === 0) {
-        pipelineStage.innerHTML = `
-            <div class="empty-stage-message text-center text-gray-400 p-4 text-sm w-full">
-                <i class="fas fa-search text-3xl mb-2"></i>
-                <p>Tidak ada deals yang sesuai dengan filter.</p>
-            </div>
-        `;
-        return;
-    }
-    
-    // Kelompokkan deals berdasarkan nama (case-insensitive)
-    const dealsByName = {};
-    filteredDeals.forEach(deal => {
-        const dealName = deal.dealName?.toLowerCase().trim();
-        if (!dealName) return;
-        
-        if (!dealsByName[dealName]) {
-            dealsByName[dealName] = [];
-        }
-        dealsByName[dealName].push(deal);
-    });
-    
-    if (currentView === 'card') {
-        // Render deal cards dengan fitur merge
-        Object.entries(dealsByName).forEach(([dealName, dealGroup]) => {
-            if (dealGroup.length === 1) {
-                // Single deal - render normal
-                const dealCard = renderIndividualDealCard(dealGroup[0]);
-                pipelineStage.appendChild(dealCard);
-            } else {
-                // Multiple deals dengan nama sama - render merged card
-                const mergedCard = renderMergedDealCardImproved(dealGroup);
-                pipelineStage.appendChild(mergedCard);
-                setupMergedDealCardEvents(mergedCard, dealGroup);
-            }
-        });
-        
-        initSortable();
-    } else {
-        // Render list view (tampilkan semua tanpa grouping)
-        const table = document.createElement('table');
-        table.className = 'list-view';
-        
-        const thead = document.createElement('thead');
-        thead.innerHTML = `
-            <tr>
-                <th>No</th>
-                <th>Nama Sales</th>
-                <th>Nama Project</th>
-                <th>Tahap</th>
-                <th>Konsultan</th>
-                <th>Nilai (IDR)</th>
-                <th>Priority</th>
-                <th>Aksi</th>
-            </tr>
-        `;
-        table.appendChild(thead);
-        
-        const tbody = document.createElement('tbody');
-        filteredDeals.forEach((deal, index) => {
-            const row = renderDealList(deal, index);
-            tbody.appendChild(row);
-        });
-        table.appendChild(tbody);
-        
-        pipelineStage.appendChild(table);
-    }
-}
-
-// ==================== FUNGSI MERGED DEAL CARD YANG DIPERBAIKI ====================
-
-// Fungsi untuk merender merged deal card dengan pilihan
-function renderMergedDealCardImproved(dealGroup) {
-    const dealName = dealGroup[0].dealName;
-    const dealNameLower = dealName.toLowerCase();
-    
-    // Ambil deal dengan nilai tertinggi sebagai default
-    const defaultDeal = dealGroup.reduce((maxDeal, currentDeal) => {
-        return (currentDeal.value || 0) > (maxDeal.value || 0) ? currentDeal : maxDeal;
-    }, dealGroup[0]);
-    
-    // Simpan semua deal dalam dataset
-    const allDealsData = dealGroup.map(d => ({
-        id: d.id,
-        salesName: d.salesName,
-        value: d.value,
-        stage: d.stage,
-        priority: d.priority,
-        createdAt: d.createdAt
-    }));
-    
-    // Buat dropdown options
-    const salesOptions = dealGroup.map(deal => 
-        `<option value="${deal.id}">${deal.salesName} - Rp ${formatNumber(deal.value)}</option>`
-    ).join('');
-    
-    const dealCard = document.createElement('div');
-    dealCard.className = 'deal-card merged-deal-card';
-    dealCard.dataset.id = defaultDeal.id;
-    dealCard.dataset.dealName = dealNameLower;
-    dealCard.dataset.allDeals = JSON.stringify(allDealsData);
-    
-    let stageColorClass = '';
-    switch (defaultDeal.stage) {
-        case 'identified':
-            stageColorClass = 'bg-gray-100 text-gray-800';
-            break;
-        case 'prospect':
-            stageColorClass = 'bg-blue-100 text-blue-800';
-            break;
-        case 'tender-me':
-            stageColorClass = 'bg-orange-100 text-orange-800';
-            break;
-        case 'tender-main-con':
-            stageColorClass = 'bg-purple-100 text-purple-800';
-            break;
-        case 'contract-award':
-            stageColorClass = 'bg-indigo-100 text-indigo-800';
-            break;
-        case 'win':
-            stageColorClass = 'bg-green-100 text-green-800';
-            break;
-        case 'lost':
-            stageColorClass = 'bg-red-100 text-red-800';
-            break;
-        case 'on-hold':
-            stageColorClass = 'bg-yellow-100 text-yellow-800';
-            break;
-        default:
-            stageColorClass = 'bg-gray-100 text-gray-800';
-    }
-    
-    const priorityBadgeClass = getPriorityBadgeClass(defaultDeal.priority);
-    const canEdit = canUserEditDeal(defaultDeal);
-    
-    dealCard.innerHTML = `
-        <div class="flex justify-between items-start">
-            <div class="flex-1">
-                <h3 class="font-bold text-gray-800 text-sm mb-1">${dealName || 'No Name'}</h3>
-                <div class="text-xs text-gray-500 mb-1">
-                    <i class="fas fa-layer-group mr-1"></i> ${dealGroup.length} versi
-                </div>
-            </div>
-            <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass} text-xs">
-                ${defaultDeal.priority || 'Priority'}
-            </span>
-        </div>
-        
-        <div class="mt-2 mb-2">
-            <select class="deal-selector w-full p-2 text-xs border border-gray-300 rounded-lg bg-white">
-                <option value="">Pilih versi deal...</option>
-                ${salesOptions}
-            </select>
-        </div>
-        
-        <div class="mt-1 text-sm text-gray-600 deal-details">
-            <p><i class="fas fa-user-tie mr-1"></i> ${defaultDeal.salesName || '-'}</p>
-            <p class="font-semibold text-blue-600 text-sm">Rp ${formatNumber(defaultDeal.value) || '0'}</p>
-            <p class="mt-1">
-                <span class="priority-badge px-2 py-1 rounded-full ${stageColorClass} text-xs">
-                    ${defaultDeal.stage ? defaultDeal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown Stage'}
-                </span>
-            </p>
-        </div>
-        
-        <div class="mt-2 flex justify-between items-center deal-footer">
-            <span class="text-xs text-gray-500">Dibuat: ${formatDate(defaultDeal.createdAt)}</span>
-            <div class="flex space-x-1 deal-actions">
-                <button class="view-detail-btn text-blue-600 hover:text-blue-800">
-                    <i class="fas fa-eye"></i>
-                </button>
-                ${canEdit ? `
-                <button class="edit-deal-btn text-green-600 hover:text-green-800">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="delete-deal-btn text-red-600 hover:text-red-800">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
-                ` : ''}
-            </div>
-        </div>
-    `;
-    
-    return dealCard;
-}
-
-// Fungsi untuk setup event listener pada merged deal card
-function setupMergedDealCardEvents(dealCard, dealGroup) {
-    const selector = dealCard.querySelector('.deal-selector');
-    const dealName = dealCard.dataset.dealName;
-    
-    if (selector) {
-        selector.addEventListener('change', function() {
-            const selectedDealId = this.value;
-            if (!selectedDealId) return;
-            
-            const selectedDeal = dealGroup.find(d => d.id === selectedDealId);
-            if (!selectedDeal) return;
-            
-            // Update data di card
-            updateMergedDealCard(dealCard, selectedDeal);
-            
-            // Update dataset id
-            dealCard.dataset.id = selectedDealId;
-        });
-    }
-}
-
-// Fungsi untuk update merged deal card
-function updateMergedDealCard(dealCard, deal) {
-    // Update stage color
-    let stageColorClass = '';
-    switch (deal.stage) {
-        case 'identified':
-            stageColorClass = 'bg-gray-100 text-gray-800';
-            break;
-        case 'prospect':
-            stageColorClass = 'bg-blue-100 text-blue-800';
-            break;
-        case 'tender-me':
-            stageColorClass = 'bg-orange-100 text-orange-800';
-            break;
-        case 'tender-main-con':
-            stageColorClass = 'bg-purple-100 text-purple-800';
-            break;
-        case 'contract-award':
-            stageColorClass = 'bg-indigo-100 text-indigo-800';
-            break;
-        case 'win':
-            stageColorClass = 'bg-green-100 text-green-800';
-            break;
-        case 'lost':
-            stageColorClass = 'bg-red-100 text-red-800';
-            break;
-        case 'on-hold':
-            stageColorClass = 'bg-yellow-100 text-yellow-800';
-            break;
-        default:
-            stageColorClass = 'bg-gray-100 text-gray-800';
-    }
-    
-    const priorityBadgeClass = getPriorityBadgeClass(deal.priority);
-    
-    // Update elements
-    const salesElement = dealCard.querySelector('.deal-details p:first-child');
-    const valueElement = dealCard.querySelector('.font-semibold.text-blue-600');
-    const stageElement = dealCard.querySelector('.priority-badge:last-child');
-    const priorityElement = dealCard.querySelector('.priority-badge:first-child');
-    const dateElement = dealCard.querySelector('.text-xs.text-gray-500');
-    
-    if (salesElement) {
-        salesElement.innerHTML = `<i class="fas fa-user-tie mr-1"></i> ${deal.salesName || '-'}`;
-    }
-    
-    if (valueElement) {
-        valueElement.textContent = `Rp ${formatNumber(deal.value) || '0'}`;
-    }
-    
-    if (stageElement) {
-        stageElement.className = `priority-badge px-2 py-1 rounded-full ${stageColorClass} text-xs`;
-        stageElement.textContent = deal.stage ? 
-            deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 
-            'Unknown Stage';
-    }
-    
-    if (priorityElement) {
-        priorityElement.className = `priority-badge px-2 py-1 rounded-full ${priorityBadgeClass} text-xs`;
-        priorityElement.textContent = deal.priority || 'Priority';
-    }
-    
-    if (dateElement) {
-        dateElement.textContent = `Dibuat: ${formatDate(deal.createdAt)}`;
-    }
-}
 
 // Fungsi untuk menampilkan deal card dengan fitur merge yang sudah diperbaiki
 function renderMergedDealCard(dealGroup) {
@@ -1953,10 +1548,6 @@ async function loadDealsFromFirebase() {
             }
         });
         console.log("Total deals loaded:", deals.length);
-        
-        // Update filter tahun di header
-        updateYearFilterDropdown();
-        
         populateYearDropdown();
         populateFilterDropdowns();
         
@@ -2986,23 +2577,6 @@ function renderPriorityCharts() {
 function processDealDataForCharts(dealsData) {
     console.log("Processing deal data for charts, total deals:", dealsData.length);
     
-    // Kelompokkan deal berdasarkan nama, ambil yang nilai tertinggi
-    const uniqueDealsMap = {};
-    dealsData.forEach(deal => {
-        const dealName = deal.dealName?.toLowerCase().trim();
-        if (!dealName) return;
-        
-        if (!uniqueDealsMap[dealName]) {
-            uniqueDealsMap[dealName] = deal;
-        } else if ((deal.value || 0) > (uniqueDealsMap[dealName].value || 0)) {
-            uniqueDealsMap[dealName] = deal;
-        }
-    });
-    
-    const uniqueDeals = Object.values(uniqueDealsMap);
-    console.log("Unique deals after merge:", uniqueDeals.length);
-    
-    // Lanjutkan dengan uniqueDeals untuk perhitungan statistik
     const stageSelect = document.getElementById('stage');
     const allStages = Array.from(stageSelect.options).map(option => option.value).filter(value => value !== '');
     
@@ -3036,6 +2610,22 @@ function processDealDataForCharts(dealsData) {
     const dealsByProduct = {};
     let productValue = {};
     const pipelineValueByMonth = {};
+    
+    // Group deals by name and take the highest value
+    const dealsByName = {};
+    dealsData.forEach(deal => {
+        const dealName = deal.dealName?.toLowerCase().trim();
+        if (!dealName) return;
+        
+        if (!dealsByName[dealName]) {
+            dealsByName[dealName] = deal;
+        } else if ((deal.value || 0) > (dealsByName[dealName].value || 0)) {
+            dealsByName[dealName] = deal;
+        }
+    });
+    
+    const uniqueDeals = Object.values(dealsByName);
+    console.log("Unique deals for stats:", uniqueDeals.length);
     
     uniqueDeals.forEach(deal => {
         const dealValue = deal.value || 0;
@@ -3640,14 +3230,11 @@ function initEventListeners() {
         packageSelect = document.getElementById('package');
         newPackageInput = document.getElementById('newPackage');
         
-        // Inisialisasi filter tahun
-        initYearFilter();
-        
         // Event delegation untuk tombol aksi
         document.addEventListener('click', function(e) {
             // Tombol view detail
             if (e.target.closest('.view-detail-btn')) {
-                const dealCard = e.target.closest('.deal-card');
+                const dealCard = e.target.closest('.deal-card, tr');
                 if (dealCard) {
                     const dealId = dealCard.dataset.id;
                     openDealDetailModal(dealId);
@@ -3656,7 +3243,7 @@ function initEventListeners() {
             
             // Tombol edit deal
             if (e.target.closest('.edit-deal-btn')) {
-                const dealCard = e.target.closest('.deal-card');
+                const dealCard = e.target.closest('.deal-card, tr');
                 if (dealCard) {
                     const dealId = dealCard.dataset.id;
                     prepareEditDeal(dealId);
@@ -4035,8 +3622,7 @@ function applyActiveFilters() {
                 matchesConsultant && matchesContractor && matchesFacility && matchesProduct && matchesPackage;
         });
         
-        // Gunakan fungsi render baru dengan merge
-        renderFilteredDealsWithMerge(filteredDeals);
+        renderFilteredDeals(filteredDeals);
     } catch (error) {
         console.error("Error applying active filters:", error);
     }
@@ -4072,6 +3658,83 @@ function filterDeals() {
         applyActiveFilters();
     } catch (error) {
         console.error("Error filtering deals:", error);
+    }
+}
+
+// PERBAIKAN: Fungsi untuk render deals yang sudah difilter dengan merge deal card
+function renderFilteredDeals(filteredDeals) {
+    const pipelineStage = document.getElementById('pipelines-stage');
+    if (!pipelineStage) return;
+    
+    pipelineStage.innerHTML = '';
+    
+    if (filteredDeals.length === 0) {
+        pipelineStage.innerHTML = `
+            <div class="empty-stage-message text-center text-gray-400 p-4 text-sm w-full">
+                <i class="fas fa-search text-3xl mb-2"></i>
+                <p>Tidak ada deals yang sesuai dengan filter.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    if (currentView === 'card') {
+        // Group deals by name untuk merge
+        const dealsByName = {};
+        filteredDeals.forEach(deal => {
+            const dealName = deal.dealName?.toLowerCase().trim();
+            if (!dealName) return;
+            
+            if (!dealsByName[dealName]) {
+                dealsByName[dealName] = [];
+            }
+            dealsByName[dealName].push(deal);
+        });
+        
+        // Render deal cards
+        Object.values(dealsByName).forEach(dealGroup => {
+            if (dealGroup.length > 0) {
+                if (dealGroup.length > 1) {
+                    // Multiple deals dengan nama yang sama - render merged card
+                    const mergedCard = renderMergedDealCard(dealGroup);
+                    pipelineStage.appendChild(mergedCard);
+                    setupMergeDealCardEvents(mergedCard, dealGroup);
+                } else {
+                    // Single deal - render individual card
+                    const dealCard = renderIndividualDealCard(dealGroup[0]);
+                    pipelineStage.appendChild(dealCard);
+                }
+            }
+        });
+        
+        initSortable();
+    } else {
+        const table = document.createElement('table');
+        table.className = 'list-view';
+        
+        const thead = document.createElement('thead');
+        thead.innerHTML = `
+            <tr>
+                <th>No</th>
+                <th>Nama Sales</th>
+                <th>Nama Project</th>
+                <th>Tahap</th>
+                <th>Konsultan</th>
+                <th>Nilai (IDR)</th>
+                <th>Priority</th>
+                <th>Aksi</th>
+            </tr>
+        `;
+        table.appendChild(thead);
+        
+        const tbody = document.createElement('tbody');
+        filteredDeals.forEach((deal, index) => {
+            const row = renderDealList(deal, index);
+            tbody.appendChild(row);
+        });
+        table.appendChild(tbody);
+        
+        pipelineStage.appendChild(table);
     }
 }
 
@@ -4948,6 +4611,9 @@ function closeDealModal() {
         currentDealIdForComments = null;
     }, { once: true });
 }
+
+// Catatan: Fungsi-fungsi lain seperti saveDeal(), prepareEditDeal(), openDealDetailModal(), dll.
+// perlu disertakan dalam file JavaScript lengkap. Kode di atas hanya menunjukkan pemisahan struktur.
 
 // ==================== FUNGSI TAMBAHAN YANG DIPERLUKAN ====================
 
