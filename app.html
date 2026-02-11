@@ -374,18 +374,7 @@
         .deal-footer {
             margin-top: 0.5rem;
         }
-        /* CSS untuk tombol filter tahun */
-        .year-filter-btn {
-            transition: all 0.2s ease;
-            font-weight: 500;
-            border: 1px solid transparent;
-        }
-        
-        .year-filter-btn.active {
-            background-color: #3b82f6 !important;
-            color: white !important;
-            border-color: #3b82f6;
-        }
+
         /* Media Queries untuk responsivitas */
         @media (max-width: 1024px) {
             .deal-card {
@@ -914,19 +903,7 @@
             font-weight: 700;
             line-height: 1;
         }
-        /* CSS untuk tombol hapus komentar */
-        .delete-comment-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 0.25rem;
-            border-radius: 0.25rem;
-            transition: all 0.2s;
-        }
 
-.delete-comment-btn:hover {
-    background-color: #fee2e2;
-}
         /* CSS untuk deal list di statistik */
         .deal-list-container {
             max-height: 400px;
@@ -999,99 +976,7 @@
                 gap: 0.25rem;
             }
         }
-        /* CSS untuk multiple deals indicator */
-        .multiple-deals-indicator {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            background-color: #8B5CF6;
-            color: white;
-            border-radius: 0.375rem;
-            padding: 0.25rem 0.5rem;
-            font-size: 0.7rem;
-            font-weight: bold;
-            cursor: pointer;
-            z-index: 5;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-        }
-        
-        .multiple-deals-indicator:hover {
-            background-color: #7C3AED;
-            transform: scale(1.05);
-        }
-        
-        .deals-dropdown {
-            position: absolute;
-            top: 40px;
-            right: 8px;
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            padding: 0.5rem;
-            z-index: 20;
-            min-width: 250px;
-            max-height: 300px;
-            overflow-y: auto;
-            display: none;
-            animation: fadeIn 0.2s ease-in-out;
-        }
-        
-        .deals-dropdown.show {
-            display: block;
-        }
-        
-        .dropdown-header {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: #6b7280;
-            padding: 0.25rem 0.5rem;
-            margin-bottom: 0.5rem;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        
-        .deal-dropdown-item {
-            padding: 0.5rem;
-            font-size: 0.75rem;
-            color: #374151;
-            cursor: pointer;
-            border-radius: 0.375rem;
-            transition: background-color 0.2s;
-            margin-bottom: 0.25rem;
-            border: 1px solid transparent;
-        }
-        
-        .deal-dropdown-item:hover {
-            background-color: #f3f4f6;
-            border-color: #d1d5db;
-        }
-        
-        .deal-dropdown-item.active {
-            background-color: #3b82f6;
-            color: white;
-            border-color: #3b82f6;
-        }
-        
-        .deal-dropdown-info {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .deal-dropdown-details {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 0.25rem;
-            font-size: 0.7rem;
-        }
-        
-        .deal-dropdown-details .stage-badge {
-            padding: 0.15rem 0.4rem;
-            border-radius: 0.25rem;
-            font-size: 0.65rem;
-        }
+
         /* Custom scrollbar for stats modal */
         #statsModal .overflow-y-auto::-webkit-scrollbar {
             width: 6px;
@@ -1563,15 +1448,8 @@
             </div>
             
             <!-- Combined Filter Section -->
-                        <div class="mt-6 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 items-center">
+            <div class="mt-6 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 items-center">
                 <input type="text" id="searchDeals" placeholder="Cari deal berdasarkan nama, perusahaan..." class="w-full sm:w-1/2 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                
-                <!-- TAMBAHKAN FILTER TAHUN INI -->
-                <div class="flex space-x-2">
-                    <button class="year-filter-btn bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm" data-year="all">All</button>
-                    <button class="year-filter-btn bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-2 rounded-lg text-sm" data-year="2025">2025</button>
-                    <button class="year-filter-btn bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-2 rounded-lg text-sm" data-year="2026">2026</button>
-                </div>
                 
                 <button id="openFilterPanelBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm">
                     <i class="fas fa-filter mr-2"></i> Filter
@@ -3001,128 +2879,7 @@
                 return [];
             }
         }
-        // ==================== FUNGSI FILTER TAHUN ====================
-        
-        // Fungsi untuk inisialisasi filter tahun
-        function initYearFilter() {
-            // Event listener untuk tombol tahun
-            document.querySelectorAll('.year-filter-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const selectedYear = this.dataset.year;
-                    
-                    // Update active state
-                    document.querySelectorAll('.year-filter-btn').forEach(b => {
-                        b.classList.remove('active', 'bg-blue-600', 'text-white');
-                        b.classList.add('bg-gray-200', 'text-gray-800');
-                    });
-                    
-                    this.classList.add('active', 'bg-blue-600', 'text-white');
-                    this.classList.remove('bg-gray-200', 'text-gray-800');
-                    
-                    // Update active filter
-                    activeFilters.year = selectedYear;
-                    
-                    // Terapkan filter
-                    applyActiveFilters();
-                });
-            });
-        }
-        
-        // MODIFIKASI: Fungsi untuk menerapkan filter yang aktif dengan error handling
-        function applyActiveFilters() {
-            try {
-                let baseDeals = deals;
-                if (currentUserRole !== 'admin' && currentUserRole !== 'manager') {
-                    baseDeals = deals.filter(deal => deal.stage !== 'lost');
-                }
-        
-                const filteredDeals = baseDeals.filter(deal => {
-                    const matchesSearch = 
-                        activeFilters.searchTerm === '' ||
-                        (deal.dealName && deal.dealName.toLowerCase().includes(activeFilters.searchTerm)) ||
-                        (deal.salesName && deal.salesName.toLowerCase().includes(activeFilters.searchTerm));
-                    
-                    const matchesPriority = 
-                        activeFilters.priority === 'all' || 
-                        (deal.priority && deal.priority === activeFilters.priority);
-                    
-                    // PERBAIKAN: Filter tahun
-                    let matchesYear = activeFilters.year === 'all';
-                    if (!matchesYear && deal.createdAt) {
-                        const dealYear = deal.createdAt.toDate().getFullYear().toString();
-                        matchesYear = dealYear === activeFilters.year;
-                    }
-        
-                    const matchesStage = activeFilters.stage === 'all' || 
-                                        (deal.stage && deal.stage === activeFilters.stage);
-        
-                    const matchesSales = activeFilters.sales === 'all' || 
-                                        (deal.salesName && deal.salesName === activeFilters.sales);
-        
-                    const matchesConsultant = activeFilters.consultant === 'all' || 
-                                            (deal.consultant && deal.consultant === activeFilters.consultant);
-                    
-                    const matchesContractor = activeFilters.contractor === 'all' || 
-                                            (deal.contractor && 
-                                            (Array.isArray(deal.contractor) ? 
-                                            deal.contractor.includes(activeFilters.contractor) : 
-                                            deal.contractor === activeFilters.contractor));
-        
-                    const matchesProduct = activeFilters.product === 'all' || 
-                                        (deal.product && 
-                                        (Array.isArray(deal.product) ? 
-                                        deal.product.includes(activeFilters.product) : 
-                                        deal.product === activeFilters.product));
-        
-                    const matchesFacility = activeFilters.facility === 'all' || 
-                                            (deal.facility && deal.facility === activeFilters.facility);
-        
-                    const matchesPackage = activeFilters.package === 'all' || 
-                                        (deal.package && deal.package === activeFilters.package);
-                    
-                    return matchesSearch && matchesPriority && matchesYear && matchesStage && matchesSales &&
-                        matchesConsultant && matchesContractor && matchesFacility && matchesProduct && matchesPackage;
-                });
-                
-                // MODIFIKASI: Group dan ambil nilai tertinggi untuk project dengan nama sama
-                const groupedDeals = groupAndFilterDeals(filteredDeals);
-                renderFilteredDeals(groupedDeals);
-            } catch (error) {
-                console.error("Error applying active filters:", error);
-            }
-        }
-        
-        // ==================== FUNGSI UNTUK GROUP DEALS DENGAN NAMA SAMA ====================
-        
-        // Fungsi untuk mengelompokkan dan memfilter deals dengan nama yang sama
-        function groupAndFilterDeals(dealsArray) {
-            const groupedByName = {};
-            
-            dealsArray.forEach(deal => {
-                const dealName = deal.dealName?.toLowerCase().trim();
-                if (!dealName) return;
-                
-                if (!groupedByName[dealName]) {
-                    groupedByName[dealName] = [];
-                }
-                groupedByName[dealName].push(deal);
-            });
-            
-            // Untuk setiap grup, ambil deal dengan nilai tertinggi
-            const result = [];
-            Object.values(groupedByName).forEach(dealGroup => {
-                if (dealGroup.length === 1) {
-                    result.push(dealGroup[0]);
-                } else {
-                    // Urutkan berdasarkan nilai tertinggi
-                    const sortedDeals = [...dealGroup].sort((a, b) => (b.value || 0) - (a.value || 0));
-                    // Ambil yang nilai tertinggi
-                    result.push(sortedDeals[0]);
-                }
-            });
-            
-            return result;
-        }
+
         // Fungsi untuk merender komentar
         function renderComments(comments, containerId) {
             const container = document.getElementById(containerId);
@@ -3254,47 +3011,32 @@
         // Variabel untuk menyimpan pilihan sales aktif per deal card
         let activeSalesPerDeal = {};
 
-        // PERBAIKAN: Fungsi untuk render deal card dengan fitur merge yang diperbaiki
+        // Fungsi untuk menampilkan deal card dengan fitur merge yang sudah diperbaiki
         function renderMergedDealCard(dealGroup) {
-            if (!dealGroup || dealGroup.length === 0) return null;
-            
             const dealName = dealGroup[0].dealName;
             const dealNameLower = dealName.toLowerCase();
+            const mergedDealsInfo = identifyMergedDeals();
+            const mergedInfo = mergedDealsInfo[dealNameLower];
             
-            // Urutkan berdasarkan nilai tertinggi
-            const sortedDeals = [...dealGroup].sort((a, b) => (b.value || 0) - (a.value || 0));
-            const primaryDeal = sortedDeals[0];
-            
-            // Simpan pilihan sales aktif untuk deal ini
-            let activeSales = activeSalesPerDeal[dealNameLower] || primaryDeal.salesName;
+            // Ambil sales yang aktif untuk deal ini, default ke sales pertama
+            let activeSales = activeSalesPerDeal[dealNameLower] || dealGroup[0].salesName;
             
             // Cari deal berdasarkan sales yang aktif
             let activeDeal = dealGroup.find(deal => deal.salesName === activeSales);
             if (!activeDeal) {
-                activeDeal = primaryDeal;
-                activeSales = primaryDeal.salesName;
+                activeDeal = dealGroup[0];
+                activeSales = dealGroup[0].salesName;
                 activeSalesPerDeal[dealNameLower] = activeSales;
             }
             
-            const hasMultipleDeals = dealGroup.length > 1;
-            const salesNames = [...new Set(dealGroup.map(deal => deal.salesName))];
+            const hasMultipleSales = mergedInfo && mergedInfo.count > 1;
+            const salesNames = hasMultipleSales ? mergedInfo.salesNames : [activeDeal.salesName];
             
             const dealCard = document.createElement('div');
-            dealCard.className = 'deal-card merged-deal';
+            dealCard.className = 'deal-card';
             dealCard.dataset.id = activeDeal.id;
             dealCard.dataset.dealName = dealNameLower;
             dealCard.dataset.allDeals = JSON.stringify(dealGroup.map(d => d.id));
-            dealCard.dataset.dealsCount = dealGroup.length;
-            
-            // Data untuk setiap deal dalam grup
-            dealCard.dataset.dealsInfo = JSON.stringify(dealGroup.map(d => ({
-                id: d.id,
-                salesName: d.salesName,
-                value: d.value,
-                stage: d.stage,
-                priority: d.priority,
-                createdAt: d.createdAt
-            })));
             
             let stageColorClass = '';
             switch (activeDeal.stage) {
@@ -3325,55 +3067,36 @@
                 default:
                     stageColorClass = 'bg-gray-100 text-gray-800';
             }
-        
+
             const priorityBadgeClass = getPriorityBadgeClass(activeDeal.priority);
             const canEdit = canUserEditDeal(activeDeal);
-        
-            // Indikator multiple deals
-            let multipleDealsIndicator = '';
-            if (hasMultipleDeals) {
-                multipleDealsIndicator = `
-                    <div class="multiple-deals-indicator" title="${dealGroup.length} versi dalam project ini">
-                        <i class="fas fa-layer-group mr-1"></i>${dealGroup.length}
+
+            let salesSelectorHTML = '';
+            if (hasMultipleSales && salesNames.length > 1 && (currentUserRole === 'admin' || currentUserRole === 'manager')) {
+                salesSelectorHTML = `
+                    <div class="multiple-sales-indicator" title="${salesNames.length} sales bekerja pada project ini">
+                        ${salesNames.length}
                     </div>
-                    <div class="deals-dropdown" id="deals-dropdown-${activeDeal.id}">
-                        <div class="dropdown-header">Pilih versi project:</div>
-                        ${dealGroup.map((deal, index) => `
-                            <div class="deal-dropdown-item ${deal.salesName === activeSales ? 'active' : ''}" 
-                                 data-deal-id="${deal.id}"
-                                 data-sales="${deal.salesName}"
+                    <div class="sales-dropdown" id="sales-dropdown-${activeDeal.id}">
+                        ${salesNames.map(salesName => `
+                            <div class="sales-dropdown-item ${salesName === activeSales ? 'active' : ''}" 
+                                 data-sales="${salesName}"
                                  data-deal-name="${dealNameLower}">
-                                <div class="deal-dropdown-info">
-                                    <strong>${deal.salesName}</strong>
-                                    <div class="deal-dropdown-details">
-                                        <span>Rp ${formatNumber(deal.value) || '0'}</span>
-                                        <span class="stage-badge ${getStageBadgeClass(deal.stage)}">
-                                            ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}
-                                        </span>
-                                    </div>
-                                </div>
+                                ${salesName}
                             </div>
                         `).join('')}
                     </div>
                 `;
             }
-        
+
             dealCard.innerHTML = `
                 <div class="flex justify-between items-start">
-                    <div class="flex-1">
-                        <h3 class="font-bold text-gray-800 truncate">${dealName || 'No Name'}</h3>
-                        ${hasMultipleDeals ? `
-                            <div class="text-xs text-gray-500 mt-1">
-                                <i class="fas fa-info-circle mr-1"></i>
-                                ${dealGroup.length} versi tersedia
-                            </div>
-                        ` : ''}
-                    </div>
+                    <h3 class="font-bold text-gray-800">${dealName || 'No Name'}</h3>
                     <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
                         ${activeDeal.priority || 'Priority'}
                     </span>
                 </div>
-                ${multipleDealsIndicator}
+                ${salesSelectorHTML}
                 <div class="mt-1 text-sm text-gray-600 deal-details">
                     <p><i class="fas fa-user-tie mr-1"></i> ${activeSales}</p>
                     <p class="font-semibold text-blue-600">Rp ${formatNumber(activeDeal.value) || '0'}</p>
@@ -3402,141 +3125,6 @@
             `;
             
             return dealCard;
-        }
-                // Fungsi untuk setup multiple deals dropdown
-        function setupMultipleDealsDropdown(dealCard, dealGroup) {
-            const multipleDealsIndicator = dealCard.querySelector('.multiple-deals-indicator');
-            const dealsDropdown = dealCard.querySelector('.deals-dropdown');
-            
-            if (multipleDealsIndicator && dealsDropdown) {
-                multipleDealsIndicator.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    dealsDropdown.classList.toggle('show');
-                });
-                
-                // Event listener untuk item dropdown
-                dealsDropdown.querySelectorAll('.deal-dropdown-item').forEach(item => {
-                    item.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        const selectedDealId = this.dataset.dealId;
-                        const selectedSales = this.dataset.sales;
-                        const dealName = this.dataset.dealName;
-                        
-                        // Cari deal yang dipilih
-                        const selectedDeal = dealGroup.find(deal => deal.id === selectedDealId);
-                        if (!selectedDeal) return;
-                        
-                        // Update active sales untuk deal ini
-                        activeSalesPerDeal[dealName] = selectedSales;
-                        
-                        // Update data di card
-                        updateDealCardContent(dealCard, selectedDeal);
-                        
-                        // Update active item di dropdown
-                        dealsDropdown.querySelectorAll('.deal-dropdown-item').forEach(i => {
-                            i.classList.remove('active');
-                        });
-                        this.classList.add('active');
-                        
-                        // Tutup dropdown
-                        dealsDropdown.classList.remove('show');
-                        
-                        showToast(`Menampilkan versi untuk: ${selectedSales}`, 2000);
-                    });
-                });
-            }
-            
-            // Tutup dropdown ketika klik di luar
-            document.addEventListener('click', function(e) {
-                if (multipleDealsIndicator && !dealCard.contains(e.target)) {
-                    if (dealsDropdown) {
-                        dealsDropdown.classList.remove('show');
-                    }
-                }
-            });
-        }
-        
-        // Fungsi untuk update konten deal card
-        function updateDealCardContent(dealCard, deal) {
-            let stageColorClass = '';
-            switch (deal.stage) {
-                case 'identified':
-                    stageColorClass = 'bg-gray-100 text-gray-800';
-                    break;
-                case 'prospect':
-                    stageColorClass = 'bg-blue-100 text-blue-800';
-                    break;
-                case 'tender-me':
-                    stageColorClass = 'bg-orange-100 text-orange-800';
-                    break;
-                case 'tender-main-con':
-                    stageColorClass = 'bg-purple-100 text-purple-800';
-                    break;
-                case 'contract-award':
-                    stageColorClass = 'bg-indigo-100 text-indigo-800';
-                    break;
-                case 'win':
-                    stageColorClass = 'bg-green-100 text-green-800';
-                    break;
-                case 'lost':
-                    stageColorClass = 'bg-red-100 text-red-800';
-                    break;
-                case 'on-hold':
-                    stageColorClass = 'bg-yellow-100 text-yellow-800';
-                    break;
-                default:
-                    stageColorClass = 'bg-gray-100 text-gray-800';
-            }
-        
-            const priorityBadgeClass = getPriorityBadgeClass(deal.priority);
-            
-            // Update konten
-            const salesNameElement = dealCard.querySelector('.deal-details p:first-child');
-            const valueElement = dealCard.querySelector('.deal-details p.font-semibold');
-            const stageElement = dealCard.querySelector('.priority-badge:last-child');
-            const priorityElement = dealCard.querySelector('.priority-badge:first-child');
-            const dateElement = dealCard.querySelector('.text-xs');
-            
-            if (salesNameElement) {
-                salesNameElement.innerHTML = `<i class="fas fa-user-tie mr-1"></i> ${deal.salesName}`;
-            }
-            
-            if (valueElement) {
-                valueElement.textContent = `Rp ${formatNumber(deal.value) || '0'}`;
-            }
-            
-            if (stageElement) {
-                stageElement.className = `priority-badge px-2 py-1 rounded-full ${stageColorClass}`;
-                stageElement.textContent = deal.stage ? 
-                    deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 
-                    'Unknown Stage';
-            }
-            
-            if (priorityElement) {
-                priorityElement.className = `priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}`;
-                priorityElement.textContent = deal.priority || 'Priority';
-            }
-            
-            if (dateElement) {
-                dateElement.textContent = `Dibuat: ${formatDate(deal.createdAt)}`;
-            }
-            
-            // Update dataset id
-            dealCard.dataset.id = deal.id;
-        }
-        // Fungsi untuk mendapatkan class badge stage
-        function getStageBadgeClass(stage) {
-            switch(stage) {
-                case 'identified': return 'bg-gray-100 text-gray-800';
-                case 'prospect': return 'bg-blue-100 text-blue-800';
-                case 'tender-me': return 'bg-orange-100 text-orange-800';
-                case 'tender-main-con': return 'bg-purple-100 text-purple-800';
-                case 'contract-award': return 'bg-indigo-100 text-indigo-800';
-                case 'win': return 'bg-green-100 text-green-800';
-                case 'lost': return 'bg-red-100 text-red-800';
-                case 'on-hold': return 'bg-yellow-100 text-yellow-800';
-                default: return 'bg-gray-100 text-gray-800';
-            }
         }
 
         // Fungsi untuk setup event listener merge deal card
@@ -5942,7 +5530,7 @@
         // PERBAIKAN: Event delegation untuk tombol aksi dengan perbaikan tombol new deal
         function initEventListeners() {
             console.log("Initializing event listeners...");
-            initYearFilter();
+            
             try {
                 // Inisialisasi elemen DOM untuk search consultant
                 consultantSearchInput = document.getElementById('consultantSearch');
@@ -6383,104 +5971,7 @@
                 console.error("Error filtering deals:", error);
             }
         }
-               // Fungsi untuk merender komentar dengan tombol hapus
-        function renderComments(comments, containerId) {
-            const container = document.getElementById(containerId);
-            if (!container) return;
-            
-            container.innerHTML = '';
-            
-            if (comments.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center text-gray-500 py-4">
-                        <i class="fas fa-comments text-2xl mb-2"></i>
-                        <p>Belum ada komentar</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            const currentUserEmail = auth.currentUser?.email;
-            const isAdmin = currentUserRole === 'admin';
-            const isManager = currentUserRole === 'manager';
-            
-            comments.forEach(comment => {
-                const commentItem = document.createElement('div');
-                const isManagerComment = managerEmails.includes(comment.userEmail);
-                const isCurrentUserComment = comment.userEmail === currentUserEmail;
-                
-                // Tentukan apakah user bisa menghapus komentar
-                const canDelete = isAdmin || isManager || isCurrentUserComment;
-                
-                commentItem.className = `comment-item ${isManagerComment ? 'manager' : 'sales'}`;
-                commentItem.dataset.commentId = comment.id;
-                
-                commentItem.innerHTML = `
-                    <div class="comment-header">
-                        <div>
-                            <span class="comment-author">${comment.userEmail}</span>
-                            <span class="comment-role ${isManagerComment ? 'manager' : 'sales'} ml-2">
-                                ${isManagerComment ? 'Manager' : 'Sales'}
-                            </span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <div class="comment-time">${formatDateTime(comment.timestamp)}</div>
-                            ${canDelete ? `
-                            <button class="delete-comment-btn text-red-500 hover:text-red-700 text-sm" 
-                                    data-comment-id="${comment.id}"
-                                    title="Hapus komentar">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                            ` : ''}
-                        </div>
-                    </div>
-                    <div class="comment-content">${comment.content}</div>
-                `;
-                
-                container.appendChild(commentItem);
-            });
-            
-            // Update comments count
-            const commentsCountElement = document.getElementById(containerId === 'commentsList' ? 'commentsCount' : 'detailCommentsCount');
-            if (commentsCountElement) {
-                commentsCountElement.textContent = `${comments.length} komentar`;
-            }
-            
-            // Tambahkan event listener untuk tombol hapus komentar
-            container.querySelectorAll('.delete-comment-btn').forEach(btn => {
-                btn.addEventListener('click', async function(e) {
-                    e.stopPropagation();
-                    const commentId = this.dataset.commentId;
-                    await deleteComment(commentId);
-                });
-            });
-        }
-
-        // Fungsi untuk menghapus komentar
-        async function deleteComment(commentId) {
-            if (!commentId) return;
-            
-            if (!confirm("Apakah Anda yakin ingin menghapus komentar ini?")) {
-                return;
-            }
-            
-            try {
-                await commentsCollection.doc(commentId).delete();
-                
-                showToast("Komentar berhasil dihapus", 2000);
-                
-                // Reload comments
-                if (currentDealIdForComments) {
-                    const comments = await loadComments(currentDealIdForComments);
-                    renderComments(comments, 'commentsList');
-                    renderComments(comments, 'detailCommentsList');
-                }
-                
-            } catch (error) {
-                console.error("Error deleting comment:", error);
-                showToast("Gagal menghapus komentar", 3000);
-            }
-        } 
+        
         // PERBAIKAN: Fungsi untuk render deals yang sudah difilter dengan merge deal card
         function renderFilteredDeals(filteredDeals) {
             const pipelineStage = document.getElementById('pipelines-stage');
@@ -6499,7 +5990,7 @@
             }
             
             if (currentView === 'card') {
-                // Group deals by name
+                // Group deals by name untuk merge
                 const dealsByName = {};
                 filteredDeals.forEach(deal => {
                     const dealName = deal.dealName?.toLowerCase().trim();
@@ -6514,47 +6005,17 @@
                 // Render deal cards
                 Object.values(dealsByName).forEach(dealGroup => {
                     if (dealGroup.length > 0) {
-                        const dealCard = renderMergedDealCard(dealGroup);
-                        pipelineStage.appendChild(dealCard);
-                        
-                        // Setup dropdown untuk multiple deals
                         if (dealGroup.length > 1) {
-                            setupMultipleDealsDropdown(dealCard, dealGroup);
+                            // Multiple deals dengan nama yang sama - render merged card
+                            const mergedCard = renderMergedDealCard(dealGroup);
+                            pipelineStage.appendChild(mergedCard);
+                            setupMergeDealCardEvents(mergedCard, dealGroup);
+                        } else {
+                            // Single deal - render individual card
+                            const dealCard = renderIndividualDealCard(dealGroup[0]);
+                            pipelineStage.appendChild(dealCard);
                         }
                     }
-                });
-                
-                initSortable();
-            } else {
-                // Render list view
-                const table = document.createElement('table');
-                table.className = 'list-view';
-                
-                const thead = document.createElement('thead');
-                thead.innerHTML = `
-                    <tr>
-                        <th>No</th>
-                        <th>Nama Sales</th>
-                        <th>Nama Project</th>
-                        <th>Tahap</th>
-                        <th>Konsultan</th>
-                        <th>Nilai (IDR)</th>
-                        <th>Priority</th>
-                        <th>Aksi</th>
-                    </tr>
-                `;
-                table.appendChild(thead);
-                
-                const tbody = document.createElement('tbody');
-                filteredDeals.forEach((deal, index) => {
-                    const row = renderDealList(deal, index);
-                    tbody.appendChild(row);
-                });
-                table.appendChild(tbody);
-                
-                pipelineStage.appendChild(table);
-            }
-        }
                 });
                 
                 initSortable();
