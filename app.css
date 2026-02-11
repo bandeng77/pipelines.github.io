@@ -1374,3 +1374,110 @@ body {
 .hide-horizontal-scroll {
     overflow-x: hidden;
 }
+/* CSS untuk merged deal card */
+.merged-deal-card {
+    border: 2px solid #8B5CF6;
+    background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+}
+
+.merged-deal-card:hover {
+    border-color: #7C3AED;
+}
+
+.deal-selector {
+    font-size: 0.75rem;
+    height: 32px;
+    background-color: white;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    padding: 0 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.deal-selector:focus {
+    outline: none;
+    border-color: #8B5CF6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.deal-selector option {
+    font-size: 0.75rem;
+    padding: 0.25rem;
+}
+
+/* CSS untuk tombol hapus komentar */
+.delete-comment-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+}
+
+.delete-comment-btn:hover {
+    background-color: #fef2f2;
+}
+
+/* CSS untuk filter tahun */
+#yearFilter {
+    min-width: 120px;
+    height: 40px;
+}
+
+/* Animasi untuk perubahan deal card */
+@keyframes fadeInDeal {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.deal-card {
+    animation: fadeInDeal 0.3s ease-out;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    #yearFilter {
+        min-width: 100px;
+    }
+    
+    .deal-selector {
+        font-size: 0.7rem;
+    }
+}
+
+/* Highlight untuk deal yang dipilih */
+.deal-selector option:checked {
+    background-color: #8B5CF6;
+    color: white;
+}
+
+/* Badge untuk merged deals */
+.merged-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background-color: #8B5CF6;
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: bold;
+    z-index: 5;
+}
