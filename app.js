@@ -39,6 +39,9 @@ let uniquePackages = new Set();
 let uniqueYears = new Set();
 let uniqueSales = new Set();
 
+// FILTER TAHUN AKTIF - MODIFIKASI BARU
+let activeYear = 'all';
+
 // Deklarasi variabel elemen DOM
 let facilitySelect, newFacilityInput;
 let packageSelect, newPackageInput;
@@ -97,6 +100,9 @@ let salesCharts = {
 
 // Variabel untuk menyimpan deal yang sedang dilihat komentarnya
 let currentDealIdForComments = null;
+
+// Variabel untuk menyimpan pilihan sales aktif per deal card
+let activeSalesPerDeal = {};
 
 // ==================== FUNGSI UTAMA ====================
 
@@ -161,6 +167,7 @@ auth.onAuthStateChanged(async (user) => {
             initEventListeners();
             initViewToggle();
             initExportElements();
+            initYearFilter(); // MODIFIKASI: Inisialisasi filter tahun
             
             // Load Recycle Bin data untuk admin
             if (currentUserRole === 'admin') {
@@ -172,6 +179,104 @@ auth.onAuthStateChanged(async (user) => {
         }
     }
 });
+
+// ==================== FILTER TAHUN - MODIFIKASI BARU ====================
+
+/**
+ * Inisialisasi filter tahun untuk 2025 dan 2026
+ */
+function initYearFilter() {
+    const yearFilterContainer = document.querySelector('.year-filter-container');
+    if (!yearFilterContainer) return;
+
+    // Gunakan event delegation
+    yearFilterContainer.addEventListener('click', (e) => {
+        const yearBadge = e.target.closest('.year-badge');
+        if (!yearBadge) return;
+
+        const year = yearBadge.dataset.year;
+        
+        // Update active class
+        document.querySelectorAll('.year-badge').forEach(badge => {
+            badge.classList.remove('active');
+        });
+        yearBadge.classList.add('active');
+        
+        // Set active year dan reload data
+        activeYear = year;
+        loadDealsFromFirebase();
+        
+        showToast(`Menampilkan data tahun ${year === 'all' ? 'semua tahun' : year}`, 2000);
+    });
+}
+
+/**
+ * Filter deals berdasarkan tahun yang dipilih
+ * @param {Array} dealsList - Daftar deals
+ * @returns {Array} - Deals yang sudah difilter berdasarkan tahun
+ */
+function filterDealsByYear(dealsList) {
+    if (activeYear === 'all') return dealsList;
+    
+    return dealsList.filter(deal => {
+        if (!deal.createdAt) return false;
+        try {
+            const dealYear = deal.createdAt.toDate().getFullYear().toString();
+            return dealYear === activeYear;
+        } catch (e) {
+            return false;
+        }
+    });
+}
+
+// ==================== MERGE PROJECT DENGAN NAMA SAMA - MODIFIKASI ====================
+
+/**
+ * Menggabungkan deal dengan nama project yang sama
+ * Untuk dashboard priority: ambil nilai tertinggi
+ * Untuk card pipeline: simpan semua variant
+ * @param {Array} dealsList - Daftar deals
+ * @returns {Array} - Daftar deals yang sudah di-merge
+ */
+function mergeDuplicateProjects(dealsList) {
+    const projectMap = new Map();
+    
+    // Kelompokkan berdasarkan nama project
+    dealsList.forEach(deal => {
+        const dealName = deal.dealName?.trim();
+        if (!dealName) return;
+        
+        if (!projectMap.has(dealName)) {
+            projectMap.set(dealName, []);
+        }
+        projectMap.get(dealName).push(deal);
+    });
+    
+    const mergedDeals = [];
+    
+    projectMap.forEach((duplicateDeals, dealName) => {
+        if (duplicateDeals.length > 1) {
+            // Untuk dashboard: ambil deal dengan nilai tertinggi
+            const highestValueDeal = duplicateDeals.reduce((max, deal) => 
+                (deal.value || 0) > (max.value || 0) ? deal : max
+            , duplicateDeals[0]);
+            
+            // Simpan semua variant untuk card pipeline
+            const mergedDeal = {
+                ...highestValueDeal,
+                id: highestValueDeal.id,
+                isMerged: true,
+                allVariants: duplicateDeals
+            };
+            mergedDeals.push(mergedDeal);
+        } else {
+            // Deal unik
+            mergedDeals.push(duplicateDeals[0]);
+        }
+    });
+    
+    return mergedDeals;
+}
 
 // ==================== FUNGSI DROPDOWN OPTIONS ====================
 
@@ -307,12 +412,16 @@ function updateDropdownOptions() {
     populateDropdown('pic', uniquePICs);
 }
 
-// ==================== FUNGSI PRIORITY DASHBOARD - DIMODIFIKASI: Hanya 5 priority ====================
+// ==================== FUNGSI PRIORITY DASHBOARD - DIMODIFIKASI: Hanya 5 priority + MERGE ====================
 
 // Fungsi untuk membuat priority dashboard yang disederhanakan
 function createPriorityDashboard() {
     const priorityDashboard = document.querySelector('.priority-dashboard');
     if (!priorityDashboard) return;
+    
+    // Filter berdasarkan tahun dan merge project dengan nama sama
+    const yearFilteredDeals = filterDealsByYear(deals);
+    const mergedDealsForDashboard = mergeDuplicateProjects(yearFilteredDeals);
     
     // Hitung statistik berdasarkan priority - HANYA 5 PRIORITY
     const priorityStats = {
@@ -323,7 +432,7 @@ function createPriorityDashboard() {
         'On Track': { count: 0, value: 0, deals: [] }
     };
     
-    deals.forEach(deal => {
+    mergedDealsForDashboard.forEach(deal => {
         const priority = deal.priority || 'Priority';
         if (priorityStats[priority]) {
             priorityStats[priority].count++;
@@ -521,8 +630,6 @@ function updateProgressBarUI(progress, isOnHold = false) {
 // Fungsi untuk mengupdate checkpoint
 function updateCheckpoints(progress, isOnHold = false) {
     const checkpoints = document.querySelectorAll('.checkpoint');
-    const stepDots = document.querySelectorAll('.step-dot');
-    const stepLabels = document.querySelectorAll('.step-label');
     
     checkpoints.forEach(checkpoint => {
         const checkpointValue = parseInt(checkpoint.dataset.percentage);
@@ -547,7 +654,7 @@ function updateCheckpoints(progress, isOnHold = false) {
     });
 }
 
-// ==================== FUNGSI COMMENTS ====================
+// ==================== FUNGSI COMMENTS - DIMODIFIKASI: TAMBAH TOMBOL HAPUS ====================
 
 // Fungsi untuk memuat komentar
 async function loadComments(dealId) {
@@ -569,7 +676,7 @@ async function loadComments(dealId) {
     }
 }
 
-// Fungsi untuk merender komentar
+// Fungsi untuk merender komentar - DIMODIFIKASI: Tambah tombol hapus
 function renderComments(comments, containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -592,6 +699,10 @@ function renderComments(comments, containerId) {
         const isCurrentUser = comment.userEmail === auth.currentUser?.email;
         
         commentItem.className = `comment-item ${isManager ? 'manager' : 'sales'}`;
+        
+        // Cek apakah user dapat menghapus komentar (admin, manager, atau pemilik komentar)
+        const canDelete = currentUserRole === 'admin' || currentUserRole === 'manager' || isCurrentUser;
+        
         commentItem.innerHTML = `
             <div class="comment-header">
                 <div>
@@ -603,15 +714,58 @@ function renderComments(comments, containerId) {
                 <div class="comment-time">${formatDateTime(comment.timestamp)}</div>
             </div>
             <div class="comment-content">${comment.content}</div>
+            ${canDelete ? `
+                <button class="comment-delete-btn" data-comment-id="${comment.id}" data-deal-id="${comment.dealId}">
+                    <i class="fas fa-trash"></i>
+                </button>
+            ` : ''}
         `;
         
         container.appendChild(commentItem);
+    });
+    
+    // Tambahkan event listener untuk tombol hapus
+    container.querySelectorAll('.comment-delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const commentId = btn.dataset.commentId;
+            const dealId = btn.dataset.dealId;
+            await deleteComment(commentId, dealId);
+        });
     });
     
     // Update comments count
     const commentsCountElement = document.getElementById(containerId === 'commentsList' ? 'commentsCount' : 'detailCommentsCount');
     if (commentsCountElement) {
         commentsCountElement.textContent = `${comments.length} komentar`;
+    }
+}
+
+// Fungsi untuk menghapus komentar - MODIFIKASI BARU
+async function deleteComment(commentId, dealId) {
+    if (!commentId) {
+        showToast("Komentar tidak ditemukan", 3000);
+        return;
+    }
+    
+    try {
+        await commentsCollection.doc(commentId).delete();
+        
+        showToast("Komentar berhasil dihapus", 2000);
+        
+        // Reload comments jika masih di deal yang sama
+        if (currentDealIdForComments === dealId) {
+            const comments = await loadComments(dealId);
+            renderComments(comments, 'detailCommentsList');
+            
+            // Juga update di modal edit jika terbuka
+            if (document.getElementById('commentsList')) {
+                renderComments(comments, 'commentsList');
+            }
+        }
+    } catch (error) {
+        console.error("Error deleting comment:", error);
+        showToast("Gagal menghapus komentar", 3000);
     }
 }
 
@@ -635,13 +789,19 @@ async function addComment(dealId, content) {
         // Reload comments
         if (currentDealIdForComments === dealId) {
             const comments = await loadComments(dealId);
-            renderComments(comments, 'commentsList');
             renderComments(comments, 'detailCommentsList');
+            
+            // Juga update di modal edit jika terbuka
+            if (document.getElementById('commentsList')) {
+                renderComments(comments, 'commentsList');
+            }
         }
         
         // Reset input
-        document.getElementById('commentInput').value = '';
         document.getElementById('detailCommentInput').value = '';
+        if (document.getElementById('commentInput')) {
+            document.getElementById('commentInput').value = '';
+        }
         
         showToast("Komentar berhasil ditambahkan", 2000);
         
@@ -696,9 +856,6 @@ function identifyMergedDeals() {
     
     return mergedDealsInfo;
 }
-
-// Variabel untuk menyimpan pilihan sales aktif per deal card
-let activeSalesPerDeal = {};
 
 // Fungsi untuk menampilkan deal card dengan fitur merge yang sudah diperbaiki
 function renderMergedDealCard(dealGroup) {
@@ -3578,6 +3735,9 @@ function applyActiveFilters() {
             baseDeals = deals.filter(deal => deal.stage !== 'lost');
         }
 
+        // Filter berdasarkan tahun yang dipilih
+        baseDeals = filterDealsByYear(baseDeals);
+
         const filteredDeals = baseDeals.filter(deal => {
             const matchesSearch = 
                 activeFilters.searchTerm === '' ||
@@ -4612,11 +4772,6 @@ function closeDealModal() {
     }, { once: true });
 }
 
-// Catatan: Fungsi-fungsi lain seperti saveDeal(), prepareEditDeal(), openDealDetailModal(), dll.
-// perlu disertakan dalam file JavaScript lengkap. Kode di atas hanya menunjukkan pemisahan struktur.
-
-// ==================== FUNGSI TAMBAHAN YANG DIPERLUKAN ====================
-
 // Fungsi untuk menyimpan deal
 async function saveDeal() {
     try {
@@ -4827,7 +4982,7 @@ function prepareEditDeal(dealId) {
     openDealModal(dealId);
 }
 
-// Fungsi untuk membuka modal detail deal
+// Fungsi untuk membuka modal detail deal - DIMODIFIKASI: Komentar dengan tombol hapus
 async function openDealDetailModal(dealId) {
     try {
         const deal = deals.find(d => d.id === dealId);
