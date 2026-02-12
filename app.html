@@ -11,7 +11,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
-    <!-- Library untuk export Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <style>
@@ -119,6 +118,37 @@
             font-weight: 600;
             color: #374151;
             margin-top: 0.5rem;
+        }
+
+        /* Year Filter Styles */
+        .year-filter-container {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        
+        .year-badge {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 2rem;
+            padding: 0.5rem 1.25rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #4b5563;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .year-badge:hover {
+            background: #f1f5f9;
+            border-color: #94a3b8;
+        }
+        
+        .year-badge.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
         }
 
         /* Modal untuk daftar proyek berdasarkan priority */
@@ -1176,7 +1206,7 @@
             z-index: -1;
         }
 
-        /* Comments Section Styles */
+        /* Comments Section Styles - DIMODIFIKASI: Tambah tombol hapus */
         .comments-section {
             margin-top: 1.5rem;
             border-top: 1px solid #e5e7eb;
@@ -1203,6 +1233,7 @@
             padding: 0.75rem;
             margin-bottom: 0.75rem;
             border-left: 3px solid #3b82f6;
+            position: relative;
         }
 
         .comment-item.manager {
@@ -1220,6 +1251,7 @@
             justify-content: space-between;
             align-items: flex-start;
             margin-bottom: 0.5rem;
+            padding-right: 2rem;
         }
 
         .comment-author {
@@ -1251,6 +1283,25 @@
             font-size: 0.875rem;
             color: #374151;
             line-height: 1.5;
+        }
+
+        .comment-delete-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 0.25rem;
+            opacity: 0.7;
+            transition: all 0.2s;
+        }
+
+        .comment-delete-btn:hover {
+            opacity: 1;
+            background-color: #fee2e2;
         }
 
         .comment-input-container {
@@ -1292,6 +1343,7 @@
 
         /* Merge Project Styles dalam Deal Card - DIPERBAIKI */
         .multiple-sales-indicator {
+            position: absolute;
             top: 8px;
             right: 8px;
             background-color: #8B5CF6;
@@ -1430,13 +1482,22 @@
                 </div>
             </div>
             
-            <!-- Combined Filter Section -->
-            <div class="mt-6 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 items-center">
-                <input type="text" id="searchDeals" placeholder="Cari deal berdasarkan nama, perusahaan..." class="w-full sm:w-1/2 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+            <!-- Year Filter & Search Combined Section - MODIFIKASI: Tambah filter tahun -->
+            <div class="mt-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <div class="year-filter-container">
+                    <span class="text-sm font-medium text-gray-700">Filter Tahun:</span>
+                    <button class="year-badge active" data-year="all">Semua Tahun</button>
+                    <button class="year-badge" data-year="2025">2025</button>
+                    <button class="year-badge" data-year="2026">2026</button>
+                </div>
                 
-                <button id="openFilterPanelBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm">
-                    <i class="fas fa-filter mr-2"></i> Filter
-                </button>
+                <div class="flex flex-col sm:flex-row w-full lg:w-auto space-y-3 sm:space-y-0 sm:space-x-4">
+                    <input type="text" id="searchDeals" placeholder="Cari deal berdasarkan nama, perusahaan..." class="w-full sm:w-64 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                    
+                    <button id="openFilterPanelBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm">
+                        <i class="fas fa-filter mr-2"></i> Filter
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -1921,7 +1982,7 @@
             </div>
         </div>
 
-        <!-- Deal Detail Modal dengan Comments - DIMODIFIKASI: Layout 2 kolom -->
+        <!-- Deal Detail Modal dengan Comments - DIMODIFIKASI: Layout 2 kolom + tombol hapus komentar -->
         <div id="dealDetailModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
             <div class="bg-white rounded-xl p-8 w-full max-w-6xl shadow-2xl modal-content-enter max-h-[90vh] overflow-y-auto" id="dealDetailModalContent">
                 <h2 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900" id="dealDetailTitle">Detail Deal</h2>
@@ -1999,14 +2060,14 @@
                         </div>
                     </div>
                     
-                    <!-- Kolom kanan: Comments Section -->
+                    <!-- Kolom kanan: Comments Section dengan tombol hapus -->
                     <div class="comments-section">
                         <div class="comments-header">
                             <h3 class="text-lg font-semibold text-gray-900">Komentar</h3>
                             <span class="text-sm text-gray-500" id="detailCommentsCount">0 komentar</span>
                         </div>
                         <div class="comments-list" id="detailCommentsList">
-                            <!-- Komentar akan ditampilkan di sini -->
+                            <!-- Komentar akan ditampilkan di sini dengan tombol hapus -->
                         </div>
                         <div class="comment-input-container">
                             <textarea id="detailCommentInput" class="comment-input" placeholder="Tulis komentar..."></textarea>
