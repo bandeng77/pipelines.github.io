@@ -11,10 +11,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
-    <!-- Library untuk export Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
-    <!-- Link ke file CSS eksternal -->
     <link rel="stylesheet" href="app.css">
 </head>
 <body class="bg-gray-50 text-gray-800 main-container">
@@ -30,21 +28,16 @@
                     <button id="authButton" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm">
                         <i class="fas fa-sign-out-alt mr-2"></i> Logout
                     </button>
-
                     <button id="newDealBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm">
                         <i class="fas fa-plus-circle mr-2"></i> Deal Baru
                     </button>
-                    
                     <button id="viewStatsBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm">
                         <i class="fas fa-chart-pie mr-2"></i> Statistik
                     </button>
-                    
                     <button id="activityBtn" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm">
                         <i class="fas fa-bell mr-2"></i> Aktivitas
                         <span id="activity-badge" class="ml-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full hidden">0</span>
                     </button>
-                    
-                    <!-- Tombol Export Excel (hanya untuk admin) -->
                     <button id="exportExcelBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm hidden">
                         <i class="fas fa-file-excel mr-2"></i> Export Excel
                     </button>
@@ -54,17 +47,14 @@
             <!-- Combined Filter Section -->
             <div class="mt-6 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 items-center">
                 <input type="text" id="searchDeals" placeholder="Cari deal berdasarkan nama, perusahaan..." class="w-full sm:w-1/2 p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                
                 <button id="openFilterPanelBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm">
                     <i class="fas fa-filter mr-2"></i> Filter
                 </button>
             </div>
         </header>
 
-        <!-- Priority Dashboard - DIMODIFIKASI: Hanya 5 priority (tanpa Lost dan Completed) -->
-        <div class="priority-dashboard mb-8">
-            <!-- Priority cards akan diisi oleh JavaScript -->
-        </div>
+        <!-- Priority Dashboard -->
+        <div class="priority-dashboard mb-8"></div>
 
         <!-- Pipeline Visualization -->
         <div class="grid grid-cols-1 gap-6 mb-10">
@@ -80,9 +70,7 @@
                         </button>
                     </div>
                 </div>
-                <div id="pipelines-stage" class="pipeline-stage-content">
-                    <!-- Deals akan ditampilkan di sini -->
-                </div>
+                <div id="pipelines-stage" class="pipeline-stage-content"></div>
             </div>
         </div>
 
@@ -98,13 +86,11 @@
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
-                <div id="priorityModalContent">
-                    <!-- Daftar proyek akan dimuat di sini -->
-                </div>
+                <div id="priorityModalContent"></div>
             </div>
         </div>
 
-        <!-- Stats Modal (full screen) -->
+        <!-- Stats Modal -->
         <div id="statsModal" class="fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center p-4 z-50 hidden">
             <div class="bg-white rounded-xl p-6 w-full h-full max-w-7xl shadow-2xl modal-content-enter overflow-hidden flex flex-col">
                 <div class="flex justify-between items-center mb-6">
@@ -133,7 +119,6 @@
                 
                 <!-- Tab Content -->
                 <div class="flex-1 overflow-y-auto">
-                    <!-- Tab 1: Overview -->
                     <div id="overviewTab" class="stats-tab-content space-y-6">
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <div class="bg-gray-50 p-4 rounded-lg shadow-inner chart-container">
@@ -154,13 +139,11 @@
                         </div>
                     </div>
                     
-                    <!-- Tab 2: Statistik per Sales -->
                     <div id="salesTab" class="stats-tab-content hidden">
                         <div class="mb-6">
                             <label class="block text-gray-700 text-sm font-semibold mb-2" for="salesFilter">Pilih Sales:</label>
                             <select id="salesFilter" class="w-full md:w-64 p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                                 <option value="all">Semua Sales</option>
-                                <!-- Opsi akan diisi secara dinamis -->
                             </select>
                         </div>
                         
@@ -204,7 +187,6 @@
                         </div>
                     </div>
                     
-                    <!-- Tab 3: Analisis Priority -->
                     <div id="priorityTab" class="stats-tab-content hidden">
                         <div class="mb-6">
                             <label class="block text-gray-700 text-sm font-semibold mb-2" for="priorityFilter">Pilih Priority:</label>
@@ -265,7 +247,7 @@
             </div>
         </div>
 
-        <!-- Modal untuk daftar detail project (untuk clickable chart) -->
+        <!-- Clickable Chart Modal -->
         <div id="clickableChartModal" class="clickable-modal hidden">
             <div class="clickable-modal-content">
                 <div class="clickable-modal-header">
@@ -274,13 +256,11 @@
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
-                <div id="clickableChartModalContent">
-                    <!-- Daftar project akan dimuat di sini -->
-                </div>
+                <div id="clickableChartModalContent"></div>
             </div>
         </div>
 
-        <!-- Tombol Recycle Bin Floating Action Button -->
+        <!-- Recycle Bin FAB -->
         <div id="recycleBinFab" class="recycle-bin-fab hidden">
             <i class="fas fa-trash-alt text-xl"></i>
             <div id="recycle-bin-badge" class="recycle-bin-badge hidden">0</div>
@@ -288,7 +268,7 @@
 
         <!-- Add/Edit Deal Modal -->
         <div id="dealModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
-            <div class="bg-white rounded-none p-8 w-full h-full shadow-2xl modal-content-enter" id="dealModalContent">
+            <div class="bg-white rounded-none p-8 w-full h-full shadow-2xl modal-content-enter overflow-y-auto" id="dealModalContent">
                 <h2 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900" id="modalTitle">Tambah Deal Baru</h2>
                 <form id="dealForm">
                     <input type="hidden" id="dealId">
@@ -301,90 +281,78 @@
                             </div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="salesName">Nama Sales</label>
-                                <div class="dropdown-with-delete">
-                                    <select id="salesName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                        <option value="">Pilih Sales</option>
-                                        <option value="Pamungkas">Pamungkas</option>
-                                        <option value="Rory">Rory</option>
-                                        <option value="Rangga">Rangga</option>
-                                        <option value="Dhea">Dhea</option>
-                                        <option value="YIB Wahyu">YIB Wahyu</option>
-                                        <option value="David">David</option>
-                                        <option value="Hadi">Hadi</option>
-                                        <option value="Husni">Husni</option>
-                                        <option value="Edwin">Edwin</option>
-                                        <option value="Andy">Andy</option>
-                                        <option value="Bintang">Bintang</option>
-                                        <option value="Engineering">Engineering</option>
-                                    </select>
-                                </div>
+                                <select id="salesName" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih Sales</option>
+                                    <option value="Pamungkas">Pamungkas</option>
+                                    <option value="Rory">Rory</option>
+                                    <option value="Rangga">Rangga</option>
+                                    <option value="Dhea">Dhea</option>
+                                    <option value="YIB Wahyu">YIB Wahyu</option>
+                                    <option value="David">David</option>
+                                    <option value="Hadi">Hadi</option>
+                                    <option value="Husni">Husni</option>
+                                    <option value="Edwin">Edwin</option>
+                                    <option value="Andy">Andy</option>
+                                    <option value="Bintang">Bintang</option>
+                                    <option value="Engineering">Engineering</option>
+                                </select>
                             </div>
-                            <div class="mb-3" id="stageFieldContainer">
+                            <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="stage">Tahap <span class="text-red-500">*</span></label>
-                                <div class="dropdown-with-delete">
-                                    <select id="stage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
-                                        <option value="identified">Identified</option>
-                                        <option value="prospect">Prospect</option>
-                                        <option value="tender-me">Tender Stage M&E</option>
-                                        <option value="tender-main-con">Tender Main Con</option>
-                                        <option value="contract-award">Contract Award</option>
-                                        <option value="win">Win</option>
-                                        <option value="lost">Lost</option>
-                                        <option value="on-hold">On Hold</option>
-                                    </select>
-                                </div>
+                                <select id="stage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm" required>
+                                    <option value="identified">Identified</option>
+                                    <option value="prospect">Prospect</option>
+                                    <option value="tender-me">Tender Stage M&E</option>
+                                    <option value="tender-main-con">Tender Main Con</option>
+                                    <option value="contract-award">Contract Award</option>
+                                    <option value="win">Win</option>
+                                    <option value="lost">Lost</option>
+                                    <option value="on-hold">On Hold</option>
+                                </select>
                             </div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="priority">Prioritas</label>
-                                <div class="dropdown-with-delete">
-                                    <select id="priority" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                        <option value="Priority">Priority</option>
-                                        <option value="Hot Priority">Hot Priority</option>
-                                        <option value="Win">Win</option>
-                                        <option value="Behind">Behind</option>
-                                        <option value="On Track">On Track</option>
-                                    </select>
-                                </div>
+                                <select id="priority" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="Priority">Priority</option>
+                                    <option value="Hot Priority">Hot Priority</option>
+                                    <option value="Win">Win</option>
+                                    <option value="Behind">Behind</option>
+                                    <option value="On Track">On Track</option>
+                                </select>
                             </div>
                         </div>
                         <!-- Kolom 2 -->
                         <div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="package">Paket</label>
-                                <div class="dropdown-with-delete">
-                                    <select id="package" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                        <option value="">Pilih Paket</option>
-                                        <option value="Electronic Package">Electronic Package</option>
-                                        <option value="M&E">M&E</option>
-                                        <option value="Fire Fighting Cont">Fire Fighting Cont</option>
-                                        <option value="Main Kontraktor">Main Kontraktor</option>
-                                    </select>
-                                </div>
+                                <select id="package" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih Paket</option>
+                                    <option value="Electronic Package">Electronic Package</option>
+                                    <option value="M&E">M&E</option>
+                                    <option value="Fire Fighting Cont">Fire Fighting Cont</option>
+                                    <option value="Main Kontraktor">Main Kontraktor</option>
+                                </select>
                                 <input type="text" id="newPackage" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama paket baru">
                             </div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="product">Produk</label>
-                                <div id="productList" class="space-y-2 mb-2">
-                                    <!-- Produk yang dipilih akan ditambahkan di sini secara dinamis oleh JS -->
-                                </div>
+                                <div id="productList" class="space-y-2 mb-2"></div>
                                 <button type="button" id="addProductBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded-lg text-xs flex items-center">
                                     <i class="fas fa-plus mr-1"></i> Tambah Produk
                                 </button>
                             </div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="facility">Fasilitas</label>
-                                <div class="dropdown-with-delete">
-                                    <select id="facility" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                        <option value="">Pilih Fasilitas</option>
-                                        <option value="Industrial">Industrial</option>
-                                        <option value="Office">Office</option>
-                                        <option value="Hotel">Hotel</option>
-                                        <option value="Data Center">Data Center</option>
-                                        <option value="Oil & Gas">Oil & Gas</option>
-                                        <option value="Warehouse">Warehouse</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
+                                <select id="facility" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih Fasilitas</option>
+                                    <option value="Industrial">Industrial</option>
+                                    <option value="Office">Office</option>
+                                    <option value="Hotel">Hotel</option>
+                                    <option value="Data Center">Data Center</option>
+                                    <option value="Oil & Gas">Oil & Gas</option>
+                                    <option value="Warehouse">Warehouse</option>
+                                    <option value="Other">Other</option>
+                                </select>
                                 <input type="text" id="newFacility" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama fasilitas baru">
                             </div>
                         </div>
@@ -410,9 +378,7 @@
                             </div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="contractor">Kontraktor</label>
-                                <div id="contractorList" class="space-y-2 mb-2">
-                                    <!-- Kontraktor yang dipilih akan ditambahkan di sini secara dinamis oleh JS -->
-                                </div>
+                                <div id="contractorList" class="space-y-2 mb-2"></div>
                                 <button type="button" id="addContractorBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded-lg text-xs flex items-center">
                                     <i class="fas fa-plus mr-1"></i> Tambah Kontraktor
                                 </button>
@@ -446,40 +412,34 @@
                             </div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="planPO">Plan PO</label>
-                                <div class="dropdown-with-delete">
-                                    <select id="planPO" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
-                                        <option value="">Pilih Bulan</option>
-                                        <option value="Januari">Januari</option>
-                                        <option value="Februari">Februari</option>
-                                        <option value="Maret">Maret</option>
-                                        <option value="April">April</option>
-                                        <option value="Mei">Mei</option>
-                                        <option value="Juni">Juni</option>
-                                        <option value="Juli">Juli</option>
-                                        <option value="Agustus">Agustus</option>
-                                        <option value="September">September</option>
-                                        <option value="Oktober">Oktober</option>
-                                        <option value="November">November</option>
-                                        <option value="Desember">Desember</option>
-                                    </select>
-                                </div>
+                                <select id="planPO" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                                    <option value="">Pilih Bulan</option>
+                                    <option value="Januari">Januari</option>
+                                    <option value="Februari">Februari</option>
+                                    <option value="Maret">Maret</option>
+                                    <option value="April">April</option>
+                                    <option value="Mei">Mei</option>
+                                    <option value="Juni">Juni</option>
+                                    <option value="Juli">Juli</option>
+                                    <option value="Agustus">Agustus</option>
+                                    <option value="September">September</option>
+                                    <option value="Oktober">Oktober</option>
+                                    <option value="November">November</option>
+                                    <option value="Desember">Desember</option>
+                                </select>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Progress Bar Section dengan input manual -->
+                    <!-- Progress Bar Section -->
                     <div class="progress-container">
                         <div class="progress-header">
                             <div class="progress-title">Progress Pipeline</div>
                             <div class="progress-percentage" id="progressPercentage">0%</div>
                         </div>
-                        
-                        <!-- Progress Bar Visual -->
                         <div class="progress-bar">
                             <div class="progress-fill" id="progressFill" style="width: 0%"></div>
                         </div>
-                        
-                        <!-- Checkpoints 0% 20% 40% 60% 80% 100% -->
                         <div class="progress-checkpoints">
                             <div class="checkpoint" data-percentage="0">
                                 <div class="step-dot"></div>
@@ -515,9 +475,7 @@
                             <h3 class="text-lg font-semibold text-gray-900">Komentar</h3>
                             <span class="text-sm text-gray-500" id="commentsCount">0 komentar</span>
                         </div>
-                        <div class="comments-list" id="commentsList">
-                            <!-- Komentar akan ditampilkan di sini -->
-                        </div>
+                        <div class="comments-list" id="commentsList"></div>
                         <div class="comment-input-container">
                             <textarea id="commentInput" class="comment-input" placeholder="Tulis komentar..."></textarea>
                             <button type="button" id="commentSubmitBtn" class="comment-submit-btn">Kirim</button>
@@ -542,13 +500,12 @@
             </div>
         </div>
 
-        <!-- Deal Detail Modal dengan Comments - DIMODIFIKASI: Layout 2 kolom -->
+        <!-- Deal Detail Modal -->
         <div id="dealDetailModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
             <div class="bg-white rounded-xl p-8 w-full max-w-6xl shadow-2xl modal-content-enter max-h-[90vh] overflow-y-auto" id="dealDetailModalContent">
                 <h2 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900" id="dealDetailTitle">Detail Deal</h2>
                 
                 <div class="detail-container mb-6">
-                    <!-- Kolom kiri: Detail deal -->
                     <div class="detail-grid">
                         <div class="detail-item">
                             <p class="text-gray-700 font-semibold">Nama Sales:</p>
@@ -620,15 +577,12 @@
                         </div>
                     </div>
                     
-                    <!-- Kolom kanan: Comments Section -->
                     <div class="comments-section">
                         <div class="comments-header">
                             <h3 class="text-lg font-semibold text-gray-900">Komentar</h3>
                             <span class="text-sm text-gray-500" id="detailCommentsCount">0 komentar</span>
                         </div>
-                        <div class="comments-list" id="detailCommentsList">
-                            <!-- Komentar akan ditampilkan di sini -->
-                        </div>
+                        <div class="comments-list" id="detailCommentsList"></div>
                         <div class="comment-input-container">
                             <textarea id="detailCommentInput" class="comment-input" placeholder="Tulis komentar..."></textarea>
                             <button type="button" id="detailCommentSubmitBtn" class="comment-submit-btn">Kirim</button>
@@ -653,9 +607,7 @@
                         <i class="fas fa-times text-xl"></i>
                     </button>
                 </div>
-                <div id="activity-feed-modal" class="space-y-3">
-                    <!-- Aktivitas akan dimuat di sini -->
-                </div>
+                <div id="activity-feed-modal" class="space-y-3"></div>
                 <div class="flex justify-end mt-6 modal-actions">
                     <button id="closeActivityFooterBtn" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
                         Tutup
@@ -668,12 +620,28 @@
         <div id="deleteModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
             <div class="bg-white rounded-xl p-8 w-full max-w-sm shadow-2xl modal-content-enter" id="deleteModalContent">
                 <h2 class="text-xl font-bold mb-4 text-gray-900">Konfirmasi Penghapusan</h2>
-                <p class="text-gray-700 mb-6 text-sm">Apakah Anda yakin ingin menghapus "<span id="dealToDeleteName" class="font-semibold"></span>"? Deal akan dipindahkan ke Recycle Bin dan dapat dipulihkan dalam 30 hari.</p>
+                <p class="text-gray-700 mb-6 text-sm">Apakah Anda yakin ingin menghapus "<span id="dealToDeleteName" class="font-semibold"></span>"? Deal akan dipindahkan ke Recycle Bin.</p>
                 <div class="flex justify-end space-x-3">
                     <button type="button" id="cancelDeleteBtn" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
                         Batal
                     </button>
                     <button type="button" id="confirmDeleteBtn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow-md font-medium transition duration-200 ease-in-out transform hover:scale-105 text-sm">
+                        Hapus
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Comment Confirmation Modal -->
+        <div id="deleteCommentModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-xl p-8 w-full max-w-sm shadow-2xl modal-content-enter" id="deleteCommentModalContent">
+                <h2 class="text-xl font-bold mb-4 text-gray-900">Hapus Komentar</h2>
+                <p class="text-gray-700 mb-6 text-sm">Apakah Anda yakin ingin menghapus komentar ini?</p>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" id="cancelDeleteCommentBtn" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
+                        Batal
+                    </button>
+                    <button type="button" id="confirmDeleteCommentBtn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow-md font-medium transition duration-200 ease-in-out transform hover:scale-105 text-sm">
                         Hapus
                     </button>
                 </div>
@@ -693,7 +661,7 @@
                 </div>
                 
                 <div class="mb-4 flex justify-between items-center">
-                    <p class="text-gray-600">Deal yang telah dihapus akan disimpan selama 30 hari sebelum dihapus permanen.</p>
+                    <p class="text-gray-600">Deal yang telah dihapus akan disimpan selama 30 hari.</p>
                     <button id="emptyRecycleBinBtn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 text-sm">
                         <i class="fas fa-trash mr-2"></i> Kosongkan Recycle Bin
                     </button>
@@ -712,9 +680,7 @@
                                 <th>Aksi</th>
                             </tr>
                         </thead>
-                        <tbody id="recycleBinContent">
-                            <!-- Konten recycle bin akan diisi oleh JavaScript -->
-                        </tbody>
+                        <tbody id="recycleBinContent"></tbody>
                     </table>
                     
                     <div id="emptyRecycleBinMessage" class="text-center py-8 hidden">
@@ -751,7 +717,7 @@
         <div id="emptyRecycleBinModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
             <div class="bg-white rounded-xl p-8 w-full max-w-sm shadow-2xl modal-content-enter" id="emptyRecycleBinModalContent">
                 <h2 class="text-xl font-bold mb-4 text-gray-900">Kosongkan Recycle Bin</h2>
-                <p class="text-gray-700 mb-6 text-sm">Apakah Anda yakin ingin mengosongkan Recycle Bin? <span id="recycleBinCount" class="font-semibold"></span> deal akan dihapus permanen. Aksi ini tidak dapat dibatalkan.</p>
+                <p class="text-gray-700 mb-6 text-sm">Apakah Anda yakin ingin mengosongkan Recycle Bin? <span id="recycleBinCount" class="font-semibold"></span> deal akan dihapus permanen.</p>
                 <div class="flex justify-end space-x-3">
                     <button type="button" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm cancel-empty-bin">
                         Batal
@@ -773,7 +739,6 @@
                     </button>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Kolom 1 -->
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterPriority">Prioritas</label>
                         <select id="filterPriority" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
@@ -803,36 +768,30 @@
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterSales">Sales</label>
                         <select id="filterSales" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Sales</option>
-                            <!-- Opsi akan diisi secara dinamis oleh JavaScript -->
                         </select>
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterConsultant">Konsultan</label>
                         <select id="filterConsultant" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Konsultan</option>
-                            <!-- Opsi akan diisi secara dinamis oleh JavaScript -->
                         </select>
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterContractor">Kontraktor</label>
                         <select id="filterContractor" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Kontraktor</option>
-                            <!-- Opsi akan diisi secara dinamis oleh JavaScript -->
                         </select>
                     </div>
-                    <!-- Kolom 2 -->
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterProduct">Produk</label>
                         <select id="filterProduct" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Produk</option>
-                            <!-- Opsi akan diisi secara dinamis oleh JavaScript -->
                         </select>
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterFacility">Fasilitas</label>
                         <select id="filterFacility" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Fasilitas</option>
-                            <!-- Opsi akan diisi secara dinamis oleh JavaScript -->
                         </select>
                     </div>
                     <div>
@@ -849,7 +808,8 @@
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterYear">Tahun</label>
                         <select id="filterYear" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Tahun</option>
-                            <!-- Tahun akan diisi secara dinamis oleh JavaScript -->
+                            <option value="2025">2025</option>
+                            <option value="2026">2026</option>
                         </select>
                     </div>
                 </div>
@@ -871,7 +831,7 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="exportDateRange">Rentang Tanggal</label>
-                            <select id="exportDateRange" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                        <select id="exportDateRange" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Data</option>
                             <option value="this_month">Bulan Ini</option>
                             <option value="last_month">Bulan Lalu</option>
@@ -913,7 +873,6 @@
         <div id="toast-container"></div>
     </div>
     
-    <!-- Link ke file JavaScript eksternal -->
     <script src="app.js"></script>
 </body>
 </html>
