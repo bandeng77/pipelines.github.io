@@ -49,6 +49,13 @@ let priorityStatsCache = {
     '2026': null
 };
 
+// Cache untuk data per tahun
+let dealsByYearCache = {
+    'all': null,
+    '2025': null,
+    '2026': null
+};
+
 // Deklarasi variabel elemen DOM
 let facilitySelect, newFacilityInput;
 let packageSelect, newPackageInput;
@@ -215,49 +222,80 @@ function initYearFilter() {
         });
         yearBadge.classList.add('active');
         
-        // Set active year dan reload data
+        // Set active year
         activeYear = year;
         
-        // Reset priority stats cache untuk tahun yang dipilih
+        // Reset cache untuk tahun yang dipilih
         if (!priorityStatsCache[year]) {
             priorityStatsCache[year] = null;
         }
         
-        // Reload deals dengan filter tahun baru
-        loadDealsFromFirebase();
+        console.log(`Tahun aktif diubah ke: ${year}`);
+        
+        // Update filter year di activeFilters
+        activeFilters.year = year;
+        
+        // Reload data dengan filter baru
+        applyActiveFilters();
+        
+        // Update priority dashboard
+        createPriorityDashboard();
         
         showToast(`Menampilkan data tahun ${year === 'all' ? 'semua tahun' : year}`, 2000);
     });
 }
 
 /**
- * Filter deals berdasarkan tahun yang dipilih
+ * Filter deals berdasarkan tahun yang dipilih dengan caching
  * @param {Array} dealsList - Daftar deals
  * @returns {Array} - Deals yang sudah difilter berdasarkan tahun
  */
-function filterDealsByYear(dealsList) {
-    if (activeYear === 'all') return dealsList;
+function getDealsByYear(year) {
+    // Cek cache
+    if (dealsByYearCache[year]) {
+        console.log(`Mengambil data tahun ${year} dari cache: ${dealsByYearCache[year].length} deals`);
+        return dealsByYearCache[year];
+    }
     
-    return dealsList.filter(deal => {
+    if (year === 'all') {
+        dealsByYearCache[year] = deals;
+        console.log(`Semua tahun: ${deals.length} deals`);
+        return deals;
+    }
+    
+    const filtered = deals.filter(deal => {
         if (!deal.createdAt) return false;
+        
         try {
-            // Konversi ke timestamp dengan aman
             let dealDate;
             if (deal.createdAt.toDate) {
                 dealDate = deal.createdAt.toDate();
             } else if (deal.createdAt.seconds) {
                 dealDate = new Date(deal.createdAt.seconds * 1000);
             } else {
-                return false;
+                dealDate = new Date(deal.createdAt);
             }
             
-            const dealYear = dealDate.getFullYear().toString();
-            return dealYear === activeYear;
+            if (isNaN(dealDate.getTime())) return false;
+            
+            return dealDate.getFullYear().toString() === year;
         } catch (e) {
-            console.error("Error parsing date for deal:", deal.dealName, e);
+            console.error("Error parsing date:", e);
             return false;
         }
     });
+    
+    dealsByYearCache[year] = filtered;
+    console.log(`Tahun ${year}: ${filtered.length} deals ditemukan`);
+    
+    return filtered;
+}
+
+/**
+ * Filter deals berdasarkan tahun yang dipilih (untuk kompatibilitas)
+ */
+function filterDealsByYear(dealsList) {
+    return getDealsByYear(activeYear);
 }
 
 // ==================== FUNGSI UNTUK MENANGANI DUPLIKAT PROJECT ====================
@@ -305,6 +343,7 @@ function getUniqueProjectsWithHighestValue(dealsList) {
         }
     });
     
+    console.log(`Unique projects: ${uniqueProjects.length} dari ${dealsList.length} total deals`);
     return uniqueProjects;
 }
 
@@ -447,21 +486,25 @@ function updateDropdownOptions() {
 /**
  * Menghitung statistik priority dengan caching untuk performa
  * Menggunakan project unik dengan nilai tertinggi
- * @param {Array} dealsList - Daftar deals
- * @param {string} year - Tahun filter
+ * @param {string} year - Tahun filter ('all', '2025', '2026')
  * @returns {Object} - Statistik priority
  */
-function calculatePriorityStats(dealsList, year) {
+function calculatePriorityStats(year) {
+    console.log(`Menghitung priority stats untuk tahun: ${year}`);
+    
     // Cek cache
     if (priorityStatsCache[year]) {
+        console.log(`Menggunakan cache untuk tahun ${year}`);
         return priorityStatsCache[year];
     }
     
-    // Filter berdasarkan tahun jika perlu
-    const filteredDeals = year === 'all' ? dealsList : filterDealsByYear(dealsList);
+    // Ambil deals berdasarkan tahun
+    const yearDeals = getDealsByYear(year);
+    console.log(`Total deals untuk tahun ${year}: ${yearDeals.length}`);
     
     // Ambil project unik dengan nilai tertinggi untuk dashboard
-    const uniqueProjects = getUniqueProjectsWithHighestValue(filteredDeals);
+    const uniqueProjects = getUniqueProjectsWithHighestValue(yearDeals);
+    console.log(`Unique projects untuk tahun ${year}: ${uniqueProjects.length}`);
     
     // Hitung statistik berdasarkan priority
     const priorityStats = {
@@ -481,6 +524,11 @@ function calculatePriorityStats(dealsList, year) {
         }
     });
     
+    // Log hasil per priority
+    Object.keys(priorityStats).forEach(key => {
+        console.log(`${key} untuk tahun ${year}: ${priorityStats[key].count} deals, nilai: Rp ${formatNumber(priorityStats[key].value)}`);
+    });
+    
     // Simpan ke cache
     priorityStatsCache[year] = priorityStats;
     
@@ -492,8 +540,10 @@ function createPriorityDashboard() {
     const priorityDashboard = document.querySelector('.priority-dashboard');
     if (!priorityDashboard) return;
     
+    console.log(`Membuat priority dashboard untuk tahun: ${activeYear}`);
+    
     // Hitung statistik berdasarkan tahun yang aktif
-    const priorityStats = calculatePriorityStats(deals, activeYear);
+    const priorityStats = calculatePriorityStats(activeYear);
     
     priorityDashboard.innerHTML = '';
     
@@ -544,14 +594,15 @@ function openPriorityModal(priority, deals) {
     
     if (!modal || !modalTitle || !modalContent) return;
     
-    modalTitle.textContent = `${priority} Projects (Tahun ${activeYear === 'all' ? 'Semua' : activeYear})`;
+    const yearText = activeYear === 'all' ? 'Semua Tahun' : `Tahun ${activeYear}`;
+    modalTitle.textContent = `${priority} Projects (${yearText})`;
     modalContent.innerHTML = '';
     
     if (deals.length === 0) {
         modalContent.innerHTML = `
             <div class="text-center text-gray-500 py-8">
                 <i class="fas fa-inbox text-3xl mb-2"></i>
-                <p>Tidak ada project dengan priority "${priority}"</p>
+                <p>Tidak ada project dengan priority "${priority}" untuk ${yearText}</p>
             </div>
         `;
     } else {
@@ -1901,6 +1952,11 @@ function populateYearDropdown() {
         option.textContent = year;
         filterYearSelect.appendChild(option);
     });
+    
+    // Set nilai sesuai activeYear
+    if (activeYear && filterYearSelect.querySelector(`option[value="${activeYear}"]`)) {
+        filterYearSelect.value = activeYear;
+    }
 }
 
 // Fungsi untuk memuat konsultan dari GitHub JSON
@@ -2010,8 +2066,14 @@ async function loadDealsFromFirebase() {
         console.log("Total deals loaded:", deals.length);
         console.log("Unique years found:", Array.from(uniqueYears));
         
-        // Reset cache priority stats
+        // Reset semua cache
         priorityStatsCache = {
+            'all': null,
+            '2025': null,
+            '2026': null
+        };
+        
+        dealsByYearCache = {
             'all': null,
             '2025': null,
             '2026': null
@@ -4132,7 +4194,7 @@ function applyActiveFilters() {
         }
 
         // Filter berdasarkan tahun yang dipilih
-        baseDeals = filterDealsByYear(baseDeals);
+        baseDeals = getDealsByYear(activeYear);
 
         const filteredDeals = baseDeals.filter(deal => {
             const matchesSearch = 
@@ -4144,16 +4206,6 @@ function applyActiveFilters() {
                 activeFilters.priority === 'all' || 
                 (deal.priority && deal.priority === activeFilters.priority);
             
-            const matchesYear = activeFilters.year === 'all' || 
-                                (deal.createdAt && (() => {
-                                    try {
-                                        const dealDate = deal.createdAt.toDate ? deal.createdAt.toDate() : new Date(deal.createdAt);
-                                        return dealDate.getFullYear().toString() === activeFilters.year;
-                                    } catch {
-                                        return false;
-                                    }
-                                })());
-
             const matchesStage = activeFilters.stage === 'all' || 
                                 (deal.stage && deal.stage === activeFilters.stage);
 
@@ -4181,7 +4233,7 @@ function applyActiveFilters() {
             const matchesPackage = activeFilters.package === 'all' || 
                                 (deal.package && deal.package === activeFilters.package);
             
-            return matchesSearch && matchesPriority && matchesYear && matchesStage && matchesSales &&
+            return matchesSearch && matchesPriority && matchesStage && matchesSales &&
                 matchesConsultant && matchesContractor && matchesFacility && matchesProduct && matchesPackage;
         });
         
@@ -4197,7 +4249,7 @@ function saveActiveFilters() {
         activeFilters = {
             searchTerm: document.getElementById('searchDeals') ? document.getElementById('searchDeals').value.toLowerCase() : '',
             priority: document.getElementById('filterPriority') ? document.getElementById('filterPriority').value : 'all',
-            year: document.getElementById('filterYear') ? document.getElementById('filterYear').value : 'all',
+            year: activeYear, // Gunakan activeYear, bukan dari dropdown
             stage: document.getElementById('filterStage') ? document.getElementById('filterStage').value : 'all',
             sales: document.getElementById('filterSales') ? document.getElementById('filterSales').value : 'all',
             consultant: document.getElementById('filterConsultant') ? document.getElementById('filterConsultant').value : 'all',
@@ -4396,6 +4448,15 @@ function resetFilters() {
     if (filterPackage) filterPackage.value = 'all';
     if (searchDeals) searchDeals.value = '';
     
+    // Reset year badge
+    document.querySelectorAll('.year-badge').forEach(badge => {
+        badge.classList.remove('active');
+        if (badge.dataset.year === 'all') {
+            badge.classList.add('active');
+        }
+    });
+    activeYear = 'all';
+    
     // Reset filter aktif
     activeFilters = {
         searchTerm: '',
@@ -4410,17 +4471,14 @@ function resetFilters() {
         package: 'all'
     };
     
-    // Reset year badge
-    document.querySelectorAll('.year-badge').forEach(badge => {
-        badge.classList.remove('active');
-        if (badge.dataset.year === 'all') {
-            badge.classList.add('active');
-        }
-    });
-    activeYear = 'all';
-    
-    // Reset priority stats cache
+    // Reset semua cache
     priorityStatsCache = {
+        'all': null,
+        '2025': null,
+        '2026': null
+    };
+    
+    dealsByYearCache = {
         'all': null,
         '2025': null,
         '2026': null
@@ -4428,6 +4486,9 @@ function resetFilters() {
     
     // Terapkan filter reset
     applyActiveFilters();
+    
+    // Update priority dashboard
+    createPriorityDashboard();
 }
 
 // ==================== FUNGSI SEARCH KONSULTAN ====================
@@ -5412,8 +5473,14 @@ async function saveDeal() {
             });
         }
         
-        // Reset cache priority stats
+        // Reset semua cache
         priorityStatsCache = {
+            'all': null,
+            '2025': null,
+            '2026': null
+        };
+        
+        dealsByYearCache = {
             'all': null,
             '2025': null,
             '2026': null
@@ -5621,8 +5688,14 @@ async function deleteDeal() {
             read: false
         });
         
-        // Reset cache priority stats
+        // Reset semua cache
         priorityStatsCache = {
+            'all': null,
+            '2025': null,
+            '2026': null
+        };
+        
+        dealsByYearCache = {
             'all': null,
             '2025': null,
             '2026': null
