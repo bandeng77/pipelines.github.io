@@ -115,8 +115,8 @@ let salesCharts = {
 // Variabel untuk menyimpan deal yang sedang dilihat komentarnya
 let currentDealIdForComments = null;
 
-// Variabel untuk menyimpan pilihan sales aktif per deal card
-let activeSalesPerDeal = {};
+// Variabel untuk menyimpan pilihan sales aktif per project name
+let activeSalesPerProject = {};
 
 // Variabel untuk menyimpan state activity modal
 let activityModalState = {
@@ -291,40 +291,53 @@ function getDealsByYear(year) {
     return filtered;
 }
 
-/**
- * Filter deals berdasarkan tahun yang dipilih (untuk kompatibilitas)
- */
-function filterDealsByYear(dealsList) {
-    return getDealsByYear(activeYear);
-}
-
 // ==================== FUNGSI UNTUK MENANGANI DUPLIKAT PROJECT ====================
 
 /**
  * Menggabungkan project dengan nama yang sama untuk dashboard
- * Mengambil nilai tertinggi untuk setiap project
+ * Menampilkan semua project dengan prioritas berbeda, namun nilai menampilkan yang tertinggi
  * @param {Array} dealsList - Daftar deals
- * @returns {Array} - Daftar deals unik dengan nilai tertinggi
+ * @returns {Array} - Daftar deals dengan project unik berdasarkan nama dan prioritas, nilai tertinggi
  */
-function getUniqueProjectsWithHighestValue(dealsList) {
+function getUniqueProjectsForDashboard(dealsList) {
+    // Buat map dengan key kombinasi nama project + priority
     const projectMap = new Map();
+    // Map untuk menyimpan nilai tertinggi per nama project
+    const maxValueByProjectName = new Map();
     
-    // Kelompokkan berdasarkan nama project
+    // Pertama, hitung nilai tertinggi untuk setiap nama project
     dealsList.forEach(deal => {
-        const dealName = deal.dealName?.trim();
-        if (!dealName) return;
+        const projectName = deal.dealName?.trim();
+        if (!projectName) return;
         
-        if (!projectMap.has(dealName)) {
-            projectMap.set(dealName, []);
+        const currentMax = maxValueByProjectName.get(projectName) || 0;
+        const dealValue = deal.value || 0;
+        if (dealValue > currentMax) {
+            maxValueByProjectName.set(projectName, dealValue);
         }
-        projectMap.get(dealName).push(deal);
+    });
+    
+    // Kemudian kelompokkan berdasarkan nama project + priority
+    dealsList.forEach(deal => {
+        const projectName = deal.dealName?.trim();
+        const priority = deal.priority || 'Priority';
+        if (!projectName) return;
+        
+        const key = `${projectName}|${priority}`;
+        
+        if (!projectMap.has(key)) {
+            projectMap.set(key, []);
+        }
+        projectMap.get(key).push(deal);
     });
     
     const uniqueProjects = [];
     
-    projectMap.forEach((duplicateDeals, dealName) => {
+    projectMap.forEach((duplicateDeals, key) => {
+        const [projectName, priority] = key.split('|');
+        
         if (duplicateDeals.length > 1) {
-            // Ambil deal dengan nilai tertinggi
+            // Ambil deal dengan nilai tertinggi untuk kombinasi nama + priority ini
             const highestValueDeal = duplicateDeals.reduce((max, deal) => 
                 (deal.value || 0) > (max.value || 0) ? deal : max
             , duplicateDeals[0]);
@@ -334,16 +347,26 @@ function getUniqueProjectsWithHighestValue(dealsList) {
             highestValueDeal.totalEntries = duplicateDeals.length;
             highestValueDeal.allEntries = duplicateDeals;
             
+            // Set nilai ke nilai tertinggi dari semua project dengan nama yang sama
+            highestValueDeal.displayValue = maxValueByProjectName.get(projectName);
+            highestValueDeal.hasHigherValueFromOtherPriority = maxValueByProjectName.get(projectName) > (highestValueDeal.value || 0);
+            
             uniqueProjects.push(highestValueDeal);
         } else {
-            // Deal unik
-            duplicateDeals[0].hasMultipleEntries = false;
-            duplicateDeals[0].totalEntries = 1;
-            uniqueProjects.push(duplicateDeals[0]);
+            // Deal unik untuk kombinasi nama + priority ini
+            const deal = duplicateDeals[0];
+            deal.hasMultipleEntries = false;
+            deal.totalEntries = 1;
+            
+            // Set nilai ke nilai tertinggi dari semua project dengan nama yang sama
+            deal.displayValue = maxValueByProjectName.get(projectName);
+            deal.hasHigherValueFromOtherPriority = maxValueByProjectName.get(projectName) > (deal.value || 0);
+            
+            uniqueProjects.push(deal);
         }
     });
     
-    console.log(`Unique projects: ${uniqueProjects.length} dari ${dealsList.length} total deals`);
+    console.log(`Unique projects by name+priority: ${uniqueProjects.length} dari ${dealsList.length} total deals`);
     return uniqueProjects;
 }
 
@@ -485,7 +508,7 @@ function updateDropdownOptions() {
 
 /**
  * Menghitung statistik priority dengan caching untuk performa
- * Menggunakan project unik dengan nilai tertinggi
+ * Menggunakan project unik berdasarkan nama+priority, dengan nilai tertinggi
  * @param {string} year - Tahun filter ('all', '2025', '2026')
  * @returns {Object} - Statistik priority
  */
@@ -502,9 +525,9 @@ function calculatePriorityStats(year) {
     const yearDeals = getDealsByYear(year);
     console.log(`Total deals untuk tahun ${year}: ${yearDeals.length}`);
     
-    // Ambil project unik dengan nilai tertinggi untuk dashboard
-    const uniqueProjects = getUniqueProjectsWithHighestValue(yearDeals);
-    console.log(`Unique projects untuk tahun ${year}: ${uniqueProjects.length}`);
+    // Ambil project unik berdasarkan nama+priority dengan nilai tertinggi
+    const uniqueProjects = getUniqueProjectsForDashboard(yearDeals);
+    console.log(`Unique projects (name+priority) untuk tahun ${year}: ${uniqueProjects.length}`);
     
     // Hitung statistik berdasarkan priority
     const priorityStats = {
@@ -519,7 +542,8 @@ function calculatePriorityStats(year) {
         const priority = deal.priority || 'Priority';
         if (priorityStats[priority]) {
             priorityStats[priority].count++;
-            priorityStats[priority].value += (deal.value || 0);
+            // Gunakan displayValue yang sudah diset dengan nilai tertinggi
+            priorityStats[priority].value += (deal.displayValue || deal.value || 0);
             priorityStats[priority].deals.push(deal);
         }
     });
@@ -607,7 +631,7 @@ function openPriorityModal(priority, deals) {
         `;
     } else {
         // Urutkan berdasarkan nilai tertinggi
-        const sortedDeals = [...deals].sort((a, b) => (b.value || 0) - (a.value || 0));
+        const sortedDeals = [...deals].sort((a, b) => ((b.displayValue || b.value || 0)) - ((a.displayValue || a.value || 0)));
         
         const table = document.createElement('table');
         table.className = 'min-w-full divide-y divide-gray-200';
@@ -624,19 +648,36 @@ function openPriorityModal(priority, deals) {
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-                ${sortedDeals.map((deal, index) => `
+                ${sortedDeals.map((deal, index) => {
+                    const displayValue = deal.displayValue || deal.value || 0;
+                    const originalValue = deal.value || 0;
+                    const hasHigherValue = deal.hasHigherValueFromOtherPriority;
+                    
+                    return `
                     <tr class="hover:bg-gray-50 cursor-pointer view-detail-row" data-id="${deal.id}">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             ${deal.dealName || 'No Name'}
+                            ${hasHigherValue ? `
+                                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="Project ini memiliki nilai lebih tinggi di priority lain">
+                                    <i class="fas fa-arrow-up mr-1"></i>Nilai Tertinggi
+                                </span>
+                            ` : ''}
                             ${deal.hasMultipleEntries ? `
-                                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800" title="${deal.totalEntries} entries untuk project ini">
+                                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800" title="${deal.totalEntries} entries untuk kombinasi ini">
                                     <i class="fas fa-copy mr-1"></i>${deal.totalEntries}x
                                 </span>
                             ` : ''}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${deal.salesName || '-'}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">Rp ${formatNumber(deal.value) || '0'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
+                            Rp ${formatNumber(displayValue)}
+                            ${originalValue < displayValue ? `
+                                <span class="text-xs text-gray-500 ml-1" title="Nilai asli: Rp ${formatNumber(originalValue)}">
+                                    (max)
+                                </span>
+                            ` : ''}
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${deal.stage === 'win' ? 'bg-green-100 text-green-800' : 
                                 deal.stage === 'lost' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">
@@ -644,24 +685,20 @@ function openPriorityModal(priority, deals) {
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            ${deal.hasMultipleEntries ? `
-                                <span class="text-yellow-600" title="Menampilkan nilai tertinggi dari ${deal.totalEntries} entries">
-                                    <i class="fas fa-info-circle"></i> Max dari ${deal.totalEntries}
-                                </span>
-                            ` : 'Single entry'}
+                            Priority: ${deal.priority}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <button class="text-blue-600 hover:text-blue-900 mr-3 view-detail-btn" data-id="${deal.id}">
                                 <i class="fas fa-eye"></i>
                             </button>
                             ${deal.hasMultipleEntries ? `
-                                <button class="text-purple-600 hover:text-purple-900 view-all-entries-btn" data-deal-name="${deal.dealName}" title="Lihat semua entries">
+                                <button class="text-purple-600 hover:text-purple-900 view-all-entries-btn" data-deal-name="${deal.dealName}" data-priority="${deal.priority}" title="Lihat semua entries untuk priority ini">
                                     <i class="fas fa-list"></i>
                                 </button>
                             ` : ''}
                         </td>
                     </tr>
-                `).join('')}
+                `}).join('')}
             </tbody>
         `;
         
@@ -682,8 +719,9 @@ function openPriorityModal(priority, deals) {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
                 const dealName = this.dataset.dealName;
+                const priority = this.dataset.priority;
                 closePriorityModal();
-                showAllEntriesForProject(dealName);
+                showAllEntriesForProject(dealName, priority);
             });
         });
     }
@@ -691,9 +729,12 @@ function openPriorityModal(priority, deals) {
     modal.classList.remove('hidden');
 }
 
-// Fungsi untuk menampilkan semua entries dari project yang sama
-function showAllEntriesForProject(dealName) {
-    const allEntries = deals.filter(deal => deal.dealName?.trim() === dealName);
+// Fungsi untuk menampilkan semua entries dari project yang sama dengan priority tertentu
+function showAllEntriesForProject(dealName, priority) {
+    const allEntries = deals.filter(deal => 
+        deal.dealName?.trim() === dealName && 
+        deal.priority === priority
+    );
     
     if (allEntries.length === 0) {
         showToast("Tidak ada entries ditemukan", 3000);
@@ -708,7 +749,7 @@ function showAllEntriesForProject(dealName) {
     modal.innerHTML = `
         <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
             <div class="flex justify-between items-center p-4 border-b">
-                <h2 class="text-xl font-semibold text-gray-800">Semua Entries untuk Project: ${dealName}</h2>
+                <h2 class="text-xl font-semibold text-gray-800">Semua Entries untuk Project: ${dealName} (Priority: ${priority})</h2>
                 <button class="close-all-entries text-gray-500 hover:text-gray-700">
                     <i class="fas fa-times text-2xl"></i>
                 </button>
@@ -721,7 +762,6 @@ function showAllEntriesForProject(dealName) {
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai (IDR)</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tahap</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Dibuat</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                         </tr>
@@ -736,11 +776,6 @@ function showAllEntriesForProject(dealName) {
                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${entry.stage === 'win' ? 'bg-green-100 text-green-800' : 
                                         entry.stage === 'lost' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">
                                         ${entry.stage ? entry.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="priority-badge px-2 py-1 rounded-full ${getPriorityBadgeClass(entry.priority)}">
-                                        ${entry.priority || 'Priority'}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(entry.createdAt)}</td>
@@ -1039,72 +1074,102 @@ async function addComment(dealId, content) {
 // ==================== FUNGSI MERGE PROJECT DALAM DEAL CARD ====================
 
 // Fungsi untuk mengelompokkan deal dengan nama yang sama
-function groupDealsByName() {
+function groupDealsByNameAndPriority() {
     const groupedDeals = {};
     
     deals.forEach(deal => {
         const dealName = deal.dealName?.trim().toLowerCase();
+        const priority = deal.priority || 'Priority';
         if (!dealName) return;
         
-        if (!groupedDeals[dealName]) {
-            groupedDeals[dealName] = [];
+        const key = `${dealName}|${priority}`;
+        
+        if (!groupedDeals[key]) {
+            groupedDeals[key] = [];
         }
         
-        groupedDeals[dealName].push(deal);
+        groupedDeals[key].push(deal);
     });
     
     return groupedDeals;
 }
 
-// Fungsi untuk mengidentifikasi deal dengan nama yang sama
-function identifyMergedDeals() {
-    const groupedDeals = groupDealsByName();
-    const mergedDealsInfo = {};
+// Fungsi untuk mengidentifikasi deal dengan nama yang sama dan priority berbeda
+function identifyMergedProjects() {
+    const groupedByProjectName = {};
     
-    Object.keys(groupedDeals).forEach(dealName => {
-        const dealsInGroup = groupedDeals[dealName];
-        if (dealsInGroup.length > 1) {
-            const salesNames = [...new Set(dealsInGroup.map(deal => deal.salesName))];
-            mergedDealsInfo[dealName] = {
-                count: dealsInGroup.length,
-                salesNames: salesNames,
-                deals: dealsInGroup
+    // Kelompokkan berdasarkan nama project saja
+    deals.forEach(deal => {
+        const dealName = deal.dealName?.trim().toLowerCase();
+        if (!dealName) return;
+        
+        if (!groupedByProjectName[dealName]) {
+            groupedByProjectName[dealName] = new Set();
+        }
+        groupedByProjectName[dealName].add(deal.priority || 'Priority');
+    });
+    
+    const mergedProjectsInfo = {};
+    
+    Object.keys(groupedByProjectName).forEach(projectName => {
+        const priorities = Array.from(groupedByProjectName[projectName]);
+        if (priorities.length > 1) {
+            mergedProjectsInfo[projectName] = {
+                projectName: projectName,
+                priorities: priorities,
+                count: priorities.length
             };
         }
     });
     
-    return mergedDealsInfo;
+    return mergedProjectsInfo;
 }
 
-// Fungsi untuk menampilkan deal card dengan fitur merge
+// Fungsi untuk menampilkan deal card dengan fitur merge berdasarkan nama+priority
 function renderMergedDealCard(dealGroup) {
-    const dealName = dealGroup[0].dealName;
+    const firstDeal = dealGroup[0];
+    const dealName = firstDeal.dealName;
     const dealNameLower = dealName.toLowerCase();
-    const mergedDealsInfo = identifyMergedDeals();
-    const mergedInfo = mergedDealsInfo[dealNameLower];
+    const priority = firstDeal.priority || 'Priority';
+    const key = `${dealNameLower}|${priority}`;
     
-    // Ambil sales yang aktif untuk deal ini, default ke sales pertama
-    let activeSales = activeSalesPerDeal[dealNameLower] || dealGroup[0].salesName;
+    // Ambil sales yang aktif untuk kombinasi ini, default ke sales pertama
+    let activeSales = activeSalesPerProject[key] || firstDeal.salesName;
     
     // Cari deal berdasarkan sales yang aktif
     let activeDeal = dealGroup.find(deal => deal.salesName === activeSales);
     if (!activeDeal) {
-        activeDeal = dealGroup[0];
-        activeSales = dealGroup[0].salesName;
-        activeSalesPerDeal[dealNameLower] = activeSales;
+        activeDeal = firstDeal;
+        activeSales = firstDeal.salesName;
+        activeSalesPerProject[key] = activeSales;
     }
     
-    // Hitung nilai tertinggi dari semua variant
-    const highestValue = Math.max(...dealGroup.map(d => d.value || 0));
-    const hasMultipleSales = mergedInfo && mergedInfo.count > 1;
-    const salesNames = hasMultipleSales ? mergedInfo.salesNames : [activeDeal.salesName];
+    // Hitung nilai tertinggi dari semua variant project ini (semua priority)
+    const allProjectDeals = deals.filter(deal => 
+        deal.dealName?.trim().toLowerCase() === dealNameLower
+    );
+    const highestValueOverall = Math.max(...allProjectDeals.map(d => d.value || 0));
+    
+    // Nilai tertinggi untuk kombinasi nama+priority ini
+    const highestValueInGroup = Math.max(...dealGroup.map(d => d.value || 0));
+    
+    const hasMultipleSales = dealGroup.length > 1;
+    const salesNames = [...new Set(dealGroup.map(deal => deal.salesName))];
+    
+    // Informasi tentang project dengan priority berbeda
+    const mergedProjectsInfo = identifyMergedProjects();
+    const hasDifferentPriorities = mergedProjectsInfo[dealNameLower] && mergedProjectsInfo[dealNameLower].count > 1;
+    const otherPriorities = hasDifferentPriorities ? 
+        mergedProjectsInfo[dealNameLower].priorities.filter(p => p !== priority) : [];
     
     const dealCard = document.createElement('div');
     dealCard.className = 'deal-card';
     dealCard.dataset.id = activeDeal.id;
     dealCard.dataset.dealName = dealNameLower;
+    dealCard.dataset.priority = priority;
     dealCard.dataset.allDeals = JSON.stringify(dealGroup.map(d => d.id));
-    dealCard.dataset.highestValue = highestValue;
+    dealCard.dataset.highestValue = highestValueInGroup;
+    dealCard.dataset.highestOverall = highestValueOverall;
     
     let stageColorClass = '';
     switch (activeDeal.stage) {
@@ -1149,7 +1214,8 @@ function renderMergedDealCard(dealGroup) {
                 ${salesNames.map(salesName => `
                     <div class="sales-dropdown-item ${salesName === activeSales ? 'active' : ''}" 
                          data-sales="${salesName}"
-                         data-deal-name="${dealNameLower}">
+                         data-deal-name="${dealNameLower}"
+                         data-priority="${priority}">
                         ${salesName}
                     </div>
                 `).join('')}
@@ -1161,16 +1227,16 @@ function renderMergedDealCard(dealGroup) {
         <div class="flex justify-between items-start">
             <h3 class="font-bold text-gray-800">${dealName || 'No Name'}</h3>
             <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
-                ${activeDeal.priority || 'Priority'}
+                ${priority}
             </span>
         </div>
         ${salesSelectorHTML}
         <div class="mt-1 text-sm text-gray-600 deal-details">
             <p><i class="fas fa-user-tie mr-1"></i> ${activeSales}</p>
             <p class="font-semibold text-blue-600">
-                Rp ${formatNumber(highestValue) || '0'}
-                ${hasMultipleSales ? `
-                    <span class="text-xs text-gray-500 ml-1" title="Nilai tertinggi dari ${dealGroup.length} entries">
+                Rp ${formatNumber(highestValueOverall)}
+                ${highestValueInGroup < highestValueOverall ? `
+                    <span class="text-xs text-gray-500 ml-1" title="Nilai tertinggi dari project ini (semua priority)">
                         (max)
                     </span>
                 ` : ''}
@@ -1185,8 +1251,13 @@ function renderMergedDealCard(dealGroup) {
             <span class="text-xs text-gray-500">
                 Dibuat: ${formatDate(activeDeal.createdAt)}
                 ${hasMultipleSales ? `
-                    <span class="ml-1 text-yellow-600" title="${dealGroup.length} entries total">
+                    <span class="ml-1 text-yellow-600" title="${dealGroup.length} entries untuk priority ini">
                         <i class="fas fa-copy"></i> ${dealGroup.length}
+                    </span>
+                ` : ''}
+                ${hasDifferentPriorities ? `
+                    <span class="ml-1 text-purple-600" title="Project juga tersedia di priority: ${otherPriorities.join(', ')}">
+                        <i class="fas fa-tags"></i> ${otherPriorities.length}+
                     </span>
                 ` : ''}
             </span>
@@ -1211,9 +1282,10 @@ function renderMergedDealCard(dealGroup) {
 
 // Fungsi untuk setup event listener merge deal card
 function setupMergeDealCardEvents(dealCard, dealGroup) {
-    const mergedDealsInfo = identifyMergedDeals();
-    const dealName = dealGroup[0].dealName?.toLowerCase().trim();
-    const hasMultipleSales = mergedDealsInfo[dealName] && mergedDealsInfo[dealName].count > 1;
+    const firstDeal = dealGroup[0];
+    const dealNameLower = firstDeal.dealName?.toLowerCase().trim();
+    const priority = firstDeal.priority || 'Priority';
+    const hasMultipleSales = dealGroup.length > 1;
     
     if (hasMultipleSales && (currentUserRole === 'admin' || currentUserRole === 'manager')) {
         const indicator = dealCard.querySelector('.multiple-sales-indicator');
@@ -1231,12 +1303,15 @@ function setupMergeDealCardEvents(dealCard, dealGroup) {
                     e.stopPropagation();
                     const selectedSales = this.dataset.sales;
                     const dealName = this.dataset.dealName;
+                    const priority = this.dataset.priority;
                     
-                    // Update active sales untuk deal ini
-                    activeSalesPerDeal[dealName] = selectedSales;
+                    const key = `${dealName}|${priority}`;
                     
-                    // Temukan semua deal card dengan nama yang sama
-                    const allDealCards = document.querySelectorAll(`.deal-card[data-deal-name="${dealName}"]`);
+                    // Update active sales untuk kombinasi ini
+                    activeSalesPerProject[key] = selectedSales;
+                    
+                    // Temukan semua deal card dengan kombinasi nama+priority yang sama
+                    const allDealCards = document.querySelectorAll(`.deal-card[data-deal-name="${dealName}"][data-priority="${priority}"]`);
                     
                     // Update semua deal card yang sama
                     allDealCards.forEach(card => {
@@ -1255,10 +1330,10 @@ function setupMergeDealCardEvents(dealCard, dealGroup) {
                                 salesNameElement.innerHTML = `<i class="fas fa-user-tie mr-1"></i> ${selectedSales}`;
                             }
                             
-                            // Nilai tetap menampilkan nilai tertinggi
+                            // Nilai tetap menampilkan nilai tertinggi overall
                             if (valueElement) {
-                                const highestValue = card.dataset.highestValue;
-                                valueElement.innerHTML = `Rp ${formatNumber(highestValue) || '0'} ${dealGroup.length > 1 ? '<span class="text-xs text-gray-500 ml-1">(max)</span>' : ''}`;
+                                const highestOverall = card.dataset.highestOverall;
+                                valueElement.innerHTML = `Rp ${formatNumber(highestOverall) || '0'} ${(selectedDeal.value || 0) < highestOverall ? '<span class="text-xs text-gray-500 ml-1">(max)</span>' : ''}`;
                             }
                             
                             if (stageElement) {
@@ -1302,7 +1377,11 @@ function setupMergeDealCardEvents(dealCard, dealGroup) {
                             }
                             
                             if (dateElement) {
-                                dateElement.innerHTML = `Dibuat: ${formatDate(selectedDeal.createdAt)} ${dealGroup.length > 1 ? `<span class="ml-1 text-yellow-600"><i class="fas fa-copy"></i> ${dealGroup.length}</span>` : ''}`;
+                                let dateHTML = `Dibuat: ${formatDate(selectedDeal.createdAt)}`;
+                                if (dealGroup.length > 1) {
+                                    dateHTML += ` <span class="ml-1 text-yellow-600"><i class="fas fa-copy"></i> ${dealGroup.length}</span>`;
+                                }
+                                dateElement.innerHTML = dateHTML;
                             }
                             
                             // Update dataset id
@@ -1320,7 +1399,7 @@ function setupMergeDealCardEvents(dealCard, dealGroup) {
                     dropdown.classList.remove('show');
                     
                     // Show toast notification
-                    showToast(`Menampilkan data untuk sales: ${selectedSales} (nilai: nilai tertinggi dari ${dealGroup.length} entries)`, 2000);
+                    showToast(`Menampilkan data untuk sales: ${selectedSales} (nilai: nilai tertinggi dari semua priority)`, 2000);
                 });
             });
         }
@@ -2131,7 +2210,20 @@ function renderIndividualDealCard(deal) {
     dealCard.className = 'deal-card';
     dealCard.dataset.id = deal.id;
     dealCard.dataset.dealName = deal.dealName?.toLowerCase();
-    dealCard.dataset.highestValue = deal.value || 0;
+    dealCard.dataset.priority = deal.priority || 'Priority';
+    
+    // Hitung nilai tertinggi dari semua project dengan nama yang sama (semua priority)
+    const allProjectDeals = deals.filter(d => 
+        d.dealName?.trim().toLowerCase() === deal.dealName?.trim().toLowerCase()
+    );
+    const highestValueOverall = Math.max(...allProjectDeals.map(d => d.value || 0));
+    
+    // Informasi tentang project dengan priority berbeda
+    const mergedProjectsInfo = identifyMergedProjects();
+    const dealNameLower = deal.dealName?.toLowerCase().trim();
+    const hasDifferentPriorities = mergedProjectsInfo[dealNameLower] && mergedProjectsInfo[dealNameLower].count > 1;
+    const otherPriorities = hasDifferentPriorities ? 
+        mergedProjectsInfo[dealNameLower].priorities.filter(p => p !== (deal.priority || 'Priority')) : [];
     
     let stageColorClass = '';
     switch (deal.stage) {
@@ -2175,7 +2267,14 @@ function renderIndividualDealCard(deal) {
         </div>
         <div class="mt-1 text-sm text-gray-600 deal-details">
             <p><i class="fas fa-user-tie mr-1"></i> ${deal.salesName || '-'}</p>
-            <p class="font-semibold text-blue-600">Rp ${formatNumber(deal.value) || '0'}</p>
+            <p class="font-semibold text-blue-600">
+                Rp ${formatNumber(highestValueOverall)}
+                ${(deal.value || 0) < highestValueOverall ? `
+                    <span class="text-xs text-gray-500 ml-1" title="Nilai tertinggi dari project ini (semua priority)">
+                        (max)
+                    </span>
+                ` : ''}
+            </p>
             <p class="mt-1">
                 <span class="priority-badge px-2 py-1 rounded-full ${stageColorClass}">
                     ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown Stage'}
@@ -2183,7 +2282,14 @@ function renderIndividualDealCard(deal) {
             </p>
         </div>
         <div class="mt-2 flex justify-between items-center deal-footer">
-            <span class="text-xs text-gray-500">Dibuat: ${formatDate(deal.createdAt)}</span>
+            <span class="text-xs text-gray-500">
+                Dibuat: ${formatDate(deal.createdAt)}
+                ${hasDifferentPriorities ? `
+                    <span class="ml-1 text-purple-600" title="Project juga tersedia di priority: ${otherPriorities.join(', ')}">
+                        <i class="fas fa-tags"></i> ${otherPriorities.length}+
+                    </span>
+                ` : ''}
+            </span>
             <div class="flex space-x-1 deal-actions">
                 <button class="view-detail-btn text-blue-600 hover:text-blue-800">
                     <i class="fas fa-eye"></i>
@@ -2203,7 +2309,7 @@ function renderIndividualDealCard(deal) {
     return dealCard;
 }
 
-// Fungsi untuk render deal dalam format list - DIPERBAIKI: dengan wrap text
+// Fungsi untuk render deal dalam format list - DIPERBAIKI: dengan wrap text dan informasi priority
 function renderDealList(deal, index) {
     const row = document.createElement('tr');
     row.dataset.id = deal.id;
@@ -2213,6 +2319,12 @@ function renderDealList(deal, index) {
     const canEdit = canUserEditDeal(deal);
     const priorityBadgeClass = getPriorityBadgeClass(deal.priority);
     const winDate = getWinDate(deal);
+    
+    // Hitung nilai tertinggi dari semua project dengan nama yang sama (semua priority)
+    const allProjectDeals = deals.filter(d => 
+        d.dealName?.trim().toLowerCase() === deal.dealName?.trim().toLowerCase()
+    );
+    const highestValueOverall = Math.max(...allProjectDeals.map(d => d.value || 0));
     
     // Format kontraktor dengan wrap text
     let contractorText = '-';
@@ -2246,9 +2358,9 @@ function renderDealList(deal, index) {
         <td class="px-4 py-3 align-top text-sm font-medium">${deal.salesName || '-'}</td>
         <td class="px-4 py-3 align-top text-sm">
             ${dealNameDisplay}
-            ${deal.hasMultipleEntries ? `
-                <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800" title="${deal.totalEntries} entries untuk project ini">
-                    <i class="fas fa-copy mr-1"></i>${deal.totalEntries}
+            ${allProjectDeals.length > 1 ? `
+                <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800" title="Project ini memiliki ${allProjectDeals.length} entries dengan berbagai priority">
+                    <i class="fas fa-tags mr-1"></i>${allProjectDeals.length}
                 </span>
             ` : ''}
         </td>
@@ -2262,7 +2374,14 @@ function renderDealList(deal, index) {
         </td>
         <td class="px-4 py-3 align-top text-sm">${consultantDisplay}</td>
         <td class="px-4 py-3 align-top text-sm">${contractorDisplay}</td>
-        <td class="px-4 py-3 align-top text-sm font-semibold">Rp ${formatNumber(deal.value) || '0'}</td>
+        <td class="px-4 py-3 align-top text-sm font-semibold">
+            Rp ${formatNumber(highestValueOverall)}
+            ${(deal.value || 0) < highestValueOverall ? `
+                <span class="text-xs text-gray-500 ml-1" title="Nilai asli: Rp ${formatNumber(deal.value || 0)}">
+                    (max)
+                </span>
+            ` : ''}
+        </td>
         <td class="px-4 py-3 align-top">
             <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
                 ${deal.priority || 'Priority'}
@@ -2281,8 +2400,8 @@ function renderDealList(deal, index) {
                     <i class="fas fa-trash-alt"></i>
                 </button>
                 ` : ''}
-                ${deal.hasMultipleEntries ? `
-                <button class="text-purple-600 hover:text-purple-900 view-all-entries-btn" data-deal-name="${deal.dealName}" title="Lihat semua entries">
+                ${allProjectDeals.length > 1 ? `
+                <button class="text-purple-600 hover:text-purple-900 view-all-priorities-btn" data-deal-name="${deal.dealName}" title="Lihat semua priority untuk project ini">
                     <i class="fas fa-list"></i>
                 </button>
                 ` : ''}
@@ -2291,6 +2410,105 @@ function renderDealList(deal, index) {
     `;
     
     return row;
+}
+
+// Fungsi untuk menampilkan semua priority dari project yang sama
+function showAllPrioritiesForProject(dealName) {
+    const allEntries = deals.filter(deal => deal.dealName?.trim() === dealName);
+    
+    if (allEntries.length === 0) {
+        showToast("Tidak ada entries ditemukan", 3000);
+        return;
+    }
+    
+    // Kelompokkan berdasarkan priority
+    const byPriority = {};
+    allEntries.forEach(deal => {
+        const priority = deal.priority || 'Priority';
+        if (!byPriority[priority]) {
+            byPriority[priority] = [];
+        }
+        byPriority[priority].push(deal);
+    });
+    
+    // Buat modal khusus untuk menampilkan semua priority
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.id = 'allPrioritiesModal';
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] overflow-hidden">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h2 class="text-xl font-semibold text-gray-800">Semua Priority untuk Project: ${dealName}</h2>
+                <button class="close-all-priorities text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+            <div class="p-4 overflow-y-auto max-h-[calc(90vh-80px)]">
+                ${Object.keys(byPriority).sort().map(priority => `
+                    <div class="mb-6">
+                        <h3 class="text-lg font-semibold mb-2 priority-title-${priority.toLowerCase().replace(' ', '-')}">Priority: ${priority}</h3>
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai (IDR)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tahap</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Dibuat</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                ${byPriority[priority].map((entry, index) => `
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${entry.salesName || '-'}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">Rp ${formatNumber(entry.value) || '0'}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${entry.stage === 'win' ? 'bg-green-100 text-green-800' : 
+                                                entry.stage === 'lost' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">
+                                                ${entry.stage ? entry.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(entry.createdAt)}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <button class="text-blue-600 hover:text-blue-900 view-detail-btn" data-id="${entry.id}">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Event listener untuk menutup modal
+    modal.querySelector('.close-all-priorities').addEventListener('click', () => {
+        modal.remove();
+    });
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+    
+    // Event listener untuk tombol view detail
+    modal.querySelectorAll('.view-detail-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const dealId = btn.dataset.id;
+            modal.remove();
+            openDealDetailModal(dealId);
+        });
+    });
 }
 
 // Fungsi untuk mengisi dropdown dengan opsi unik
@@ -2456,9 +2674,12 @@ function processSalesData(salesName = 'all') {
         ? deals 
         : deals.filter(deal => deal.salesName === salesName);
     
+    // Gunakan project unik berdasarkan nama+priority untuk statistik
+    const uniqueProjects = getUniqueProjectsForDashboard(salesDeals);
+    
     const stats = {
         totalValue: 0,
-        totalDeals: salesDeals.length,
+        totalDeals: uniqueProjects.length,
         winCount: 0,
         lostCount: 0,
         stageDistribution: {},
@@ -2471,13 +2692,13 @@ function processSalesData(salesName = 'all') {
         dealsByPriority: {}
     };
     
-    if (salesDeals.length > 0) {
-        stats.maxDealValue = salesDeals[0].value || 0;
-        stats.minDealValue = salesDeals[0].value || 0;
+    if (uniqueProjects.length > 0) {
+        stats.maxDealValue = uniqueProjects[0].displayValue || uniqueProjects[0].value || 0;
+        stats.minDealValue = uniqueProjects[0].displayValue || uniqueProjects[0].value || 0;
     }
     
-    salesDeals.forEach(deal => {
-        const dealValue = deal.value || 0;
+    uniqueProjects.forEach(deal => {
+        const dealValue = deal.displayValue || deal.value || 0;
         
         // Total nilai
         stats.totalValue += dealValue;
@@ -2792,9 +3013,12 @@ function processPriorityData(priority = 'all') {
         ? deals 
         : deals.filter(deal => deal.priority === priority);
     
+    // Gunakan project unik berdasarkan nama+priority untuk statistik
+    const uniqueProjects = getUniqueProjectsForDashboard(priorityDeals);
+    
     const stats = {
         totalValue: 0,
-        totalDeals: priorityDeals.length,
+        totalDeals: uniqueProjects.length,
         winCount: 0,
         stageDistribution: {},
         salesDistribution: {},
@@ -2806,13 +3030,13 @@ function processPriorityData(priority = 'all') {
         dealsByStage: {}
     };
     
-    if (priorityDeals.length > 0) {
-        stats.maxDealValue = priorityDeals[0].value || 0;
-        stats.minDealValue = priorityDeals[0].value || 0;
+    if (uniqueProjects.length > 0) {
+        stats.maxDealValue = uniqueProjects[0].displayValue || uniqueProjects[0].value || 0;
+        stats.minDealValue = uniqueProjects[0].displayValue || uniqueProjects[0].value || 0;
     }
     
-    priorityDeals.forEach(deal => {
-        const dealValue = deal.value || 0;
+    uniqueProjects.forEach(deal => {
+        const dealValue = deal.displayValue || deal.value || 0;
         
         // Total nilai
         stats.totalValue += dealValue;
@@ -3155,6 +3379,10 @@ function renderPriorityCharts() {
 function processDealDataForCharts(dealsData) {
     console.log("Processing deal data for charts, total deals:", dealsData.length);
     
+    // Gunakan project unik berdasarkan nama+priority untuk statistik
+    const uniqueProjects = getUniqueProjectsForDashboard(dealsData);
+    console.log("Unique projects for stats:", uniqueProjects.length);
+    
     const stageSelect = document.getElementById('stage');
     const allStages = stageSelect ? Array.from(stageSelect.options).map(option => option.value).filter(value => value !== '') : 
         ['identified', 'prospect', 'tender-me', 'tender-main-con', 'contract-award', 'win', 'lost', 'on-hold'];
@@ -3190,24 +3418,8 @@ function processDealDataForCharts(dealsData) {
     let productValue = {};
     const pipelineValueByMonth = {};
     
-    // Group deals by name and take the highest value
-    const dealsByName = {};
-    dealsData.forEach(deal => {
-        const dealName = deal.dealName?.toLowerCase().trim();
-        if (!dealName) return;
-        
-        if (!dealsByName[dealName]) {
-            dealsByName[dealName] = deal;
-        } else if ((deal.value || 0) > (dealsByName[dealName].value || 0)) {
-            dealsByName[dealName] = deal;
-        }
-    });
-    
-    const uniqueDeals = Object.values(dealsByName);
-    console.log("Unique deals for stats:", uniqueDeals.length);
-    
-    uniqueDeals.forEach(deal => {
-        const dealValue = deal.value || 0;
+    uniqueProjects.forEach(deal => {
+        const dealValue = deal.displayValue || deal.value || 0;
         
         // Deal size distribution
         if (dealValue < 500000000) {
@@ -3570,7 +3782,10 @@ function showDealsByPriority(salesFilter, priority) {
         ? deals.filter(deal => deal.priority === priority)
         : deals.filter(deal => deal.salesName === selectedSales && deal.priority === priority);
     
-    if (filteredDeals.length === 0) {
+    // Gunakan project unik berdasarkan nama+priority
+    const uniqueFilteredDeals = getUniqueProjectsForDashboard(filteredDeals);
+    
+    if (uniqueFilteredDeals.length === 0) {
         showToast(`Tidak ada project dengan priority "${priority}" untuk sales "${selectedSales === 'all' ? 'Semua Sales' : selectedSales}"`, 3000);
         return;
     }
@@ -3594,12 +3809,14 @@ function showDealsByPriority(salesFilter, priority) {
             </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
-            ${filteredDeals.map((deal, index) => `
+            ${uniqueFilteredDeals.map((deal, index) => {
+                const displayValue = deal.displayValue || deal.value || 0;
+                return `
                 <tr class="hover:bg-gray-50 cursor-pointer view-detail-row" data-id="${deal.id}">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${deal.dealName || 'No Name'}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${deal.salesName || '-'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">Rp ${formatNumber(deal.value) || '0'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">Rp ${formatNumber(displayValue)}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${deal.stage === 'win' ? 'bg-green-100 text-green-800' : 
                             deal.stage === 'lost' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">
@@ -3607,7 +3824,7 @@ function showDealsByPriority(salesFilter, priority) {
                         </span>
                     </td>
                 </tr>
-            `).join('')}
+            `}).join('')}
         </tbody>
     `;
     
@@ -3632,7 +3849,10 @@ function showDealsByStage(priorityFilter, stage) {
         ? deals.filter(deal => deal.stage === stage)
         : deals.filter(deal => deal.priority === selectedPriority && deal.stage === stage);
     
-    if (filteredDeals.length === 0) {
+    // Gunakan project unik berdasarkan nama+priority
+    const uniqueFilteredDeals = getUniqueProjectsForDashboard(filteredDeals);
+    
+    if (uniqueFilteredDeals.length === 0) {
         showToast(`Tidak ada project dengan stage "${stage}" untuk priority "${selectedPriority === 'all' ? 'Semua Priority' : selectedPriority}"`, 3000);
         return;
     }
@@ -3656,19 +3876,21 @@ function showDealsByStage(priorityFilter, stage) {
             </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
-            ${filteredDeals.map((deal, index) => `
+            ${uniqueFilteredDeals.map((deal, index) => {
+                const displayValue = deal.displayValue || deal.value || 0;
+                return `
                 <tr class="hover:bg-gray-50 cursor-pointer view-detail-row" data-id="${deal.id}">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${deal.dealName || 'No Name'}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${deal.salesName || '-'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">Rp ${formatNumber(deal.value) || '0'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">Rp ${formatNumber(displayValue)}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="priority-badge px-2 py-1 rounded-full ${getPriorityBadgeClass(deal.priority)}">
                             ${deal.priority || 'Priority'}
                         </span>
                     </td>
                 </tr>
-            `).join('')}
+            `}).join('')}
         </tbody>
     `;
     
@@ -3835,11 +4057,19 @@ function initEventListeners() {
                 }
             }
             
-            // Tombol lihat semua entries
+            // Tombol lihat semua entries untuk priority tertentu
             if (e.target.closest('.view-all-entries-btn')) {
                 const btn = e.target.closest('.view-all-entries-btn');
                 const dealName = btn.dataset.dealName;
-                showAllEntriesForProject(dealName);
+                const priority = btn.dataset.priority;
+                showAllEntriesForProject(dealName, priority);
+            }
+            
+            // Tombol lihat semua priority untuk project
+            if (e.target.closest('.view-all-priorities-btn')) {
+                const btn = e.target.closest('.view-all-priorities-btn');
+                const dealName = btn.dataset.dealName;
+                showAllPrioritiesForProject(dealName);
             }
             
             // Tombol edit deal
@@ -3955,6 +4185,12 @@ function initEventListeners() {
             // Tombol close all entries modal
             if (e.target.closest('.close-all-entries')) {
                 const modal = document.getElementById('allEntriesModal');
+                if (modal) modal.remove();
+            }
+            
+            // Tombol close all priorities modal
+            if (e.target.closest('.close-all-priorities')) {
+                const modal = document.getElementById('allPrioritiesModal');
                 if (modal) modal.remove();
             }
         });
@@ -4294,23 +4530,26 @@ function renderFilteredDeals(filteredDeals) {
     }
     
     if (currentView === 'card') {
-        // Group deals by name untuk merge
-        const dealsByName = {};
+        // Group deals by name+priority untuk merge
+        const dealsByNameAndPriority = {};
         filteredDeals.forEach(deal => {
             const dealName = deal.dealName?.toLowerCase().trim();
+            const priority = deal.priority || 'Priority';
             if (!dealName) return;
             
-            if (!dealsByName[dealName]) {
-                dealsByName[dealName] = [];
+            const key = `${dealName}|${priority}`;
+            
+            if (!dealsByNameAndPriority[key]) {
+                dealsByNameAndPriority[key] = [];
             }
-            dealsByName[dealName].push(deal);
+            dealsByNameAndPriority[key].push(deal);
         });
         
         // Render deal cards
-        Object.values(dealsByName).forEach(dealGroup => {
+        Object.values(dealsByNameAndPriority).forEach(dealGroup => {
             if (dealGroup.length > 0) {
                 if (dealGroup.length > 1) {
-                    // Multiple deals dengan nama yang sama - render merged card
+                    // Multiple deals dengan nama+priority yang sama - render merged card
                     const mergedCard = renderMergedDealCard(dealGroup);
                     pipelineStage.appendChild(mergedCard);
                     setupMergeDealCardEvents(mergedCard, dealGroup);
@@ -4808,9 +5047,12 @@ function prepareDetailedExportData(dealsData) {
 
 // Fungsi untuk menyiapkan data export ringkasan
 function prepareSummaryExportData(dealsData) {
+    // Gunakan project unik berdasarkan nama+priority untuk ringkasan
+    const uniqueProjects = getUniqueProjectsForDashboard(dealsData);
+    
     const summary = {};
     
-    dealsData.forEach(deal => {
+    uniqueProjects.forEach(deal => {
         const stage = deal.stage || 'Unknown';
         const sales = deal.salesName || 'Unknown';
         const product = Array.isArray(deal.product) ? deal.product[0] || 'Unknown' : (deal.product || 'Unknown');
@@ -4826,7 +5068,7 @@ function prepareSummaryExportData(dealsData) {
         }
         
         summary[stage].dealCount++;
-        summary[stage].totalValue += (deal.value || 0);
+        summary[stage].totalValue += (deal.displayValue || deal.value || 0);
         
         // Hitung per sales
         if (!summary[stage].salesCount[sales]) {
@@ -5510,10 +5752,26 @@ async function openDealDetailModal(dealId) {
             return;
         }
         
+        // Hitung nilai tertinggi dari semua project dengan nama yang sama (semua priority)
+        const allProjectDeals = deals.filter(d => 
+            d.dealName?.trim().toLowerCase() === deal.dealName?.trim().toLowerCase()
+        );
+        const highestValueOverall = Math.max(...allProjectDeals.map(d => d.value || 0));
+        
+        // Informasi tentang project dengan priority berbeda
+        const mergedProjectsInfo = identifyMergedProjects();
+        const dealNameLower = deal.dealName?.toLowerCase().trim();
+        const hasDifferentPriorities = mergedProjectsInfo[dealNameLower] && mergedProjectsInfo[dealNameLower].count > 1;
+        const allPriorities = hasDifferentPriorities ? mergedProjectsInfo[dealNameLower].priorities : [deal.priority];
+        
         // Update detail deal
         document.getElementById('dealDetailTitle').textContent = `Detail Deal: ${deal.dealName}`;
         document.getElementById('detailSalesName').textContent = deal.salesName || '-';
-        document.getElementById('detailValue').textContent = `Rp ${formatNumber(deal.value) || '0'}`;
+        document.getElementById('detailValue').textContent = `Rp ${formatNumber(highestValueOverall) || '0'}`;
+        if ((deal.value || 0) < highestValueOverall) {
+            const valueElement = document.getElementById('detailValue');
+            valueElement.innerHTML = `Rp ${formatNumber(highestValueOverall)} <span class="text-xs text-gray-500">(nilai asli: Rp ${formatNumber(deal.value || 0)})</span>`;
+        }
         document.getElementById('detailDiscount').textContent = deal.discount ? `${deal.discount}%` : '-';
         document.getElementById('detailBeforeDiscount').textContent = `Rp ${formatNumber(deal.beforeDiscount) || '0'}`;
         document.getElementById('detailPackage').textContent = deal.package || '-';
@@ -5550,6 +5808,43 @@ async function openDealDetailModal(dealId) {
         document.getElementById('detailPriority').textContent = deal.priority || '-';
         document.getElementById('detailCreatedDate').textContent = formatDate(deal.createdAt);
         document.getElementById('detailRemarks').textContent = deal.remarks || '-';
+        
+        // Tampilkan informasi project dengan priority lain jika ada
+        const otherPrioritiesInfo = document.getElementById('otherPrioritiesInfo');
+        if (otherPrioritiesInfo) {
+            if (hasDifferentPriorities && allPriorities.length > 1) {
+                const otherPriorities = allPriorities.filter(p => p !== deal.priority);
+                otherPrioritiesInfo.innerHTML = `
+                    <div class="mt-2 p-2 bg-purple-50 rounded-lg text-sm">
+                        <i class="fas fa-info-circle text-purple-600 mr-1"></i>
+                        <span class="font-medium">Project ini juga tersedia di priority:</span>
+                        <div class="flex flex-wrap gap-1 mt-1">
+                            ${otherPriorities.map(p => `
+                                <span class="px-2 py-1 rounded-full text-xs ${getPriorityBadgeClass(p)}">
+                                    ${p}
+                                </span>
+                            `).join('')}
+                        </div>
+                        <button class="view-all-priorities-btn text-purple-600 hover:text-purple-800 mt-1 text-xs" data-deal-name="${deal.dealName}">
+                            <i class="fas fa-list mr-1"></i>Lihat semua priority
+                        </button>
+                    </div>
+                `;
+                otherPrioritiesInfo.classList.remove('hidden');
+                
+                // Event listener untuk tombol lihat semua priority
+                const viewAllBtn = otherPrioritiesInfo.querySelector('.view-all-priorities-btn');
+                if (viewAllBtn) {
+                    viewAllBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        closeDealDetailModal();
+                        showAllPrioritiesForProject(deal.dealName);
+                    });
+                }
+            } else {
+                otherPrioritiesInfo.classList.add('hidden');
+            }
+        }
         
         // Update progress
         let progress = 0;
