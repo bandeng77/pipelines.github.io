@@ -23,7 +23,7 @@
             overflow-x: hidden;
         }
 
-        /* Dashboard Priority Styles - DIMODIFIKASI: Hanya 5 priority dalam 1 row */
+        /* Dashboard Priority Styles - 5 priority dalam 1 row */
         .priority-dashboard {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
@@ -589,7 +589,7 @@
             margin-bottom: 1rem;
         }
 
-        /* CSS untuk modal detail deal DIMODIFIKASI: 2 kolom dengan komentar di kanan */
+        /* CSS untuk modal detail deal: 2 kolom dengan komentar di kanan */
         #dealDetailModalContent {
             max-width: 1000px !important;
             width: 95% !important;
@@ -622,10 +622,6 @@
         #dealDetailModalContent .comments-list {
             flex-grow: 1;
             max-height: 400px;
-        }
-
-        .detail-item {
-            /* Gaya untuk setiap item detail jika diperlukan */
         }
 
         /* Styles for search suggestions */
@@ -680,32 +676,54 @@
             background: #f1f5f9;
         }
 
-        /* CSS untuk tampilan list - DIPERBAIKI dengan kolom kontraktor */
+        /* ========== LIST VIEW STYLE YANG DIPERBAIKI ========== */
+        /* Menghilangkan scroll horizontal dan membuat teks wrap */
+        .list-view-container {
+            width: 100%;
+            overflow-x: hidden;
+        }
+        
         .list-view {
             width: 100%;
             border-collapse: collapse;
             font-size: 0.875rem;
-            overflow-x: auto;
             display: table;
+            table-layout: fixed; /* Penting: Membuat kolom dengan lebar tetap */
         }
 
         .list-view th {
             background-color: #f8fafc;
-            padding: 0.75rem 1rem;
+            padding: 0.75rem 0.5rem;
             text-align: left;
             font-weight: 600;
             color: #374151;
             border-bottom: 1px solid #e5e7eb;
             position: sticky;
             top: 0;
-            white-space: nowrap;
+            white-space: normal; /* Membolehkan wrap pada header */
+            word-wrap: break-word;
+            font-size: 0.75rem;
         }
 
         .list-view td {
-            padding: 0.75rem 1rem;
+            padding: 0.75rem 0.5rem;
             border-bottom: 1px solid #e5e7eb;
-            vertical-align: middle;
+            vertical-align: top; /* Ubah ke top agar konten panjang bisa wrap */
+            word-wrap: break-word;
+            white-space: normal; /* Membolehkan wrap */
+            line-height: 1.4;
         }
+
+        /* Lebar kolom yang proporsional */
+        .list-view th:nth-child(1), .list-view td:nth-child(1) { width: 5%; }  /* No */
+        .list-view th:nth-child(2), .list-view td:nth-child(2) { width: 8%; }  /* Sales */
+        .list-view th:nth-child(3), .list-view td:nth-child(3) { width: 15%; } /* Project Name */
+        .list-view th:nth-child(4), .list-view td:nth-child(4) { width: 10%; } /* Stage */
+        .list-view th:nth-child(5), .list-view td:nth-child(5) { width: 12%; } /* Consultant */
+        .list-view th:nth-child(6), .list-view td:nth-child(6) { width: 12%; } /* Contractor */
+        .list-view th:nth-child(7), .list-view td:nth-child(7) { width: 10%; } /* Value */
+        .list-view th:nth-child(8), .list-view td:nth-child(8) { width: 8%; }  /* Priority */
+        .list-view th:nth-child(9), .list-view td:nth-child(9) { width: 10%; } /* Actions */
 
         .list-view tr {
             cursor: pointer;
@@ -719,7 +737,8 @@
         .list-view .deal-actions {
             display: flex;
             gap: 0.5rem;
-            justify-content: flex-end;
+            justify-content: flex-start;
+            flex-wrap: wrap;
         }
 
         .list-view .deal-actions button {
@@ -741,19 +760,31 @@
             margin-top: 0.25rem;
             font-size: 0.7rem;
             color: #10b981;
+            white-space: normal;
         }
 
-        /* Responsivitas untuk tampilan list */
+        /* Container untuk teks panjang */
+        .wrap-text {
+            white-space: normal;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        /* Responsivitas untuk tampilan list pada layar kecil */
+        @media (max-width: 1024px) {
+            .list-view th, .list-view td {
+                font-size: 0.7rem;
+                padding: 0.5rem 0.25rem;
+            }
+        }
+
         @media (max-width: 768px) {
-            .list-view {
-                display: block;
-                overflow-x: auto;
-                white-space: nowrap;
+            .list-view-container {
+                overflow-x: auto; /* Kembali ke scroll horizontal hanya pada layar sangat kecil */
             }
             
-            .list-view th,
-            .list-view td {
-                padding: 0.5rem 0.75rem;
+            .list-view {
+                width: 1200px; /* Lebar tetap untuk memastikan semua kolom terlihat */
             }
             
             #dealDetailModalContent .detail-container {
@@ -782,6 +813,7 @@
             padding: 0.75rem;
             text-align: left;
             border-bottom: 1px solid #e5e7eb;
+            word-wrap: break-word;
         }
 
         .recycle-bin-table th {
@@ -868,193 +900,6 @@
         /* CSS untuk modal statistik */
         #statsModal {
             z-index: 100;
-        }
-
-        #statsModal .modal-content-enter {
-            opacity: 0;
-            transform: scale(0.95);
-        }
-
-        #statsModal .modal-content-enter-active {
-            opacity: 1;
-            transform: scale(1);
-            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
-        }
-
-        #statsModal .modal-content-leave {
-            opacity: 1;
-            transform: scale(1);
-        }
-
-        #statsModal .modal-content-leave-active {
-            opacity: 0;
-            transform: scale(0.95);
-            transition: opacity 0.3s ease-in, transform 0.3s ease-in;
-        }
-
-        /* CSS untuk tab statistik */
-        .stats-tab {
-            position: relative;
-            display: inline-block;
-            padding: 0.5rem 1rem;
-            border-bottom: 2px solid transparent;
-            color: #6b7280;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-weight: 500;
-        }
-
-        .stats-tab:hover {
-            color: #374151;
-            border-color: #d1d5db;
-        }
-
-        .stats-tab.active {
-            color: #3b82f6;
-            border-color: #3b82f6;
-            font-weight: 600;
-        }
-
-        .stats-tab-content {
-            animation: fadeIn 0.3s ease-in-out;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* CSS untuk metric boxes */
-        .metric-box {
-            background: white;
-            border-radius: 0.5rem;
-            padding: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            border: 1px solid #e5e7eb;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .metric-box:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .metric-title {
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: #6b7280;
-            margin-bottom: 0.5rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .metric-value {
-            font-size: 1.875rem;
-            font-weight: 700;
-            line-height: 1;
-        }
-
-        /* CSS untuk deal list di statistik */
-        .deal-list-container {
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.5rem;
-            margin-top: 1rem;
-        }
-
-        .deal-list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid #e5e7eb;
-            transition: background-color 0.2s;
-        }
-
-        .deal-list-item:last-child {
-            border-bottom: none;
-        }
-
-        .deal-list-item:hover {
-            background-color: #f9fafb;
-        }
-
-        .deal-list-info {
-            flex: 1;
-        }
-
-        .deal-list-name {
-            font-weight: 600;
-            color: #1f2937;
-            margin-bottom: 0.25rem;
-        }
-
-        .deal-list-details {
-            display: flex;
-            gap: 1rem;
-            font-size: 0.75rem;
-            color: #6b7280;
-        }
-
-        .deal-list-value {
-            font-weight: 600;
-            color: #3b82f6;
-        }
-
-        .deal-list-actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        /* Responsive adjustments for stats modal */
-        @media (max-width: 768px) {
-            #statsModal .modal-content-enter {
-                padding: 1rem;
-            }
-            
-            .chart-container {
-                height: 300px;
-            }
-            
-            .metric-value {
-                font-size: 1.5rem;
-            }
-            
-            .deal-list-details {
-                flex-direction: column;
-                gap: 0.25rem;
-            }
-        }
-
-        /* Custom scrollbar for stats modal */
-        #statsModal .overflow-y-auto::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        #statsModal .overflow-y-auto::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-
-        #statsModal .overflow-y-auto::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 10px;
-        }
-
-        #statsModal .overflow-y-auto::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
-        }
-
-        /* Clickable chart elements */
-        .clickable-chart {
-            cursor: pointer;
         }
 
         /* Priority colors untuk badges */
@@ -1229,7 +1074,7 @@
             z-index: -1;
         }
 
-        /* Comments Section Styles - DIMODIFIKASI: Tambah tombol hapus */
+        /* Comments Section Styles - Tambah tombol hapus */
         .comments-section {
             margin-top: 1.5rem;
             border-top: 1px solid #e5e7eb;
@@ -1364,7 +1209,7 @@
             background: #2563eb;
         }
 
-        /* Merge Project Styles dalam Deal Card - DIPERBAIKI */
+        /* Merge Project Styles dalam Deal Card */
         .multiple-sales-indicator {
             position: absolute;
             top: 8px;
@@ -1427,7 +1272,7 @@
             color: white;
         }
 
-        /* PERBAIKAN: Tombol Tutup Modal yang Selalu Terlihat */
+        /* Tombol Tutup Modal yang Selalu Terlihat */
         .modal-actions {
             position: sticky;
             bottom: 0;
@@ -1462,7 +1307,7 @@
             overflow-x: hidden;
         }
 
-        /* CSS untuk view-detail-row - DITAMBAHKAN */
+        /* CSS untuk view-detail-row */
         .view-detail-row {
             cursor: pointer;
         }
@@ -1471,7 +1316,7 @@
             background-color: #f9fafb;
         }
 
-        /* CSS untuk tombol detail di aktivitas - DITAMBAHKAN */
+        /* CSS untuk tombol detail di aktivitas */
         .view-activity-detail {
             background: none;
             border: none;
@@ -1484,6 +1329,15 @@
 
         .view-activity-detail:hover {
             background-color: #e5e7eb;
+        }
+
+        /* Z-index management untuk modal */
+        #activityModal {
+            z-index: 150;
+        }
+
+        #dealDetailModal {
+            z-index: 200; /* Lebih tinggi dari activity modal */
         }
     </style>
 </head>
@@ -1521,7 +1375,7 @@
                 </div>
             </div>
             
-            <!-- Year Filter & Search Combined Section - MODIFIKASI: Tambah filter tahun -->
+            <!-- Year Filter & Search Combined Section -->
             <div class="mt-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <div class="year-filter-container">
                     <span class="text-sm font-medium text-gray-700">Filter Tahun:</span>
@@ -1540,7 +1394,7 @@
             </div>
         </header>
 
-        <!-- Priority Dashboard - DIMODIFIKASI: Hanya 5 priority (tanpa Lost dan Completed) -->
+        <!-- Priority Dashboard -->
         <div class="priority-dashboard mb-8">
             <!-- Priority cards akan diisi oleh JavaScript -->
         </div>
@@ -2021,8 +1875,8 @@
             </div>
         </div>
 
-        <!-- Deal Detail Modal dengan Comments - DIMODIFIKASI: Layout 2 kolom + tombol hapus komentar -->
-        <div id="dealDetailModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <!-- Deal Detail Modal dengan Comments - Layout 2 kolom + tombol hapus komentar -->
+        <div id="dealDetailModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-[200] hidden">
             <div class="bg-white rounded-xl p-8 w-full max-w-6xl shadow-2xl modal-content-enter max-h-[90vh] overflow-y-auto" id="dealDetailModalContent">
                 <h2 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900" id="dealDetailTitle">Detail Deal</h2>
                 
@@ -2123,8 +1977,8 @@
             </div>
         </div>
 
-        <!-- Activity Modal - DIPERBAIKI: Dengan tombol detail dan clickable -->
-        <div id="activityModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <!-- Activity Modal -->
+        <div id="activityModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-[150] hidden">
             <div class="bg-white rounded-xl p-8 w-full max-w-lg shadow-2xl modal-content-enter max-h-[80vh] overflow-y-auto" id="activityModalContent">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center"><i class="fas fa-history mr-3 text-gray-500"></i> Aktivitas Terakhir</h2>
