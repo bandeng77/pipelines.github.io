@@ -39,8 +39,15 @@ let uniquePackages = new Set();
 let uniqueYears = new Set();
 let uniqueSales = new Set();
 
-// FILTER TAHUN AKTIF - PASTIKAN SINKRON
+// FILTER TAHUN AKTIF
 let activeYear = 'all';
+
+// Cache untuk priority stats per tahun
+let priorityStatsCache = {
+    'all': null,
+    '2025': null,
+    '2026': null
+};
 
 // Deklarasi variabel elemen DOM
 let facilitySelect, newFacilityInput;
@@ -103,6 +110,12 @@ let currentDealIdForComments = null;
 
 // Variabel untuk menyimpan pilihan sales aktif per deal card
 let activeSalesPerDeal = {};
+
+// Variabel untuk menyimpan state activity modal
+let activityModalState = {
+    isOpen: false,
+    scrollPosition: 0
+};
 
 // ==================== FUNGSI UTAMA ====================
 
@@ -204,6 +217,11 @@ function initYearFilter() {
         
         // Set active year dan reload data
         activeYear = year;
+        
+        // Reset priority stats cache untuk tahun yang dipilih
+        if (!priorityStatsCache[year]) {
+            priorityStatsCache[year] = null;
+        }
         
         // Reload deals dengan filter tahun baru
         loadDealsFromFirebase();
@@ -427,16 +445,25 @@ function updateDropdownOptions() {
 
 // ==================== FUNGSI PRIORITY DASHBOARD - DIPERBAIKI ====================
 
-// Fungsi untuk membuat priority dashboard yang disederhanakan
-function createPriorityDashboard() {
-    const priorityDashboard = document.querySelector('.priority-dashboard');
-    if (!priorityDashboard) return;
+/**
+ * Menghitung statistik priority dengan caching untuk performa
+ * @param {Array} dealsList - Daftar deals
+ * @param {string} year - Tahun filter
+ * @returns {Object} - Statistik priority
+ */
+function calculatePriorityStats(dealsList, year) {
+    // Cek cache
+    if (priorityStatsCache[year]) {
+        return priorityStatsCache[year];
+    }
     
-    // Filter berdasarkan tahun dan merge project dengan nama sama
-    const yearFilteredDeals = filterDealsByYear(deals);
-    const mergedDealsForDashboard = mergeDuplicateProjects(yearFilteredDeals);
+    // Filter berdasarkan tahun jika perlu
+    const filteredDeals = year === 'all' ? dealsList : filterDealsByYear(dealsList);
     
-    // Hitung statistik berdasarkan priority - HANYA 5 PRIORITY
+    // Merge project dengan nama sama untuk dashboard
+    const mergedDeals = mergeDuplicateProjects(filteredDeals);
+    
+    // Hitung statistik berdasarkan priority
     const priorityStats = {
         'Hot Priority': { count: 0, value: 0, deals: [] },
         'Priority': { count: 0, value: 0, deals: [] },
@@ -445,7 +472,7 @@ function createPriorityDashboard() {
         'On Track': { count: 0, value: 0, deals: [] }
     };
     
-    mergedDealsForDashboard.forEach(deal => {
+    mergedDeals.forEach(deal => {
         const priority = deal.priority || 'Priority';
         if (priorityStats[priority]) {
             priorityStats[priority].count++;
@@ -453,6 +480,20 @@ function createPriorityDashboard() {
             priorityStats[priority].deals.push(deal);
         }
     });
+    
+    // Simpan ke cache
+    priorityStatsCache[year] = priorityStats;
+    
+    return priorityStats;
+}
+
+// Fungsi untuk membuat priority dashboard yang disederhanakan
+function createPriorityDashboard() {
+    const priorityDashboard = document.querySelector('.priority-dashboard');
+    if (!priorityDashboard) return;
+    
+    // Hitung statistik berdasarkan tahun yang aktif
+    const priorityStats = calculatePriorityStats(deals, activeYear);
     
     priorityDashboard.innerHTML = '';
     
@@ -503,7 +544,7 @@ function openPriorityModal(priority, deals) {
     
     if (!modal || !modalTitle || !modalContent) return;
     
-    modalTitle.textContent = `${priority} Projects`;
+    modalTitle.textContent = `${priority} Projects (Tahun ${activeYear === 'all' ? 'Semua' : activeYear})`;
     modalContent.innerHTML = '';
     
     if (deals.length === 0) {
@@ -1469,6 +1510,24 @@ function findDealByName(dealName) {
     );
 }
 
+// Fungsi untuk menyimpan scroll position activity modal
+function saveActivityModalState() {
+    const activityModalContent = document.getElementById('activityModalContent');
+    if (activityModalContent) {
+        activityModalState.scrollPosition = activityModalContent.scrollTop;
+    }
+}
+
+// Fungsi untuk mengembalikan scroll position activity modal
+function restoreActivityModalState() {
+    const activityModalContent = document.getElementById('activityModalContent');
+    if (activityModalContent && activityModalState.isOpen) {
+        setTimeout(() => {
+            activityModalContent.scrollTop = activityModalState.scrollPosition;
+        }, 100);
+    }
+}
+
 // Fungsi untuk membuka modal aktivitas dengan clickable items
 function openActivityModal() {
     try {
@@ -1532,6 +1591,9 @@ function openActivityModal() {
                         if (e.target.closest('.view-activity-detail')) return;
                         
                         const dealId = deal.id;
+                        // Simpan posisi scroll sebelum membuka detail
+                        saveActivityModalState();
+                        // Buka detail deal (z-index lebih tinggi)
                         openDealDetailModal(dealId);
                     });
                     
@@ -1541,6 +1603,9 @@ function openActivityModal() {
                         detailBtn.addEventListener('click', function(e) {
                             e.stopPropagation();
                             const dealId = this.dataset.dealId;
+                            // Simpan posisi scroll sebelum membuka detail
+                            saveActivityModalState();
+                            // Buka detail deal (z-index lebih tinggi)
                             openDealDetailModal(dealId);
                         });
                     }
@@ -1551,6 +1616,9 @@ function openActivityModal() {
         activityModal.classList.remove('hidden');
         activityModalContent.classList.remove('modal-content-leave-active');
         activityModalContent.classList.add('modal-content-enter-active');
+        
+        // Set state modal terbuka
+        activityModalState.isOpen = true;
         
         markActivitiesAsRead();
     } catch (error) {
@@ -1598,6 +1666,9 @@ function closeActivityModal() {
         activityModalContent.classList.remove('modal-content-leave-active');
         activityModalContent.removeEventListener('transitionend', handler);
         console.log("Modal aktivitas disembunyikan.");
+        // Set state modal tertutup
+        activityModalState.isOpen = false;
+        activityModalState.scrollPosition = 0;
     }, { once: true });
 }
 
@@ -1806,6 +1877,13 @@ async function loadDealsFromFirebase() {
         console.log("Total deals loaded:", deals.length);
         console.log("Unique years found:", Array.from(uniqueYears));
         
+        // Reset cache priority stats
+        priorityStatsCache = {
+            'all': null,
+            '2025': null,
+            '2026': null
+        };
+        
         populateYearDropdown();
         populateFilterDropdowns();
         
@@ -1929,7 +2007,7 @@ function renderIndividualDealCard(deal) {
     return dealCard;
 }
 
-// Fungsi untuk render deal dalam format list - DIPERBAIKI: Tambah kontraktor di sebelah konsultan
+// Fungsi untuk render deal dalam format list - DIPERBAIKI: dengan wrap text
 function renderDealList(deal, index) {
     const row = document.createElement('tr');
     row.dataset.id = deal.id;
@@ -1940,7 +2018,7 @@ function renderDealList(deal, index) {
     const priorityBadgeClass = getPriorityBadgeClass(deal.priority);
     const winDate = getWinDate(deal);
     
-    // Format kontraktor
+    // Format kontraktor dengan wrap text
     let contractorText = '-';
     if (deal.contractor) {
         if (Array.isArray(deal.contractor)) {
@@ -1950,11 +2028,28 @@ function renderDealList(deal, index) {
         }
     }
     
+    // Batasi panjang teks untuk tampilan yang lebih baik, tapi tetap wrap
+    const maxLength = 100;
+    let dealNameDisplay = deal.dealName || 'No Name';
+    if (dealNameDisplay.length > maxLength) {
+        dealNameDisplay = dealNameDisplay.substring(0, maxLength) + '...';
+    }
+    
+    let consultantDisplay = deal.consultant || '-';
+    if (consultantDisplay.length > maxLength) {
+        consultantDisplay = consultantDisplay.substring(0, maxLength) + '...';
+    }
+    
+    let contractorDisplay = contractorText;
+    if (contractorDisplay.length > maxLength) {
+        contractorDisplay = contractorDisplay.substring(0, maxLength) + '...';
+    }
+    
     row.innerHTML = `
-        <td class="px-4 py-3 whitespace-nowrap text-sm">${index + 1}</td>
-        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">${deal.salesName || '-'}</td>
-        <td class="px-4 py-3 whitespace-nowrap text-sm">${deal.dealName || 'No Name'}</td>
-        <td class="px-4 py-3 whitespace-nowrap text-sm">
+        <td class="px-4 py-3 align-top text-sm">${index + 1}</td>
+        <td class="px-4 py-3 align-top text-sm font-medium">${deal.salesName || '-'}</td>
+        <td class="px-4 py-3 align-top text-sm">${dealNameDisplay}</td>
+        <td class="px-4 py-3 align-top text-sm">
             ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}
             ${winDate ? `
             <div class="win-date-container">
@@ -1962,15 +2057,15 @@ function renderDealList(deal, index) {
             </div>
             ` : ''}
         </td>
-        <td class="px-4 py-3 whitespace-nowrap text-sm">${deal.consultant || '-'}</td>
-        <td class="px-4 py-3 whitespace-nowrap text-sm">${contractorText}</td>
-        <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold">Rp ${formatNumber(deal.value) || '0'}</td>
-        <td class="px-4 py-3 whitespace-nowrap">
+        <td class="px-4 py-3 align-top text-sm">${consultantDisplay}</td>
+        <td class="px-4 py-3 align-top text-sm">${contractorDisplay}</td>
+        <td class="px-4 py-3 align-top text-sm font-semibold">Rp ${formatNumber(deal.value) || '0'}</td>
+        <td class="px-4 py-3 align-top">
             <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
                 ${deal.priority || 'Priority'}
             </span>
         </td>
-        <td class="px-4 py-3 whitespace-nowrap text-sm deal-actions">
+        <td class="px-4 py-3 align-top text-sm deal-actions">
             <div class="flex space-x-2">
                 <button class="view-detail-btn text-blue-600 hover:text-blue-800">
                     <i class="fas fa-eye"></i>
@@ -3707,7 +3802,15 @@ function initEventListeners() {
         
         // Tombol di modal detail deal
         const closeDetailBtn = document.getElementById('closeDetailBtn');
-        if (closeDetailBtn) closeDetailBtn.addEventListener('click', closeDealDetailModal);
+        if (closeDetailBtn) {
+            closeDetailBtn.addEventListener('click', function() {
+                closeDealDetailModal();
+                // Setelah menutup detail, kembalikan ke activity modal jika masih terbuka
+                if (activityModalState.isOpen) {
+                    restoreActivityModalState();
+                }
+            });
+        }
         
         const detailCommentSubmitBtn = document.getElementById('detailCommentSubmitBtn');
         if (detailCommentSubmitBtn) {
@@ -4010,15 +4113,19 @@ function renderFilteredDeals(filteredDeals) {
         
         initSortable();
     } else {
+        // Gunakan container khusus untuk list view agar tidak ada scroll horizontal
+        const listContainer = document.createElement('div');
+        listContainer.className = 'list-view-container';
+        
         const table = document.createElement('table');
-        table.className = 'list-view min-w-full';
+        table.className = 'list-view';
         
         const thead = document.createElement('thead');
         thead.innerHTML = `
             <tr>
                 <th class="px-4 py-3 text-left">No</th>
-                <th class="px-4 py-3 text-left">Nama Sales</th>
-                <th class="px-4 py-3 text-left">Nama Project</th>
+                <th class="px-4 py-3 text-left">Sales</th>
+                <th class="px-4 py-3 text-left">Project</th>
                 <th class="px-4 py-3 text-left">Tahap</th>
                 <th class="px-4 py-3 text-left">Konsultan</th>
                 <th class="px-4 py-3 text-left">Kontraktor</th>
@@ -4036,7 +4143,8 @@ function renderFilteredDeals(filteredDeals) {
         });
         table.appendChild(tbody);
         
-        pipelineStage.appendChild(table);
+        listContainer.appendChild(table);
+        pipelineStage.appendChild(listContainer);
     }
 }
 
@@ -4151,6 +4259,13 @@ function resetFilters() {
         }
     });
     activeYear = 'all';
+    
+    // Reset priority stats cache
+    priorityStatsCache = {
+        'all': null,
+        '2025': null,
+        '2026': null
+    };
     
     // Terapkan filter reset
     applyActiveFilters();
@@ -5138,6 +5253,13 @@ async function saveDeal() {
             });
         }
         
+        // Reset cache priority stats
+        priorityStatsCache = {
+            'all': null,
+            '2025': null,
+            '2026': null
+        };
+        
         // Tutup modal dan refresh data
         closeDealModal();
         loadDealsFromFirebase();
@@ -5339,6 +5461,13 @@ async function deleteDeal() {
             userEmail: auth.currentUser.email,
             read: false
         });
+        
+        // Reset cache priority stats
+        priorityStatsCache = {
+            'all': null,
+            '2025': null,
+            '2026': null
+        };
         
         // Tutup modal dan refresh data
         closeDeleteModal();
