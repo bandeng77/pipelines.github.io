@@ -205,6 +205,8 @@ function initYearFilter() {
         // Set active year dan reload data
         activeYear = year;
         
+        console.log("Year filter changed to:", activeYear);
+        
         // Reload deals dengan filter tahun baru
         loadDealsFromFirebase();
         
@@ -220,7 +222,7 @@ function initYearFilter() {
 function filterDealsByYear(dealsList) {
     if (activeYear === 'all') return dealsList;
     
-    return dealsList.filter(deal => {
+    const filtered = dealsList.filter(deal => {
         if (!deal.createdAt) return false;
         try {
             // Konversi ke timestamp dengan aman
@@ -230,7 +232,7 @@ function filterDealsByYear(dealsList) {
             } else if (deal.createdAt.seconds) {
                 dealDate = new Date(deal.createdAt.seconds * 1000);
             } else {
-                return false;
+                dealDate = new Date(deal.createdAt);
             }
             
             const dealYear = dealDate.getFullYear().toString();
@@ -240,6 +242,9 @@ function filterDealsByYear(dealsList) {
             return false;
         }
     });
+    
+    console.log(`Filtered ${dealsList.length} deals to ${filtered.length} deals for year ${activeYear}`);
+    return filtered;
 }
 
 // ==================== MERGE PROJECT DENGAN NAMA SAMA ====================
@@ -425,16 +430,23 @@ function updateDropdownOptions() {
     populateDropdown('pic', uniquePICs);
 }
 
-// ==================== FUNGSI PRIORITY DASHBOARD - DIPERBAIKI ====================
+// ==================== FUNGSI PRIORITY DASHBOARD - DIPERBAIKI UNTUK SINKRON TAHUN ====================
 
 // Fungsi untuk membuat priority dashboard yang disederhanakan
 function createPriorityDashboard() {
     const priorityDashboard = document.querySelector('.priority-dashboard');
     if (!priorityDashboard) return;
     
-    // Filter berdasarkan tahun dan merge project dengan nama sama
+    console.log("Creating priority dashboard for active year:", activeYear);
+    console.log("Total deals before filtering:", deals.length);
+    
+    // Filter berdasarkan tahun yang dipilih
     const yearFilteredDeals = filterDealsByYear(deals);
+    console.log("Deals after year filter:", yearFilteredDeals.length);
+    
+    // Merge project dengan nama sama untuk dashboard
     const mergedDealsForDashboard = mergeDuplicateProjects(yearFilteredDeals);
+    console.log("Deals after merging for dashboard:", mergedDealsForDashboard.length);
     
     // Hitung statistik berdasarkan priority - HANYA 5 PRIORITY
     const priorityStats = {
@@ -453,6 +465,8 @@ function createPriorityDashboard() {
             priorityStats[priority].deals.push(deal);
         }
     });
+    
+    console.log("Priority stats for year", activeYear, ":", priorityStats);
     
     priorityDashboard.innerHTML = '';
     
@@ -493,6 +507,12 @@ function createPriorityDashboard() {
             openPriorityModal(priority, stats.deals);
         });
     });
+    
+    // Tambahkan indikator tahun yang aktif
+    const yearIndicator = document.createElement('div');
+    yearIndicator.className = 'text-xs text-gray-500 mt-2 text-center';
+    yearIndicator.textContent = `Menampilkan data tahun: ${activeYear === 'all' ? 'Semua Tahun' : activeYear}`;
+    priorityDashboard.appendChild(yearIndicator);
 }
 
 // Fungsi untuk membuka modal priority
@@ -503,14 +523,14 @@ function openPriorityModal(priority, deals) {
     
     if (!modal || !modalTitle || !modalContent) return;
     
-    modalTitle.textContent = `${priority} Projects`;
+    modalTitle.textContent = `${priority} Projects (Tahun: ${activeYear === 'all' ? 'Semua' : activeYear})`;
     modalContent.innerHTML = '';
     
     if (deals.length === 0) {
         modalContent.innerHTML = `
             <div class="text-center text-gray-500 py-8">
                 <i class="fas fa-inbox text-3xl mb-2"></i>
-                <p>Tidak ada project dengan priority "${priority}"</p>
+                <p>Tidak ada project dengan priority "${priority}" untuk tahun ${activeYear === 'all' ? 'semua tahun' : activeYear}</p>
             </div>
         `;
     } else {
@@ -527,11 +547,20 @@ function openPriorityModal(priority, deals) {
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai (IDR)</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tahap</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tahun</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-                ${sortedDeals.map((deal, index) => `
+                ${sortedDeals.map((deal, index) => {
+                    let tahun = '-';
+                    if (deal.createdAt) {
+                        try {
+                            const date = deal.createdAt.toDate ? deal.createdAt.toDate() : new Date(deal.createdAt);
+                            tahun = date.getFullYear();
+                        } catch (e) {}
+                    }
+                    return `
                     <tr class="hover:bg-gray-50 cursor-pointer view-detail-row" data-id="${deal.id}">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${deal.dealName || 'No Name'}</td>
@@ -543,13 +572,14 @@ function openPriorityModal(priority, deals) {
                                 ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}
                             </span>
                         </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${tahun}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <button class="text-blue-600 hover:text-blue-900 mr-3 view-detail-btn" data-id="${deal.id}">
                                 <i class="fas fa-eye"></i>
                             </button>
                         </td>
                     </tr>
-                `).join('')}
+                `}).join('')}
             </tbody>
         `;
         
@@ -1697,6 +1727,8 @@ function populateYearDropdown() {
         option.textContent = year;
         filterYearSelect.appendChild(option);
     });
+    
+    console.log("Dropdown tahun diperbarui dengan tahun:", sortedYears);
 }
 
 // Fungsi untuk memuat konsultan dari GitHub JSON
@@ -1809,7 +1841,7 @@ async function loadDealsFromFirebase() {
         populateYearDropdown();
         populateFilterDropdowns();
         
-        // Buat priority dashboard yang disederhanakan
+        // Buat priority dashboard yang disederhanakan - PASTIKAN MENGGUNAKAN DATA YANG SUDAH DIFILTER TAHUN
         createPriorityDashboard();
         
         // Terapkan filter yang aktif
@@ -1929,12 +1961,16 @@ function renderIndividualDealCard(deal) {
     return dealCard;
 }
 
-// Fungsi untuk render deal dalam format list - DIPERBAIKI: Tambah kontraktor di sebelah konsultan
+// ==================== FUNGSI LIST VIEW TANPA SCROLL HORIZONTAL ====================
+
+/**
+ * Render deals dalam format list tanpa scroll horizontal
+ * Menggunakan tabel dengan lebar tetap dan overflow-x auto pada container
+ */
 function renderDealList(deal, index) {
     const row = document.createElement('tr');
     row.dataset.id = deal.id;
     row.className = 'hover:bg-gray-50 cursor-pointer view-detail-row';
-    row.dataset.id = deal.id;
     
     const canEdit = canUserEditDeal(deal);
     const priorityBadgeClass = getPriorityBadgeClass(deal.priority);
@@ -1988,6 +2024,92 @@ function renderDealList(deal, index) {
     `;
     
     return row;
+}
+
+// Fungsi renderFilteredDeals yang diperbaiki - tanpa scroll horizontal
+function renderFilteredDeals(filteredDeals) {
+    const pipelineStage = document.getElementById('pipelines-stage');
+    if (!pipelineStage) return;
+    
+    pipelineStage.innerHTML = '';
+    
+    if (filteredDeals.length === 0) {
+        pipelineStage.innerHTML = `
+            <div class="empty-stage-message text-center text-gray-400 p-4 text-sm w-full">
+                <i class="fas fa-search text-3xl mb-2"></i>
+                <p>Tidak ada deals yang sesuai dengan filter.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    if (currentView === 'card') {
+        // Group deals by name untuk merge
+        const dealsByName = {};
+        filteredDeals.forEach(deal => {
+            const dealName = deal.dealName?.toLowerCase().trim();
+            if (!dealName) return;
+            
+            if (!dealsByName[dealName]) {
+                dealsByName[dealName] = [];
+            }
+            dealsByName[dealName].push(deal);
+        });
+        
+        // Render deal cards
+        Object.values(dealsByName).forEach(dealGroup => {
+            if (dealGroup.length > 0) {
+                if (dealGroup.length > 1) {
+                    // Multiple deals dengan nama yang sama - render merged card
+                    const mergedCard = renderMergedDealCard(dealGroup);
+                    pipelineStage.appendChild(mergedCard);
+                    setupMergeDealCardEvents(mergedCard, dealGroup);
+                } else {
+                    // Single deal - render individual card
+                    const dealCard = renderIndividualDealCard(dealGroup[0]);
+                    pipelineStage.appendChild(dealCard);
+                }
+            }
+        });
+        
+        initSortable();
+    } else {
+        // LIST VIEW - Tanpa scroll horizontal
+        // Buat container dengan overflow-x auto untuk mengakomodasi lebar tabel
+        const tableContainer = document.createElement('div');
+        tableContainer.className = 'w-full overflow-x-auto';
+        
+        const table = document.createElement('table');
+        table.className = 'list-view min-w-full divide-y divide-gray-200';
+        
+        const thead = document.createElement('thead');
+        thead.className = 'bg-gray-50';
+        thead.innerHTML = `
+            <tr>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">No</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Nama Sales</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Nama Project</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Tahap</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Konsultan</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Kontraktor</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Nilai (IDR)</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Priority</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Aksi</th>
+            </tr>
+        `;
+        table.appendChild(thead);
+        
+        const tbody = document.createElement('tbody');
+        tbody.className = 'bg-white divide-y divide-gray-200';
+        filteredDeals.forEach((deal, index) => {
+            const row = renderDealList(deal, index);
+            tbody.appendChild(row);
+        });
+        table.appendChild(tbody);
+        
+        tableContainer.appendChild(table);
+        pipelineStage.appendChild(tableContainer);
+    }
 }
 
 // Fungsi untuk mengisi dropdown dengan opsi unik
@@ -3962,84 +4084,6 @@ function filterDeals() {
     }
 }
 
-// Fungsi untuk render deals yang sudah difilter dengan merge deal card
-function renderFilteredDeals(filteredDeals) {
-    const pipelineStage = document.getElementById('pipelines-stage');
-    if (!pipelineStage) return;
-    
-    pipelineStage.innerHTML = '';
-    
-    if (filteredDeals.length === 0) {
-        pipelineStage.innerHTML = `
-            <div class="empty-stage-message text-center text-gray-400 p-4 text-sm w-full">
-                <i class="fas fa-search text-3xl mb-2"></i>
-                <p>Tidak ada deals yang sesuai dengan filter.</p>
-            </div>
-        `;
-        return;
-    }
-    
-    if (currentView === 'card') {
-        // Group deals by name untuk merge
-        const dealsByName = {};
-        filteredDeals.forEach(deal => {
-            const dealName = deal.dealName?.toLowerCase().trim();
-            if (!dealName) return;
-            
-            if (!dealsByName[dealName]) {
-                dealsByName[dealName] = [];
-            }
-            dealsByName[dealName].push(deal);
-        });
-        
-        // Render deal cards
-        Object.values(dealsByName).forEach(dealGroup => {
-            if (dealGroup.length > 0) {
-                if (dealGroup.length > 1) {
-                    // Multiple deals dengan nama yang sama - render merged card
-                    const mergedCard = renderMergedDealCard(dealGroup);
-                    pipelineStage.appendChild(mergedCard);
-                    setupMergeDealCardEvents(mergedCard, dealGroup);
-                } else {
-                    // Single deal - render individual card
-                    const dealCard = renderIndividualDealCard(dealGroup[0]);
-                    pipelineStage.appendChild(dealCard);
-                }
-            }
-        });
-        
-        initSortable();
-    } else {
-        const table = document.createElement('table');
-        table.className = 'list-view min-w-full';
-        
-        const thead = document.createElement('thead');
-        thead.innerHTML = `
-            <tr>
-                <th class="px-4 py-3 text-left">No</th>
-                <th class="px-4 py-3 text-left">Nama Sales</th>
-                <th class="px-4 py-3 text-left">Nama Project</th>
-                <th class="px-4 py-3 text-left">Tahap</th>
-                <th class="px-4 py-3 text-left">Konsultan</th>
-                <th class="px-4 py-3 text-left">Kontraktor</th>
-                <th class="px-4 py-3 text-left">Nilai (IDR)</th>
-                <th class="px-4 py-3 text-left">Priority</th>
-                <th class="px-4 py-3 text-left">Aksi</th>
-            </tr>
-        `;
-        table.appendChild(thead);
-        
-        const tbody = document.createElement('tbody');
-        filteredDeals.forEach((deal, index) => {
-            const row = renderDealList(deal, index);
-            tbody.appendChild(row);
-        });
-        table.appendChild(tbody);
-        
-        pipelineStage.appendChild(table);
-    }
-}
-
 // Fungsi logout
 function logout() {
     auth.signOut()
@@ -5355,6 +5399,62 @@ async function deleteDeal() {
     }
 }
 
+// ==================== FUNGSI DEBUG (OPSIONAL) ====================
+
+// Fungsi untuk mengecek data tahun (bisa dipanggil dari console untuk debug)
+function checkYearData() {
+    console.log("=== DEBUG DATA TAHUN ===");
+    console.log("Active year:", activeYear);
+    console.log("Unique years:", Array.from(uniqueYears));
+    
+    const dealsByYear = {};
+    deals.forEach(deal => {
+        if (deal.createdAt) {
+            try {
+                const dealDate = deal.createdAt.toDate ? deal.createdAt.toDate() : new Date(deal.createdAt);
+                const year = dealDate.getFullYear().toString();
+                if (!dealsByYear[year]) dealsByYear[year] = 0;
+                dealsByYear[year]++;
+            } catch (e) {
+                console.warn("Error parsing date for deal:", deal.id);
+            }
+        }
+    });
+    
+    console.log("Distribusi deals per tahun:", dealsByYear);
+    
+    // Filter berdasarkan tahun yang dipilih
+    const yearFiltered = filterDealsByYear(deals);
+    console.log(`Deals setelah filter tahun ${activeYear}:`, yearFiltered.length);
+    
+    // Priority stats per tahun
+    const mergedForDashboard = mergeDuplicateProjects(yearFiltered);
+    const priorityStats = {
+        'Hot Priority': 0,
+        'Priority': 0,
+        'Win': 0,
+        'Behind': 0,
+        'On Track': 0
+    };
+    
+    mergedForDashboard.forEach(deal => {
+        const priority = deal.priority || 'Priority';
+        if (priorityStats.hasOwnProperty(priority)) {
+            priorityStats[priority]++;
+        }
+    });
+    
+    console.log("Priority stats untuk tahun", activeYear, ":", priorityStats);
+    
+    return {
+        activeYear,
+        uniqueYears: Array.from(uniqueYears),
+        dealsByYear,
+        yearFilteredCount: yearFiltered.length,
+        priorityStats
+    };
+}
+
 // Inisialisasi aplikasi setelah halaman dimuat
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM loaded, initializing application...");
@@ -5363,3 +5463,4 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Ekspor fungsi yang diperlukan untuk event handler HTML
 window.openDealDetailModal = openDealDetailModal;
+window.checkYearData = checkYearData; // Untuk debugging di console
