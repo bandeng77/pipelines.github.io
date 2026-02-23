@@ -28,6 +28,14 @@ let currentUserRole = 'user';
 let sortableInstances = {};
 let authInitialized = false;
 
+// Variabel untuk menyimpan unsubscribe functions
+let unsubscribeDeals = null;
+let unsubscribeActivities = null;
+
+// Queue untuk aktivitas baru yang belum diproses
+let pendingActivities = [];
+let isActivityModalOpen = false;
+
 // Variabel untuk menyimpan daftar unik
 let uniqueConsultants = new Set();
 let uniqueContractors = new Set();
@@ -124,6 +132,246 @@ let activityModalState = {
     scrollPosition: 0
 };
 
+// ==================== REALTIME LISTENERS ====================
+
+/**
+ * Setup semua listener realtime untuk Firebase
+ */
+function setupRealtimeListeners() {
+    console.log("Setting up realtime listeners...");
+    
+    // Bersihkan listener lama jika ada
+    if (unsubscribeDeals) {
+        unsubscribeDeals();
+        unsubscribeDeals = null;
+    }
+    
+    if (unsubscribeActivities) {
+        unsubscribeActivities();
+        unsubscribeActivities = null;
+    }
+    
+    // Setup listener untuk deals collection
+    setupDealsRealtimeListener();
+    
+    // Setup listener untuk activities collection
+    setupActivitiesRealtimeListener();
+}
+
+/**
+ * Listener realtime untuk deals collection
+ */
+function setupDealsRealtimeListener() {
+    console.log("Setting up deals realtime listener...");
+    
+    unsubscribeDeals = dealsCollection
+        .orderBy("createdAt", "desc")
+        .onSnapshot((snapshot) => {
+            console.log("Deals snapshot received:", snapshot.docChanges().length, "changes");
+            
+            // Handle perubahan
+            snapshot.docChanges().forEach((change) => {
+                if (change.type === "added") {
+                    console.log("New deal added:", change.doc.id);
+                    handleNewDealAdded(change.doc);
+                } else if (change.type === "modified") {
+                    console.log("Deal modified:", change.doc.id);
+                    handleDealModified(change.doc);
+                } else if (change.type === "removed") {
+                    console.log("Deal removed:", change.doc.id);
+                    handleDealRemoved(change.doc);
+                }
+            });
+            
+            // Reload deals dan update UI
+            loadDealsFromFirebase(false); // false = jangan setup ulang listener
+        }, (error) => {
+            console.error("Error in deals snapshot listener:", error);
+            showToast("Gagal memantau perubahan data deals", 3000);
+        });
+}
+
+/**
+ * Listener realtime untuk activities collection
+ */
+function setupActivitiesRealtimeListener() {
+    console.log("Setting up activities realtime listener...");
+    
+    unsubscribeActivities = activitiesCollection
+        .orderBy("timestamp", "desc")
+        .limit(50)
+        .onSnapshot((snapshot) => {
+            console.log("Activities snapshot received:", snapshot.docChanges().length, "changes");
+            
+            // Handle perubahan
+            snapshot.docChanges().forEach((change) => {
+                if (change.type === "added") {
+                    console.log("New activity added:", change.doc.id);
+                    handleNewActivityAdded(change.doc);
+                }
+            });
+            
+            // Update activities array
+            loadActivitiesFromFirebase(false); // false = jangan setup ulang listener
+            
+        }, (error) => {
+            console.error("Error in activities snapshot listener:", error);
+            showToast("Gagal memantau perubahan aktivitas", 3000);
+        });
+}
+
+/**
+ * Handle ketika deal baru ditambahkan
+ */
+function handleNewDealAdded(doc) {
+    const dealData = doc.data();
+    const deal = { id: doc.id, ...dealData };
+    
+    // Tampilkan notifikasi toast
+    showToast(`🔔 Deal Baru: ${deal.dealName || 'No Name'} ditambahkan oleh ${deal.createdBy || 'Unknown'}`, 4000);
+    
+    // Jika modal aktivitas sedang terbuka, tambahkan indikator
+    if (isActivityModalOpen) {
+        pendingActivities.push({
+            type: 'new_deal',
+            deal: deal,
+            timestamp: new Date()
+        });
+        updateActivityModalWithPending();
+    }
+    
+    // Update badge aktivitas
+    updateActivityBadge();
+}
+
+/**
+ * Handle ketika deal dimodifikasi
+ */
+function handleDealModified(doc) {
+    const dealData = doc.data();
+    const deal = { id: doc.id, ...dealData };
+    
+    // Tampilkan notifikasi toast untuk update penting (misalnya stage berubah jadi win)
+    if (dealData.stage === 'win') {
+        showToast(`🏆 Selamat! Deal "${deal.dealName}" menjadi WIN!`, 5000);
+    }
+}
+
+/**
+ * Handle ketika deal dihapus
+ */
+function handleDealRemoved(doc) {
+    const dealId = doc.id;
+    showToast(`🗑️ Deal telah dihapus`, 3000);
+}
+
+/**
+ * Handle ketika aktivitas baru ditambahkan
+ */
+function handleNewActivityAdded(doc) {
+    const activityData = doc.data();
+    
+    // Konversi timestamp
+    if (activityData.timestamp && typeof activityData.timestamp.toDate !== 'function') {
+        activityData.timestamp = firebase.firestore.Timestamp.fromMillis(activityData.timestamp);
+    }
+    
+    const activity = { id: doc.id, ...activityData };
+    
+    // Jika modal aktivitas sedang terbuka, tambahkan aktivitas baru ke tampilan
+    if (isActivityModalOpen) {
+        addNewActivityToModal(activity);
+    }
+    
+    // Update badge
+    updateActivityBadge();
+}
+
+/**
+ * Tambahkan aktivitas baru ke modal yang sedang terbuka
+ */
+function addNewActivityToModal(activity) {
+    const activityFeed = document.getElementById('activity-feed-modal');
+    if (!activityFeed) return;
+    
+    // Ekstrak nama deal dari pesan
+    const dealName = extractDealNameFromActivity(activity.message);
+    const deal = findDealByName(dealName);
+    
+    // Buat elemen aktivitas baru
+    const activityItem = document.createElement('div');
+    activityItem.className = 'activity-item cursor-pointer hover:bg-gray-100 transition duration-200 border-l-4 border-green-500 bg-green-50';
+    
+    activityItem.innerHTML = `
+        <div class="flex items-start p-2">
+            <div class="flex-1">
+                <p class="font-medium">${activity.message || 'Aktivitas tidak tersedia'}</p>
+                <div class="activity-date text-xs text-gray-500 mt-1">
+                    ${formatDateTime(activity.timestamp)}
+                    <span class="ml-2 text-xs bg-green-500 text-white px-2 py-0.5 rounded-full animate-pulse">Baru</span>
+                </div>
+            </div>
+            ${deal ? `
+                <button class="ml-2 text-blue-600 hover:text-blue-800 view-activity-detail" data-deal-id="${deal.id}">
+                    <i class="fas fa-eye"></i>
+                </button>
+            ` : ''}
+        </div>
+    `;
+    
+    // Tambahkan ke bagian atas feed
+    activityFeed.insertBefore(activityItem, activityFeed.firstChild);
+    
+    // Tambahkan event listener
+    if (deal) {
+        activityItem.addEventListener('click', function(e) {
+            if (e.target.closest('.view-activity-detail')) return;
+            
+            saveActivityModalState();
+            openDealDetailModal(deal.id);
+        });
+        
+        const detailBtn = activityItem.querySelector('.view-activity-detail');
+        if (detailBtn) {
+            detailBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                saveActivityModalState();
+                openDealDetailModal(deal.id);
+            });
+        }
+    }
+    
+    // Animasi highlight
+    setTimeout(() => {
+        activityItem.classList.remove('bg-green-50', 'border-l-4', 'border-green-500');
+    }, 3000);
+}
+
+/**
+ * Update modal aktivitas dengan pending activities
+ */
+function updateActivityModalWithPending() {
+    const activityFeed = document.getElementById('activity-feed-modal');
+    if (!activityFeed || pendingActivities.length === 0) return;
+    
+    // Tampilkan indikator ada aktivitas baru
+    const indicator = document.createElement('div');
+    indicator.className = 'text-center py-2 bg-yellow-100 text-yellow-800 text-sm cursor-pointer hover:bg-yellow-200 new-activities-indicator';
+    indicator.innerHTML = `
+        <i class="fas fa-arrow-up mr-1"></i>
+        ${pendingActivities.length} aktivitas baru. Klik untuk refresh
+    `;
+    
+    indicator.addEventListener('click', () => {
+        // Refresh activities
+        loadActivitiesFromFirebase(false);
+        pendingActivities = [];
+        indicator.remove();
+    });
+    
+    activityFeed.insertBefore(indicator, activityFeed.firstChild);
+}
+
 // ==================== FUNGSI UTAMA ====================
 
 // Fungsi untuk menangani perubahan status autentikasi
@@ -176,7 +424,9 @@ auth.onAuthStateChanged(async (user) => {
 
             console.log("Current role:", currentUserRole);
             applyUserPermissions();
-            loadActivitiesFromFirebase();
+            
+            // SETUP REALTIME LISTENERS
+            setupRealtimeListeners();
             
             // Muat konsultan dari GitHub JSON
             await loadConsultantsFromFirebase(); 
@@ -1711,7 +1961,7 @@ function closeRecycleBinModal() {
 // ==================== FUNGSI AKTIVITAS - DIPERBAIKI DENGAN CLICKABLE ====================
 
 // Fungsi untuk memuat aktivitas dari Firebase
-function loadActivitiesFromFirebase() {
+function loadActivitiesFromFirebase(setupListener = true) {
     console.log("Loading activities from Firebase...");
     
     let query = activitiesCollection.orderBy("timestamp", "desc").limit(50);
@@ -1728,6 +1978,11 @@ function loadActivitiesFromFirebase() {
             });
             console.log("Activities loaded:", activities.length, activities);
             updateActivityBadge();
+            
+            // Setup listener jika diperlukan
+            if (setupListener && !unsubscribeActivities) {
+                setupActivitiesRealtimeListener();
+            }
         })
         .catch((error) => {
             console.error("Error loading activities:", error);
@@ -1874,6 +2129,11 @@ function openActivityModal() {
                     }
                 }
             });
+            
+            // Tampilkan indikator pending activities jika ada
+            if (pendingActivities.length > 0) {
+                updateActivityModalWithPending();
+            }
         }
         
         activityModal.classList.remove('hidden');
@@ -1882,6 +2142,7 @@ function openActivityModal() {
         
         // Set state modal terbuka
         activityModalState.isOpen = true;
+        isActivityModalOpen = true;
         
         markActivitiesAsRead();
     } catch (error) {
@@ -1931,7 +2192,11 @@ function closeActivityModal() {
         console.log("Modal aktivitas disembunyikan.");
         // Set state modal tertutup
         activityModalState.isOpen = false;
+        isActivityModalOpen = false;
         activityModalState.scrollPosition = 0;
+        
+        // Bersihkan pending activities
+        pendingActivities = [];
     }, { once: true });
 }
 
@@ -2061,7 +2326,7 @@ async function loadConsultantsFromFirebase() {
 }
 
 // Fungsi untuk memuat deals dari Firebase dengan error handling
-async function loadDealsFromFirebase() {
+async function loadDealsFromFirebase(setupListener = true) {
     console.log("Loading deals from Firebase...");
     
     let query = dealsCollection.orderBy("createdAt", "desc");
@@ -2166,6 +2431,11 @@ async function loadDealsFromFirebase() {
         
         // Terapkan filter yang aktif
         applyActiveFilters();
+        
+        // Setup listener jika diperlukan
+        if (setupListener && !unsubscribeDeals) {
+            setupDealsRealtimeListener();
+        }
         
     } catch (error) {
         console.error("Error loading deals:", error);
@@ -4600,6 +4870,17 @@ function renderFilteredDeals(filteredDeals) {
 
 // Fungsi logout
 function logout() {
+    // Bersihkan listener sebelum logout
+    if (unsubscribeDeals) {
+        unsubscribeDeals();
+        unsubscribeDeals = null;
+    }
+    
+    if (unsubscribeActivities) {
+        unsubscribeActivities();
+        unsubscribeActivities = null;
+    }
+    
     auth.signOut()
         .then(() => {
             console.log("User logged out successfully");
