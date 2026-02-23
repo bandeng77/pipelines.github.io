@@ -176,6 +176,7 @@ auth.onAuthStateChanged(async (user) => {
 
             console.log("Current role:", currentUserRole);
             applyUserPermissions();
+            loadActivitiesFromFirebase();
             
             // Muat konsultan dari GitHub JSON
             await loadConsultantsFromFirebase(); 
@@ -188,9 +189,6 @@ auth.onAuthStateChanged(async (user) => {
             initExportElements();
             initYearFilter(); // Inisialisasi filter tahun
             
-            // Mulai listening realtime ke deals dan activities
-            setupRealtimeListeners();
-            
             // Load Recycle Bin data untuk admin
             if (currentUserRole === 'admin') {
                 loadRecycleBin();
@@ -201,137 +199,6 @@ auth.onAuthStateChanged(async (user) => {
         }
     }
 });
-
-/**
- * ==== REALTIME LISTENERS ====
- * Fungsi ini akan mendengarkan perubahan pada collection 'deals' dan 'activities'
- * dan memperbarui UI secara otomatis.
- */
-function setupRealtimeListeners() {
-    console.log("Setting up realtime listeners...");
-
-    // 1. Listener untuk Deals
-    dealsCollection.orderBy("createdAt", "desc").onSnapshot((snapshot) => {
-        console.log("Deals collection changed. Updating UI...");
-        deals = [];
-        uniqueContractors.clear();
-        uniquePICs.clear();
-        uniqueOwners.clear();
-        uniqueProducts.clear();
-        uniqueFacilities.clear();
-        uniquePackages.clear();
-        uniqueYears.clear();
-        uniqueSales.clear();
-
-        snapshot.forEach((doc) => {
-            const dealData = doc.data();
-            
-            // Konversi timestamp jika perlu
-            if (dealData.createdAt && typeof dealData.createdAt.toDate !== 'function') {
-                // Coba konversi
-                try {
-                    dealData.createdAt = firebase.firestore.Timestamp.fromDate(new Date(dealData.createdAt));
-                } catch (e) {
-                    console.warn("Could not convert createdAt for deal:", doc.id);
-                }
-            }
-            
-            deals.push({ id: doc.id, ...dealData });
-
-            // Kumpulkan data unik
-            if (dealData.contractor) {
-                if (Array.isArray(dealData.contractor)) {
-                    dealData.contractor.forEach(c => {
-                        if (c) uniqueContractors.add(c);
-                    });
-                } else {
-                    uniqueContractors.add(dealData.contractor);
-                }
-            }
-            if (dealData.pic) uniquePICs.add(dealData.pic);
-            if (dealData.owner) uniqueOwners.add(dealData.owner);
-            if (dealData.product) {
-                if (Array.isArray(dealData.product)) {
-                    dealData.product.forEach(p => {
-                        if (p) uniqueProducts.add(p);
-                    });
-                } else {
-                    uniqueProducts.add(dealData.product);
-                }
-            }
-            if (dealData.facility) uniqueFacilities.add(dealData.facility);
-            if (dealData.package) uniquePackages.add(dealData.package);
-            if (dealData.salesName) uniqueSales.add(dealData.salesName);
-            
-            // Kumpulkan tahun dengan aman
-            if (dealData.createdAt) {
-                try {
-                    let year;
-                    if (dealData.createdAt.toDate) {
-                        year = dealData.createdAt.toDate().getFullYear().toString();
-                    } else if (dealData.createdAt.seconds) {
-                        year = new Date(dealData.createdAt.seconds * 1000).getFullYear().toString();
-                    } else {
-                        year = new Date(dealData.createdAt).getFullYear().toString();
-                    }
-                    uniqueYears.add(year);
-                } catch (e) {
-                    console.warn("Could not extract year for deal:", doc.id, e);
-                }
-            }
-        });
-        
-        console.log("Total deals loaded (realtime):", deals.length);
-        
-        // Reset semua cache
-        priorityStatsCache = {
-            'all': null,
-            '2025': null,
-            '2026': null
-        };
-        
-        dealsByYearCache = {
-            'all': null,
-            '2025': null,
-            '2026': null
-        };
-        
-        populateYearDropdown();
-        populateFilterDropdowns();
-        
-        // Buat priority dashboard yang disederhanakan
-        createPriorityDashboard();
-        
-        // Terapkan filter yang aktif
-        applyActiveFilters();
-        
-    }, (error) => {
-        console.error("Error in deals realtime listener:", error);
-        showToast("Gagal memuat data deals secara realtime", 3000);
-    });
-
-    // 2. Listener untuk Activities
-    activitiesCollection.orderBy("timestamp", "desc").limit(50).onSnapshot((snapshot) => {
-        console.log("Activities collection changed. Updating UI...");
-        activities = [];
-        snapshot.forEach((doc) => {
-            const activityData = doc.data();
-            if (activityData.timestamp && typeof activityData.timestamp.toDate !== 'function') {
-                activityData.timestamp = firebase.firestore.Timestamp.fromMillis(activityData.timestamp);
-            }
-            activities.push({ id: doc.id, ...activityData });
-        });
-        console.log("Activities loaded (realtime):", activities.length);
-        updateActivityBadge();
-        
-        // Jika modal aktivitas sedang terbuka, perbarui kontennya
-        if (activityModalState.isOpen) {
-            refreshActivityModalContent();
-        }
-    }, (error) => {
-        console.error("Error in activities realtime listener:", error);
-    });
-}
 
 // ==================== FILTER TAHUN - DIPERBAIKI ====================
 
@@ -1697,7 +1564,7 @@ async function restoreDeal(deletedDealId) {
         await loadRecycleBin();
         renderRecycleBinContent();
         updateRecycleBinBadge();
-        // Tidak perlu panggil loadDealsFromFirebase lagi karena listener realtime sudah otomatis update
+        loadDealsFromFirebase();
         
     } catch (error) {
         console.error("Error restoring deal:", error);
@@ -1843,134 +1710,43 @@ function closeRecycleBinModal() {
 
 // ==================== FUNGSI AKTIVITAS - DIPERBAIKI DENGAN CLICKABLE ====================
 
-// Fungsi untuk menyimpan scroll position activity modal
-function saveActivityModalState() {
-    const activityModalContent = document.getElementById('activityModalContent');
-    if (activityModalContent) {
-        activityModalState.scrollPosition = activityModalContent.scrollTop;
-    }
-}
-
-// Fungsi untuk mengembalikan scroll position activity modal
-function restoreActivityModalState() {
-    const activityModalContent = document.getElementById('activityModalContent');
-    if (activityModalContent && activityModalState.isOpen) {
-        setTimeout(() => {
-            activityModalContent.scrollTop = activityModalState.scrollPosition;
-        }, 100);
-    }
-}
-
-// Fungsi untuk memperbarui konten modal aktivitas (dipanggil oleh listener realtime)
-function refreshActivityModalContent() {
-    const activityFeed = document.getElementById('activity-feed-modal');
-    if (!activityFeed) return;
-
-    // Simpan posisi scroll sebelum refresh
-    saveActivityModalState();
-
-    activityFeed.innerHTML = '';
+// Fungsi untuk memuat aktivitas dari Firebase
+function loadActivitiesFromFirebase() {
+    console.log("Loading activities from Firebase...");
     
-    if (activities.length === 0) {
-        activityFeed.innerHTML = `
-            <div class="text-center text-gray-500 py-4">
-                <i class="fas fa-inbox text-3xl mb-2"></i>
-                <p>Tidak ada aktivitas terbaru</p>
-            </div>
-        `;
-    } else {
-        const sortedActivities = [...activities].sort((a, b) => {
-            const tsA = a.timestamp ? (a.timestamp.toDate ? a.timestamp.toDate().getTime() : a.timestamp) : 0;
-            const tsB = b.timestamp ? (b.timestamp.toDate ? b.timestamp.toDate().getTime() : b.timestamp) : 0;
-            return tsB - tsA;
-        });
-
-        sortedActivities.forEach(activity => {
-            const activityItem = document.createElement('div');
-            activityItem.className = 'activity-item cursor-pointer hover:bg-gray-100 transition duration-200';
-            
-            // Ekstrak nama deal dari pesan
-            const dealName = extractDealNameFromActivity(activity.message);
-            const deal = findDealByName(dealName);
-            
-            activityItem.innerHTML = `
-                <div class="flex items-start">
-                    <div class="flex-1">
-                        <p>${activity.message || 'Aktivitas tidak tersedia'}</p>
-                        <div class="activity-date">
-                            ${formatDateTime(activity.timestamp)}
-                            ${activity.read ? '' : '<span class="ml-2 text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">Baru</span>'}
-                        </div>
-                    </div>
-                    ${deal ? `
-                        <button class="ml-2 text-blue-600 hover:text-blue-800 view-activity-detail" data-deal-id="${deal.id}">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    ` : ''}
-                </div>
-            `;
-            
-            activityFeed.appendChild(activityItem);
-            
-            // Tambahkan event listener untuk klik pada seluruh item
-            if (deal) {
-                activityItem.addEventListener('click', function(e) {
-                    // Jangan buka jika yang diklik adalah tombol detail
-                    if (e.target.closest('.view-activity-detail')) return;
-                    
-                    const dealId = deal.id;
-                    // Simpan posisi scroll sebelum membuka detail
-                    saveActivityModalState();
-                    // Buka detail deal (z-index lebih tinggi)
-                    openDealDetailModal(dealId);
-                });
-                
-                // Event listener khusus untuk tombol detail
-                const detailBtn = activityItem.querySelector('.view-activity-detail');
-                if (detailBtn) {
-                    detailBtn.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        const dealId = this.dataset.dealId;
-                        // Simpan posisi scroll sebelum membuka detail
-                        saveActivityModalState();
-                        // Buka detail deal (z-index lebih tinggi)
-                        openDealDetailModal(dealId);
-                    });
+    let query = activitiesCollection.orderBy("timestamp", "desc").limit(50);
+    
+    query.get()
+        .then((querySnapshot) => {
+            activities = [];
+            querySnapshot.forEach((doc) => {
+                const activityData = doc.data();
+                if (activityData.timestamp && typeof activityData.timestamp.toDate !== 'function') {
+                    activityData.timestamp = firebase.firestore.Timestamp.fromMillis(activityData.timestamp);
                 }
-            }
+                activities.push({ id: doc.id, ...activityData });
+            });
+            console.log("Activities loaded:", activities.length, activities);
+            updateActivityBadge();
+        })
+        .catch((error) => {
+            console.error("Error loading activities:", error);
+            showToast("Gagal memuat aktivitas terbaru", 3000);
         });
-    }
-
-    // Kembalikan posisi scroll
-    restoreActivityModalState();
 }
 
-// Fungsi untuk membuka modal aktivitas dengan clickable items
-function openActivityModal() {
-    try {
-        const activityModal = document.getElementById('activityModal');
-        const activityModalContent = document.getElementById('activityModalContent');
-
-        if (!activityModal || !activityModalContent) {
-            console.error("Elemen modal aktivitas tidak ditemukan.");
-            showToast("Gagal membuka aktivitas: Elemen tidak lengkap.", 3000);
-            return;
-        }
-        
-        // Isi konten menggunakan fungsi refresh
-        refreshActivityModalContent();
-        
-        activityModal.classList.remove('hidden');
-        activityModalContent.classList.remove('modal-content-leave-active');
-        activityModalContent.classList.add('modal-content-enter-active');
-        
-        // Set state modal terbuka
-        activityModalState.isOpen = true;
-        
-        markActivitiesAsRead();
-    } catch (error) {
-        console.error("Error opening activity modal:", error);
-        showToast("Gagal membuka aktivitas", 3000);
+// Fungsi untuk memperbarui badge aktivitas
+function updateActivityBadge() {
+    const activityBadge = document.getElementById('activity-badge');
+    if (!activityBadge) return;
+    
+    const unreadCount = activities.filter(act => !act.read).length;
+    
+    if (unreadCount > 0) {
+        activityBadge.textContent = unreadCount;
+        activityBadge.classList.remove('hidden');
+    } else {
+        activityBadge.classList.add('hidden');
     }
 }
 
@@ -1997,6 +1773,123 @@ function findDealByName(dealName) {
     );
 }
 
+// Fungsi untuk menyimpan scroll position activity modal
+function saveActivityModalState() {
+    const activityModalContent = document.getElementById('activityModalContent');
+    if (activityModalContent) {
+        activityModalState.scrollPosition = activityModalContent.scrollTop;
+    }
+}
+
+// Fungsi untuk mengembalikan scroll position activity modal
+function restoreActivityModalState() {
+    const activityModalContent = document.getElementById('activityModalContent');
+    if (activityModalContent && activityModalState.isOpen) {
+        setTimeout(() => {
+            activityModalContent.scrollTop = activityModalState.scrollPosition;
+        }, 100);
+    }
+}
+
+// Fungsi untuk membuka modal aktivitas dengan clickable items
+function openActivityModal() {
+    try {
+        const activityModal = document.getElementById('activityModal');
+        const activityFeed = document.getElementById('activity-feed-modal');
+        const activityModalContent = document.getElementById('activityModalContent');
+
+        if (!activityModal || !activityFeed || !activityModalContent) {
+            console.error("Elemen modal aktivitas tidak ditemukan.");
+            showToast("Gagal membuka aktivitas: Elemen tidak lengkap.", 3000);
+            return;
+        }
+        
+        activityFeed.innerHTML = '';
+        
+        if (activities.length === 0) {
+            activityFeed.innerHTML = `
+                <div class="text-center text-gray-500 py-4">
+                    <i class="fas fa-inbox text-3xl mb-2"></i>
+                    <p>Tidak ada aktivitas terbaru</p>
+                </div>
+            `;
+        } else {
+            const sortedActivities = [...activities].sort((a, b) => {
+                const tsA = a.timestamp ? (a.timestamp.toDate ? a.timestamp.toDate().getTime() : a.timestamp) : 0;
+                const tsB = b.timestamp ? (b.timestamp.toDate ? b.timestamp.toDate().getTime() : b.timestamp) : 0;
+                return tsB - tsA;
+            });
+
+            sortedActivities.forEach(activity => {
+                const activityItem = document.createElement('div');
+                activityItem.className = 'activity-item cursor-pointer hover:bg-gray-100 transition duration-200';
+                
+                // Ekstrak nama deal dari pesan
+                const dealName = extractDealNameFromActivity(activity.message);
+                const deal = findDealByName(dealName);
+                
+                activityItem.innerHTML = `
+                    <div class="flex items-start">
+                        <div class="flex-1">
+                            <p>${activity.message || 'Aktivitas tidak tersedia'}</p>
+                            <div class="activity-date">
+                                ${formatDateTime(activity.timestamp)}
+                                ${activity.read ? '' : '<span class="ml-2 text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">Baru</span>'}
+                            </div>
+                        </div>
+                        ${deal ? `
+                            <button class="ml-2 text-blue-600 hover:text-blue-800 view-activity-detail" data-deal-id="${deal.id}">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+                
+                activityFeed.appendChild(activityItem);
+                
+                // Tambahkan event listener untuk klik pada seluruh item
+                if (deal) {
+                    activityItem.addEventListener('click', function(e) {
+                        // Jangan buka jika yang diklik adalah tombol detail
+                        if (e.target.closest('.view-activity-detail')) return;
+                        
+                        const dealId = deal.id;
+                        // Simpan posisi scroll sebelum membuka detail
+                        saveActivityModalState();
+                        // Buka detail deal (z-index lebih tinggi)
+                        openDealDetailModal(dealId);
+                    });
+                    
+                    // Event listener khusus untuk tombol detail
+                    const detailBtn = activityItem.querySelector('.view-activity-detail');
+                    if (detailBtn) {
+                        detailBtn.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            const dealId = this.dataset.dealId;
+                            // Simpan posisi scroll sebelum membuka detail
+                            saveActivityModalState();
+                            // Buka detail deal (z-index lebih tinggi)
+                            openDealDetailModal(dealId);
+                        });
+                    }
+                }
+            });
+        }
+        
+        activityModal.classList.remove('hidden');
+        activityModalContent.classList.remove('modal-content-leave-active');
+        activityModalContent.classList.add('modal-content-enter-active');
+        
+        // Set state modal terbuka
+        activityModalState.isOpen = true;
+        
+        markActivitiesAsRead();
+    } catch (error) {
+        console.error("Error opening activity modal:", error);
+        showToast("Gagal membuka aktivitas", 3000);
+    }
+}
+
 // Fungsi untuk menandai aktivitas sebagai telah dibaca
 function markActivitiesAsRead() {
     const batch = db.batch();
@@ -2016,21 +1909,6 @@ function markActivitiesAsRead() {
             .catch(error => {
                 console.error("Error marking activities as read:", error);
             });
-    }
-}
-
-// Fungsi untuk memperbarui badge aktivitas
-function updateActivityBadge() {
-    const activityBadge = document.getElementById('activity-badge');
-    if (!activityBadge) return;
-    
-    const unreadCount = activities.filter(act => !act.read).length;
-    
-    if (unreadCount > 0) {
-        activityBadge.textContent = unreadCount;
-        activityBadge.classList.remove('hidden');
-    } else {
-        activityBadge.classList.add('hidden');
     }
 }
 
@@ -2180,6 +2058,457 @@ async function loadConsultantsFromFirebase() {
         console.error("Error loading consultants from JSON:", error);
         showToast("Gagal memuat daftar konsultan dari GitHub.", 3000);
     }
+}
+
+// Fungsi untuk memuat deals dari Firebase dengan error handling
+async function loadDealsFromFirebase() {
+    console.log("Loading deals from Firebase...");
+    
+    let query = dealsCollection.orderBy("createdAt", "desc");
+    
+    try {
+        const querySnapshot = await query.get();
+        deals = [];
+        uniqueContractors.clear();
+        uniquePICs.clear();
+        uniqueOwners.clear();
+        uniqueProducts.clear();
+        uniqueFacilities.clear();
+        uniquePackages.clear();
+        uniqueYears.clear();
+        uniqueSales.clear();
+
+        querySnapshot.forEach((doc) => {
+            const dealData = doc.data();
+            
+            // Konversi timestamp jika perlu
+            if (dealData.createdAt) {
+                if (dealData.createdAt.seconds !== undefined && dealData.createdAt.nanoseconds !== undefined) {
+                    // Sudah dalam format Firestore Timestamp
+                } else if (typeof dealData.createdAt.toDate === 'function') {
+                    // Sudah dalam format Firestore Timestamp
+                } else {
+                    // Coba konversi
+                    try {
+                        dealData.createdAt = firebase.firestore.Timestamp.fromDate(new Date(dealData.createdAt));
+                    } catch (e) {
+                        console.warn("Could not convert createdAt for deal:", doc.id);
+                    }
+                }
+            }
+            
+            deals.push({ id: doc.id, ...dealData });
+
+            // Kumpulkan data unik
+            if (dealData.contractor) {
+                if (Array.isArray(dealData.contractor)) {
+                    dealData.contractor.forEach(c => {
+                        if (c) uniqueContractors.add(c);
+                    });
+                } else {
+                    uniqueContractors.add(dealData.contractor);
+                }
+            }
+            if (dealData.pic) uniquePICs.add(dealData.pic);
+            if (dealData.owner) uniqueOwners.add(dealData.owner);
+            if (dealData.product) {
+                if (Array.isArray(dealData.product)) {
+                    dealData.product.forEach(p => {
+                        if (p) uniqueProducts.add(p);
+                    });
+                } else {
+                    uniqueProducts.add(dealData.product);
+                }
+            }
+            if (dealData.facility) uniqueFacilities.add(dealData.facility);
+            if (dealData.package) uniquePackages.add(dealData.package);
+            if (dealData.salesName) uniqueSales.add(dealData.salesName);
+            
+            // Kumpulkan tahun dengan aman
+            if (dealData.createdAt) {
+                try {
+                    let year;
+                    if (dealData.createdAt.toDate) {
+                        year = dealData.createdAt.toDate().getFullYear().toString();
+                    } else if (dealData.createdAt.seconds) {
+                        year = new Date(dealData.createdAt.seconds * 1000).getFullYear().toString();
+                    } else {
+                        year = new Date(dealData.createdAt).getFullYear().toString();
+                    }
+                    uniqueYears.add(year);
+                } catch (e) {
+                    console.warn("Could not extract year for deal:", doc.id, e);
+                }
+            }
+        });
+        
+        console.log("Total deals loaded:", deals.length);
+        console.log("Unique years found:", Array.from(uniqueYears));
+        
+        // Reset semua cache
+        priorityStatsCache = {
+            'all': null,
+            '2025': null,
+            '2026': null
+        };
+        
+        dealsByYearCache = {
+            'all': null,
+            '2025': null,
+            '2026': null
+        };
+        
+        populateYearDropdown();
+        populateFilterDropdowns();
+        
+        // Buat priority dashboard yang disederhanakan
+        createPriorityDashboard();
+        
+        // Terapkan filter yang aktif
+        applyActiveFilters();
+        
+    } catch (error) {
+        console.error("Error loading deals:", error);
+        showToast("Gagal memuat data deals", 3000);
+    }
+}
+
+// Fungsi untuk mendapatkan nama sales berdasarkan email
+function getSalesNameFromEmail(email) {
+    return emailToSalesNameMap[email] || email.split('@')[0];
+}
+
+// Fungsi untuk memeriksa apakah user dapat mengedit/menghapus deal
+function canUserEditDeal(deal) {
+    // Admin dan manager dapat mengedit semua deal
+    if (currentUserRole === 'admin' || currentUserRole === 'manager') {
+        return true;
+    }
+    
+    // User Bintang dapat mengedit semua deal
+    const currentUser = auth.currentUser;
+    
+    const allowedEmails = [
+        'bintang@genetek.co.id',
+        'andy@genetek.co.id'
+    ];
+    
+    if (currentUser && allowedEmails.includes(currentUser.email)) {
+        return true;
+    }
+
+    // Untuk user lain, hanya dapat mengedit deal mereka sendiri
+    if (!currentUser) return false;
+    
+    const userSalesName = getSalesNameFromEmail(currentUser.email);
+    return deal.salesName === userSalesName;
+}
+
+// Fungsi untuk render deal card individual (untuk deal non-merge)
+function renderIndividualDealCard(deal) {
+    const dealCard = document.createElement('div');
+    dealCard.className = 'deal-card';
+    dealCard.dataset.id = deal.id;
+    dealCard.dataset.dealName = deal.dealName?.toLowerCase();
+    dealCard.dataset.priority = deal.priority || 'Priority';
+    
+    // Hitung nilai tertinggi dari semua project dengan nama yang sama (semua priority)
+    const allProjectDeals = deals.filter(d => 
+        d.dealName?.trim().toLowerCase() === deal.dealName?.trim().toLowerCase()
+    );
+    const highestValueOverall = Math.max(...allProjectDeals.map(d => d.value || 0));
+    
+    // Informasi tentang project dengan priority berbeda
+    const mergedProjectsInfo = identifyMergedProjects();
+    const dealNameLower = deal.dealName?.toLowerCase().trim();
+    const hasDifferentPriorities = mergedProjectsInfo[dealNameLower] && mergedProjectsInfo[dealNameLower].count > 1;
+    const otherPriorities = hasDifferentPriorities ? 
+        mergedProjectsInfo[dealNameLower].priorities.filter(p => p !== (deal.priority || 'Priority')) : [];
+    
+    let stageColorClass = '';
+    switch (deal.stage) {
+        case 'identified':
+            stageColorClass = 'bg-gray-100 text-gray-800';
+            break;
+        case 'prospect':
+            stageColorClass = 'bg-blue-100 text-blue-800';
+            break;
+        case 'tender-me':
+            stageColorClass = 'bg-orange-100 text-orange-800';
+            break;
+        case 'tender-main-con':
+            stageColorClass = 'bg-purple-100 text-purple-800';
+            break;
+        case 'contract-award':
+            stageColorClass = 'bg-indigo-100 text-indigo-800';
+            break;
+        case 'win':
+            stageColorClass = 'bg-green-100 text-green-800';
+            break;
+        case 'lost':
+            stageColorClass = 'bg-red-100 text-red-800';
+            break;
+        case 'on-hold':
+            stageColorClass = 'bg-yellow-100 text-yellow-800';
+            break;
+        default:
+            stageColorClass = 'bg-gray-100 text-gray-800';
+    }
+
+    const priorityBadgeClass = getPriorityBadgeClass(deal.priority);
+    const canEdit = canUserEditDeal(deal);
+
+    dealCard.innerHTML = `
+        <div class="flex justify-between items-start">
+            <h3 class="font-bold text-gray-800">${deal.dealName || 'No Name'}</h3>
+            <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
+                ${deal.priority || 'Priority'}
+            </span>
+        </div>
+        <div class="mt-1 text-sm text-gray-600 deal-details">
+            <p><i class="fas fa-user-tie mr-1"></i> ${deal.salesName || '-'}</p>
+            <p class="font-semibold text-blue-600">
+                Rp ${formatNumber(highestValueOverall)}
+                ${(deal.value || 0) < highestValueOverall ? `
+                    <span class="text-xs text-gray-500 ml-1" title="Nilai tertinggi dari project ini (semua priority)">
+                        (max)
+                    </span>
+                ` : ''}
+            </p>
+            <p class="mt-1">
+                <span class="priority-badge px-2 py-1 rounded-full ${stageColorClass}">
+                    ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown Stage'}
+                </span>
+            </p>
+        </div>
+        <div class="mt-2 flex justify-between items-center deal-footer">
+            <span class="text-xs text-gray-500">
+                Dibuat: ${formatDate(deal.createdAt)}
+                ${hasDifferentPriorities ? `
+                    <span class="ml-1 text-purple-600" title="Project juga tersedia di priority: ${otherPriorities.join(', ')}">
+                        <i class="fas fa-tags"></i> ${otherPriorities.length}+
+                    </span>
+                ` : ''}
+            </span>
+            <div class="flex space-x-1 deal-actions">
+                <button class="view-detail-btn text-blue-600 hover:text-blue-800">
+                    <i class="fas fa-eye"></i>
+                </button>
+                ${canEdit ? `
+                <button class="edit-deal-btn text-green-600 hover:text-green-800">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="delete-deal-btn text-red-600 hover:text-red-800">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+                ` : ''}
+            </div>
+        </div>
+    `;
+    
+    return dealCard;
+}
+
+// Fungsi untuk render deal dalam format list - DIPERBAIKI: dengan wrap text dan informasi priority
+function renderDealList(deal, index) {
+    const row = document.createElement('tr');
+    row.dataset.id = deal.id;
+    row.className = 'hover:bg-gray-50 cursor-pointer view-detail-row';
+    row.dataset.id = deal.id;
+    
+    const canEdit = canUserEditDeal(deal);
+    const priorityBadgeClass = getPriorityBadgeClass(deal.priority);
+    const winDate = getWinDate(deal);
+    
+    // Hitung nilai tertinggi dari semua project dengan nama yang sama (semua priority)
+    const allProjectDeals = deals.filter(d => 
+        d.dealName?.trim().toLowerCase() === deal.dealName?.trim().toLowerCase()
+    );
+    const highestValueOverall = Math.max(...allProjectDeals.map(d => d.value || 0));
+    
+    // Format kontraktor dengan wrap text
+    let contractorText = '-';
+    if (deal.contractor) {
+        if (Array.isArray(deal.contractor)) {
+            contractorText = deal.contractor.join(', ');
+        } else {
+            contractorText = deal.contractor;
+        }
+    }
+    
+    // Batasi panjang teks untuk tampilan yang lebih baik, tapi tetap wrap
+    const maxLength = 100;
+    let dealNameDisplay = deal.dealName || 'No Name';
+    if (dealNameDisplay.length > maxLength) {
+        dealNameDisplay = dealNameDisplay.substring(0, maxLength) + '...';
+    }
+    
+    let consultantDisplay = deal.consultant || '-';
+    if (consultantDisplay.length > maxLength) {
+        consultantDisplay = consultantDisplay.substring(0, maxLength) + '...';
+    }
+    
+    let contractorDisplay = contractorText;
+    if (contractorDisplay.length > maxLength) {
+        contractorDisplay = contractorDisplay.substring(0, maxLength) + '...';
+    }
+    
+    row.innerHTML = `
+        <td class="px-4 py-3 align-top text-sm">${index + 1}</td>
+        <td class="px-4 py-3 align-top text-sm font-medium">${deal.salesName || '-'}</td>
+        <td class="px-4 py-3 align-top text-sm">
+            ${dealNameDisplay}
+            ${allProjectDeals.length > 1 ? `
+                <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800" title="Project ini memiliki ${allProjectDeals.length} entries dengan berbagai priority">
+                    <i class="fas fa-tags mr-1"></i>${allProjectDeals.length}
+                </span>
+            ` : ''}
+        </td>
+        <td class="px-4 py-3 align-top text-sm">
+            ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}
+            ${winDate ? `
+            <div class="win-date-container">
+                <i class="fas fa-calendar-check mr-1"></i>${formatDate(winDate)}
+            </div>
+            ` : ''}
+        </td>
+        <td class="px-4 py-3 align-top text-sm">${consultantDisplay}</td>
+        <td class="px-4 py-3 align-top text-sm">${contractorDisplay}</td>
+        <td class="px-4 py-3 align-top text-sm font-semibold">
+            Rp ${formatNumber(highestValueOverall)}
+            ${(deal.value || 0) < highestValueOverall ? `
+                <span class="text-xs text-gray-500 ml-1" title="Nilai asli: Rp ${formatNumber(deal.value || 0)}">
+                    (max)
+                </span>
+            ` : ''}
+        </td>
+        <td class="px-4 py-3 align-top">
+            <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
+                ${deal.priority || 'Priority'}
+            </span>
+        </td>
+        <td class="px-4 py-3 align-top text-sm deal-actions">
+            <div class="flex space-x-2">
+                <button class="view-detail-btn text-blue-600 hover:text-blue-800">
+                    <i class="fas fa-eye"></i>
+                </button>
+                ${canEdit ? `
+                <button class="edit-deal-btn text-green-600 hover:text-green-800">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="delete-deal-btn text-red-600 hover:text-red-800">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+                ` : ''}
+                ${allProjectDeals.length > 1 ? `
+                <button class="text-purple-600 hover:text-purple-900 view-all-priorities-btn" data-deal-name="${deal.dealName}" title="Lihat semua priority untuk project ini">
+                    <i class="fas fa-list"></i>
+                </button>
+                ` : ''}
+            </div>
+        </td>
+    `;
+    
+    return row;
+}
+
+// Fungsi untuk menampilkan semua priority dari project yang sama
+function showAllPrioritiesForProject(dealName) {
+    const allEntries = deals.filter(deal => deal.dealName?.trim() === dealName);
+    
+    if (allEntries.length === 0) {
+        showToast("Tidak ada entries ditemukan", 3000);
+        return;
+    }
+    
+    // Kelompokkan berdasarkan priority
+    const byPriority = {};
+    allEntries.forEach(deal => {
+        const priority = deal.priority || 'Priority';
+        if (!byPriority[priority]) {
+            byPriority[priority] = [];
+        }
+        byPriority[priority].push(deal);
+    });
+    
+    // Buat modal khusus untuk menampilkan semua priority
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.id = 'allPrioritiesModal';
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] overflow-hidden">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h2 class="text-xl font-semibold text-gray-800">Semua Priority untuk Project: ${dealName}</h2>
+                <button class="close-all-priorities text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+            <div class="p-4 overflow-y-auto max-h-[calc(90vh-80px)]">
+                ${Object.keys(byPriority).sort().map(priority => `
+                    <div class="mb-6">
+                        <h3 class="text-lg font-semibold mb-2 priority-title-${priority.toLowerCase().replace(' ', '-')}">Priority: ${priority}</h3>
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai (IDR)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tahap</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Dibuat</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                ${byPriority[priority].map((entry, index) => `
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${entry.salesName || '-'}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">Rp ${formatNumber(entry.value) || '0'}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${entry.stage === 'win' ? 'bg-green-100 text-green-800' : 
+                                                entry.stage === 'lost' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">
+                                                ${entry.stage ? entry.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(entry.createdAt)}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <button class="text-blue-600 hover:text-blue-900 view-detail-btn" data-id="${entry.id}">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Event listener untuk menutup modal
+    modal.querySelector('.close-all-priorities').addEventListener('click', () => {
+        modal.remove();
+    });
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+    
+    // Event listener untuk tombol view detail
+    modal.querySelectorAll('.view-detail-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const dealId = btn.dataset.id;
+            modal.remove();
+            openDealDetailModal(dealId);
+        });
+    });
 }
 
 // Fungsi untuk mengisi dropdown dengan opsi unik
@@ -3685,7 +4014,7 @@ function applyUserPermissions() {
         }
 
         toggleExportButton();
-        // Tidak perlu panggil loadDealsFromFirebase() karena sudah dihandle listener
+        loadDealsFromFirebase(); 
         
     } catch (error) {
         console.error("Error in applyUserPermissions:", error);
@@ -5399,10 +5728,9 @@ async function saveDeal() {
             '2026': null
         };
         
-        // Tutup modal dan refresh data (refresh data dilakukan otomatis oleh listener)
+        // Tutup modal dan refresh data
         closeDealModal();
-        
-        // Tidak perlu panggil loadDealsFromFirebase() karena listener akan otomatis update
+        loadDealsFromFirebase();
         
     } catch (error) {
         console.error("Error saving deal:", error);
@@ -5668,9 +5996,9 @@ async function deleteDeal() {
             '2026': null
         };
         
-        // Tutup modal
+        // Tutup modal dan refresh data
         closeDeleteModal();
-        // Tidak perlu panggil loadDealsFromFirebase() karena listener akan otomatis update
+        loadDealsFromFirebase();
         
         // Update Recycle Bin jika admin
         if (currentUserRole === 'admin') {
