@@ -176,6 +176,7 @@ auth.onAuthStateChanged(async (user) => {
 
             console.log("Current role:", currentUserRole);
             applyUserPermissions();
+            loadActivitiesFromFirebase();
             
             // Muat konsultan dari GitHub JSON
             await loadConsultantsFromFirebase(); 
@@ -192,12 +193,6 @@ auth.onAuthStateChanged(async (user) => {
             if (currentUserRole === 'admin') {
                 loadRecycleBin();
             }
-            
-            // Load deals setelah semua inisialisasi selesai
-            await loadDealsFromFirebase();
-            
-            // Load activities setelah deals dimuat
-            loadActivitiesFromFirebase();
         } catch (error) {
             console.error("Error checking user role:", error);
             showToast("Gagal memuat data pengguna. Silakan refresh halaman.", 5000);
@@ -1768,24 +1763,8 @@ function extractDealNameFromActivity(message) {
     return null;
 }
 
-// Fungsi untuk mengekstrak ID deal dari pesan aktivitas (jika ada)
-function extractDealIdFromActivity(activity) {
-    if (activity.dealId) {
-        return activity.dealId;
-    }
-    return null;
-}
-
-// Fungsi untuk mencari deal berdasarkan nama atau ID
-function findDealByActivity(activity) {
-    // Coba cari berdasarkan ID terlebih dahulu
-    if (activity.dealId) {
-        const dealById = deals.find(deal => deal.id === activity.dealId);
-        if (dealById) return dealById;
-    }
-    
-    // Jika tidak ada ID atau tidak ditemukan, cari berdasarkan nama
-    const dealName = extractDealNameFromActivity(activity.message);
+// Fungsi untuk mencari deal berdasarkan nama
+function findDealByName(dealName) {
     if (!dealName) return null;
     
     // Cari deal dengan nama yang sama (case insensitive)
@@ -1845,9 +1824,9 @@ function openActivityModal() {
                 const activityItem = document.createElement('div');
                 activityItem.className = 'activity-item cursor-pointer hover:bg-gray-100 transition duration-200';
                 
-                // Cari deal terkait dengan aktivitas ini
-                const deal = findDealByActivity(activity);
-                const hasDeal = !!deal;
+                // Ekstrak nama deal dari pesan
+                const dealName = extractDealNameFromActivity(activity.message);
+                const deal = findDealByName(dealName);
                 
                 activityItem.innerHTML = `
                     <div class="flex items-start">
@@ -1858,7 +1837,7 @@ function openActivityModal() {
                                 ${activity.read ? '' : '<span class="ml-2 text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">Baru</span>'}
                             </div>
                         </div>
-                        ${hasDeal ? `
+                        ${deal ? `
                             <button class="ml-2 text-blue-600 hover:text-blue-800 view-activity-detail" data-deal-id="${deal.id}">
                                 <i class="fas fa-eye"></i>
                             </button>
@@ -1868,8 +1847,8 @@ function openActivityModal() {
                 
                 activityFeed.appendChild(activityItem);
                 
-                // Tambahkan event listener untuk klik pada seluruh item jika deal ditemukan
-                if (hasDeal) {
+                // Tambahkan event listener untuk klik pada seluruh item
+                if (deal) {
                     activityItem.addEventListener('click', function(e) {
                         // Jangan buka jika yang diklik adalah tombol detail
                         if (e.target.closest('.view-activity-detail')) return;
@@ -1893,9 +1872,6 @@ function openActivityModal() {
                             openDealDetailModal(dealId);
                         });
                     }
-                } else {
-                    // Jika tidak ada deal terkait, tetap bisa diklik tapi tidak melakukan apa-apa
-                    activityItem.classList.add('cursor-default');
                 }
             });
         }
@@ -5009,8 +4985,8 @@ function exportToExcel() {
         showToast("Data berhasil diekspor ke Excel", 3000);
         closeExportModal();
         
-        // Log aktivitas - dengan dealId
-        await activitiesCollection.add({
+        // Log aktivitas
+        activitiesCollection.add({
             message: `Data diekspor ke Excel (${formatType}, ${dateRangeValue}) oleh ${auth.currentUser.email}.`,
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             userEmail: auth.currentUser.email,
@@ -5718,25 +5694,23 @@ async function saveDeal() {
             await dealsCollection.doc(dealId).update(dealData);
             showToast(`Deal "${dealName}" berhasil diperbarui!`, 2000);
             
-            // Log aktivitas dengan dealId
+            // Log aktivitas
             await activitiesCollection.add({
                 message: `Deal "${dealName}" diperbarui oleh ${auth.currentUser.email}.`,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                 userEmail: auth.currentUser.email,
-                dealId: dealId, // Tambahkan dealId
                 read: false
             });
         } else {
             // Tambah deal baru
-            const docRef = await dealsCollection.add(dealData);
+            await dealsCollection.add(dealData);
             showToast(`Deal "${dealName}" berhasil ditambahkan!`, 2000);
             
-            // Log aktivitas dengan dealId yang baru dibuat
+            // Log aktivitas
             await activitiesCollection.add({
                 message: `Deal "${dealName}" ditambahkan oleh ${auth.currentUser.email}.`,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                 userEmail: auth.currentUser.email,
-                dealId: docRef.id, // Tambahkan dealId
                 read: false
             });
         }
@@ -5756,10 +5730,7 @@ async function saveDeal() {
         
         // Tutup modal dan refresh data
         closeDealModal();
-        await loadDealsFromFirebase();
-        
-        // Reload activities untuk menampilkan aktivitas baru
-        loadActivitiesFromFirebase();
+        loadDealsFromFirebase();
         
     } catch (error) {
         console.error("Error saving deal:", error);
@@ -6004,12 +5975,11 @@ async function deleteDeal() {
         
         showToast(`Deal "${dealName}" berhasil dipindahkan ke Recycle Bin!`, 2000);
         
-        // Log aktivitas dengan dealId
+        // Log aktivitas
         await activitiesCollection.add({
             message: `Deal "${dealName}" dipindahkan ke Recycle Bin oleh ${auth.currentUser.email}.`,
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             userEmail: auth.currentUser.email,
-            dealId: dealId, // Tambahkan dealId
             read: false
         });
         
@@ -6028,15 +5998,12 @@ async function deleteDeal() {
         
         // Tutup modal dan refresh data
         closeDeleteModal();
-        await loadDealsFromFirebase();
+        loadDealsFromFirebase();
         
         // Update Recycle Bin jika admin
         if (currentUserRole === 'admin') {
-            await loadRecycleBin();
+            loadRecycleBin();
         }
-        
-        // Reload activities untuk menampilkan aktivitas baru
-        loadActivitiesFromFirebase();
         
     } catch (error) {
         console.error("Error deleting deal:", error);
