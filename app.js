@@ -610,7 +610,7 @@ function createPriorityDashboard() {
     });
 }
 
-// Fungsi untuk membuka modal priority
+// Fungsi untuk membuka modal priority - DIPERBAIKI: Urutkan berdasarkan update terbaru dan tampilkan tanggal update
 function openPriorityModal(priority, deals) {
     const modal = document.getElementById('priorityModal');
     const modalTitle = document.getElementById('priorityModalTitleText');
@@ -630,8 +630,12 @@ function openPriorityModal(priority, deals) {
             </div>
         `;
     } else {
-        // Urutkan berdasarkan nilai tertinggi
-        const sortedDeals = [...deals].sort((a, b) => ((b.displayValue || b.value || 0)) - ((a.displayValue || a.value || 0)));
+        // PERBAIKAN: Urutkan berdasarkan updatedAt terbaru (yang baru di-update di atas)
+        const sortedDeals = [...deals].sort((a, b) => {
+            const dateA = a.updatedAt ? (a.updatedAt.toDate ? a.updatedAt.toDate() : new Date(a.updatedAt)) : new Date(0);
+            const dateB = b.updatedAt ? (b.updatedAt.toDate ? b.updatedAt.toDate() : new Date(b.updatedAt)) : new Date(0);
+            return dateB - dateA; // Descending (terbaru di atas)
+        });
         
         const table = document.createElement('table');
         table.className = 'min-w-full divide-y divide-gray-200';
@@ -644,6 +648,7 @@ function openPriorityModal(priority, deals) {
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai (IDR)</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tahap</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Terakhir Update</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                 </tr>
             </thead>
@@ -652,6 +657,9 @@ function openPriorityModal(priority, deals) {
                     const displayValue = deal.displayValue || deal.value || 0;
                     const originalValue = deal.value || 0;
                     const hasHigherValue = deal.hasHigherValueFromOtherPriority;
+                    
+                    // PERBAIKAN: Gunakan updatedAt untuk menampilkan tanggal update terakhir
+                    const lastUpdateDate = deal.updatedAt ? formatDateTime(deal.updatedAt) : (deal.createdAt ? formatDateTime(deal.createdAt) : '-');
                     
                     return `
                     <tr class="hover:bg-gray-50 cursor-pointer view-detail-row" data-id="${deal.id}">
@@ -686,6 +694,9 @@ function openPriorityModal(priority, deals) {
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             Priority: ${deal.priority}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <i class="fas fa-clock text-gray-400 mr-1"></i>${lastUpdateDate}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <button class="text-blue-600 hover:text-blue-900 mr-3 view-detail-btn" data-id="${deal.id}">
@@ -741,6 +752,13 @@ function showAllEntriesForProject(dealName, priority) {
         return;
     }
     
+    // PERBAIKAN: Urutkan berdasarkan updatedAt terbaru untuk modal entries
+    const sortedEntries = [...allEntries].sort((a, b) => {
+        const dateA = a.updatedAt ? (a.updatedAt.toDate ? a.updatedAt.toDate() : new Date(a.updatedAt)) : new Date(0);
+        const dateB = b.updatedAt ? (b.updatedAt.toDate ? b.updatedAt.toDate() : new Date(b.updatedAt)) : new Date(0);
+        return dateB - dateA;
+    });
+    
     // Buat modal khusus untuk menampilkan semua entries
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
@@ -763,11 +781,12 @@ function showAllEntriesForProject(dealName, priority) {
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai (IDR)</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tahap</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Dibuat</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Terakhir Update</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
-                        ${allEntries.map((entry, index) => `
+                        ${sortedEntries.map((entry, index) => `
                             <tr class="hover:bg-gray-50">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${entry.salesName || '-'}</td>
@@ -779,6 +798,9 @@ function showAllEntriesForProject(dealName, priority) {
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(entry.createdAt)}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <i class="fas fa-clock text-gray-400 mr-1"></i>${entry.updatedAt ? formatDateTime(entry.updatedAt) : formatDateTime(entry.createdAt)}
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                     <button class="text-blue-600 hover:text-blue-900 view-detail-btn" data-id="${entry.id}">
                                         <i class="fas fa-eye"></i>
@@ -2097,6 +2119,11 @@ async function loadDealsFromFirebase() {
                 }
             }
             
+            // Pastikan updatedAt ada (untuk keperluan sorting)
+            if (!dealData.updatedAt) {
+                dealData.updatedAt = dealData.createdAt;
+            }
+            
             deals.push({ id: doc.id, ...dealData });
 
             // Kumpulkan data unik
@@ -2431,6 +2458,15 @@ function showAllPrioritiesForProject(dealName) {
         byPriority[priority].push(deal);
     });
     
+    // PERBAIKAN: Urutkan entries dalam setiap priority berdasarkan updatedAt terbaru
+    Object.keys(byPriority).forEach(priority => {
+        byPriority[priority].sort((a, b) => {
+            const dateA = a.updatedAt ? (a.updatedAt.toDate ? a.updatedAt.toDate() : new Date(a.updatedAt)) : new Date(0);
+            const dateB = b.updatedAt ? (b.updatedAt.toDate ? b.updatedAt.toDate() : new Date(b.updatedAt)) : new Date(0);
+            return dateB - dateA;
+        });
+    });
+    
     // Buat modal khusus untuk menampilkan semua priority
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
@@ -2456,6 +2492,7 @@ function showAllPrioritiesForProject(dealName) {
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai (IDR)</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tahap</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Dibuat</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Terakhir Update</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                                 </tr>
                             </thead>
@@ -2472,6 +2509,9 @@ function showAllPrioritiesForProject(dealName) {
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(entry.createdAt)}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            <i class="fas fa-clock text-gray-400 mr-1"></i>${entry.updatedAt ? formatDateTime(entry.updatedAt) : formatDateTime(entry.createdAt)}
+                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <button class="text-blue-600 hover:text-blue-900 view-detail-btn" data-id="${entry.id}">
                                                 <i class="fas fa-eye"></i>
@@ -3785,7 +3825,14 @@ function showDealsByPriority(salesFilter, priority) {
     // Gunakan project unik berdasarkan nama+priority
     const uniqueFilteredDeals = getUniqueProjectsForDashboard(filteredDeals);
     
-    if (uniqueFilteredDeals.length === 0) {
+    // PERBAIKAN: Urutkan berdasarkan updatedAt terbaru
+    const sortedDeals = [...uniqueFilteredDeals].sort((a, b) => {
+        const dateA = a.updatedAt ? (a.updatedAt.toDate ? a.updatedAt.toDate() : new Date(a.updatedAt)) : new Date(0);
+        const dateB = b.updatedAt ? (b.updatedAt.toDate ? b.updatedAt.toDate() : new Date(b.updatedAt)) : new Date(0);
+        return dateB - dateA;
+    });
+    
+    if (sortedDeals.length === 0) {
         showToast(`Tidak ada project dengan priority "${priority}" untuk sales "${selectedSales === 'all' ? 'Semua Sales' : selectedSales}"`, 3000);
         return;
     }
@@ -3806,11 +3853,14 @@ function showDealsByPriority(salesFilter, priority) {
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai (IDR)</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tahap</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Terakhir Update</th>
             </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
-            ${uniqueFilteredDeals.map((deal, index) => {
+            ${sortedDeals.map((deal, index) => {
                 const displayValue = deal.displayValue || deal.value || 0;
+                const lastUpdateDate = deal.updatedAt ? formatDateTime(deal.updatedAt) : (deal.createdAt ? formatDateTime(deal.createdAt) : '-');
+                
                 return `
                 <tr class="hover:bg-gray-50 cursor-pointer view-detail-row" data-id="${deal.id}">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
@@ -3822,6 +3872,9 @@ function showDealsByPriority(salesFilter, priority) {
                             deal.stage === 'lost' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">
                             ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}
                         </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <i class="fas fa-clock text-gray-400 mr-1"></i>${lastUpdateDate}
                     </td>
                 </tr>
             `}).join('')}
@@ -3852,7 +3905,14 @@ function showDealsByStage(priorityFilter, stage) {
     // Gunakan project unik berdasarkan nama+priority
     const uniqueFilteredDeals = getUniqueProjectsForDashboard(filteredDeals);
     
-    if (uniqueFilteredDeals.length === 0) {
+    // PERBAIKAN: Urutkan berdasarkan updatedAt terbaru
+    const sortedDeals = [...uniqueFilteredDeals].sort((a, b) => {
+        const dateA = a.updatedAt ? (a.updatedAt.toDate ? a.updatedAt.toDate() : new Date(a.updatedAt)) : new Date(0);
+        const dateB = b.updatedAt ? (b.updatedAt.toDate ? b.updatedAt.toDate() : new Date(b.updatedAt)) : new Date(0);
+        return dateB - dateA;
+    });
+    
+    if (sortedDeals.length === 0) {
         showToast(`Tidak ada project dengan stage "${stage}" untuk priority "${selectedPriority === 'all' ? 'Semua Priority' : selectedPriority}"`, 3000);
         return;
     }
@@ -3873,11 +3933,14 @@ function showDealsByStage(priorityFilter, stage) {
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai (IDR)</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Terakhir Update</th>
             </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
-            ${uniqueFilteredDeals.map((deal, index) => {
+            ${sortedDeals.map((deal, index) => {
                 const displayValue = deal.displayValue || deal.value || 0;
+                const lastUpdateDate = deal.updatedAt ? formatDateTime(deal.updatedAt) : (deal.createdAt ? formatDateTime(deal.createdAt) : '-');
+                
                 return `
                 <tr class="hover:bg-gray-50 cursor-pointer view-detail-row" data-id="${deal.id}">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
@@ -3888,6 +3951,9 @@ function showDealsByStage(priorityFilter, stage) {
                         <span class="priority-badge px-2 py-1 rounded-full ${getPriorityBadgeClass(deal.priority)}">
                             ${deal.priority || 'Priority'}
                         </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <i class="fas fa-clock text-gray-400 mr-1"></i>${lastUpdateDate}
                     </td>
                 </tr>
             `}).join('')}
@@ -5040,6 +5106,7 @@ function prepareDetailedExportData(dealsData) {
             'Plan PO': deal.planPO || '',
             'Remarks': deal.remarks || '',
             'Tanggal Dibuat': deal.createdAt ? formatDate(deal.createdAt) : '',
+            'Terakhir Update': deal.updatedAt ? formatDateTime(deal.updatedAt) : '',
             'Dibuat Oleh': deal.createdBy || ''
         };
     });
