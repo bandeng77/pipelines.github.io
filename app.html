@@ -169,10 +169,10 @@
             background-color: white;
             border-radius: 0.75rem;
             padding: 2rem;
-            max-width: 900px;
+            max-width: 1000px;
             max-height: 80vh;
             overflow-y: auto;
-            width: 90%;
+            width: 95%;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
 
@@ -1338,6 +1338,16 @@
         #dealDetailModal {
             z-index: 200; /* Lebih tinggi dari activity modal */
         }
+
+        /* PERBAIKAN: Style untuk kolom Terakhir Update di priority modal */
+        .priority-modal-content table th,
+        .priority-modal-content table td {
+            white-space: nowrap;
+        }
+        
+        .priority-modal-content table td:last-child {
+            white-space: normal;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 main-container">
@@ -1431,7 +1441,8 @@
                     </button>
                 </div>
                 <div id="priorityModalContent">
-                    <!-- Daftar proyek akan dimuat di sini -->
+                    <!-- Daftar proyek akan dimuat di sini oleh JavaScript -->
+                    <!-- PERBAIKAN: Kolom Terakhir Update akan ditambahkan oleh JavaScript -->
                 </div>
             </div>
         </div>
