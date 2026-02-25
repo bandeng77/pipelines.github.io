@@ -647,7 +647,6 @@ function openPriorityModal(priority, deals) {
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai (IDR)</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tahap</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Terakhir Update</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                 </tr>
@@ -691,9 +690,6 @@ function openPriorityModal(priority, deals) {
                                 deal.stage === 'lost' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">
                                 ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}
                             </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            Priority: ${deal.priority}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             <i class="fas fa-clock text-gray-400 mr-1"></i>${lastUpdateDate}
