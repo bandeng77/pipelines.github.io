@@ -56,6 +56,14 @@ let dealsByYearCache = {
     '2026': null
 };
 
+// Cache untuk aktivitas
+let activitiesCache = {
+    data: [],
+    lastFetch: null
+};
+
+const CACHE_DURATION = 5 * 60 * 1000; // 5 menit
+
 // Deklarasi variabel elemen DOM
 let facilitySelect, newFacilityInput;
 let packageSelect, newPackageInput;
@@ -124,6 +132,13 @@ let activityModalState = {
     scrollPosition: 0
 };
 
+// Cache untuk data deal berdasarkan ID
+let dealsByIdCache = new Map();
+
+// Variabel untuk deal yang akan dihapus
+let dealToDeleteId = null;
+let dealToDeleteName = '';
+
 // ==================== FUNGSI UTAMA ====================
 
 // Fungsi untuk menangani perubahan status autentikasi
@@ -176,18 +191,17 @@ auth.onAuthStateChanged(async (user) => {
 
             console.log("Current role:", currentUserRole);
             applyUserPermissions();
-            loadActivitiesFromFirebase();
             
-            // Muat konsultan dari GitHub JSON
-            await loadConsultantsFromFirebase(); 
-            
-            // Muat opsi dropdown dari Firebase
+            // Load data dengan urutan yang benar
+            await loadConsultantsFromFirebase();
             await loadDropdownOptions();
+            await loadDealsFromFirebase();
+            await loadActivitiesFromFirebase();
             
             initEventListeners();
             initViewToggle();
             initExportElements();
-            initYearFilter(); // Inisialisasi filter tahun
+            initYearFilter();
             
             // Load Recycle Bin data untuk admin
             if (currentUserRole === 'admin') {
@@ -200,7 +214,7 @@ auth.onAuthStateChanged(async (user) => {
     }
 });
 
-// ==================== FILTER TAHUN - DIPERBAIKI ====================
+// ==================== FILTER TAHUN ====================
 
 /**
  * Inisialisasi filter tahun untuk 2025 dan 2026
@@ -247,8 +261,6 @@ function initYearFilter() {
 
 /**
  * Filter deals berdasarkan tahun yang dipilih dengan caching
- * @param {Array} dealsList - Daftar deals
- * @returns {Array} - Deals yang sudah difilter berdasarkan tahun
  */
 function getDealsByYear(year) {
     // Cek cache
@@ -295,9 +307,6 @@ function getDealsByYear(year) {
 
 /**
  * Menggabungkan project dengan nama yang sama untuk dashboard
- * Menampilkan semua project dengan prioritas berbeda, namun nilai menampilkan yang tertinggi
- * @param {Array} dealsList - Daftar deals
- * @returns {Array} - Daftar deals dengan project unik berdasarkan nama dan prioritas, nilai tertinggi
  */
 function getUniqueProjectsForDashboard(dealsList) {
     // Buat map dengan key kombinasi nama project + priority
@@ -337,28 +346,22 @@ function getUniqueProjectsForDashboard(dealsList) {
         const [projectName, priority] = key.split('|');
         
         if (duplicateDeals.length > 1) {
-            // Ambil deal dengan nilai tertinggi untuk kombinasi nama + priority ini
+            // Ambil deal dengan nilai tertinggi
             const highestValueDeal = duplicateDeals.reduce((max, deal) => 
                 (deal.value || 0) > (max.value || 0) ? deal : max
             , duplicateDeals[0]);
             
-            // Tambahkan informasi bahwa ini adalah project dengan multiple entries
             highestValueDeal.hasMultipleEntries = true;
             highestValueDeal.totalEntries = duplicateDeals.length;
             highestValueDeal.allEntries = duplicateDeals;
-            
-            // Set nilai ke nilai tertinggi dari semua project dengan nama yang sama
             highestValueDeal.displayValue = maxValueByProjectName.get(projectName);
             highestValueDeal.hasHigherValueFromOtherPriority = maxValueByProjectName.get(projectName) > (highestValueDeal.value || 0);
             
             uniqueProjects.push(highestValueDeal);
         } else {
-            // Deal unik untuk kombinasi nama + priority ini
             const deal = duplicateDeals[0];
             deal.hasMultipleEntries = false;
             deal.totalEntries = 1;
-            
-            // Set nilai ke nilai tertinggi dari semua project dengan nama yang sama
             deal.displayValue = maxValueByProjectName.get(projectName);
             deal.hasHigherValueFromOtherPriority = maxValueByProjectName.get(projectName) > (deal.value || 0);
             
@@ -372,7 +375,6 @@ function getUniqueProjectsForDashboard(dealsList) {
 
 // ==================== FUNGSI DROPDOWN OPTIONS ====================
 
-// Fungsi untuk memuat opsi dropdown dari Firebase
 async function loadDropdownOptions() {
     try {
         const doc = await dropdownOptionsCollection.doc('options').get();
@@ -397,7 +399,6 @@ async function loadDropdownOptions() {
     }
 }
 
-// Fungsi untuk menyimpan opsi dropdown ke Firebase
 async function saveDropdownOptions() {
     try {
         await dropdownOptionsCollection.doc('options').set({
@@ -413,7 +414,6 @@ async function saveDropdownOptions() {
     }
 }
 
-// Fungsi untuk menghapus opsi dari dropdown
 async function deleteDropdownOption(field, value) {
     if (currentUserRole !== 'admin' && currentUserRole !== 'manager') {
         showToast("Hanya admin dan manager yang dapat menghapus opsi dropdown", 3000);
@@ -421,7 +421,6 @@ async function deleteDropdownOption(field, value) {
     }
 
     try {
-        // Hapus dari Set yang sesuai
         switch (field) {
             case 'facility':
                 uniqueFacilities.delete(value);
@@ -437,12 +436,8 @@ async function deleteDropdownOption(field, value) {
                 break;
         }
 
-        // Simpan perubahan ke Firebase
         await saveDropdownOptions();
-        
-        // Perbarui dropdown yang sesuai
         updateDropdownOptions();
-        
         showToast(`Opsi "${value}" berhasil dihapus`, 2000);
     } catch (error) {
         console.error("Error deleting dropdown option:", error);
@@ -450,7 +445,6 @@ async function deleteDropdownOption(field, value) {
     }
 }
 
-// Fungsi untuk memperbarui opsi dropdown di UI
 function updateDropdownOptions() {
     // Update facility dropdown
     if (facilitySelect) {
@@ -497,39 +491,23 @@ function updateDropdownOptions() {
         packageSelect.value = currentValue;
     }
 
-    // Update owner dropdown
     populateDropdown('owner', uniqueOwners);
-    
-    // Update pic dropdown
     populateDropdown('pic', uniquePICs);
 }
 
-// ==================== FUNGSI PRIORITY DASHBOARD - DIPERBAIKI ====================
+// ==================== FUNGSI PRIORITY DASHBOARD ====================
 
-/**
- * Menghitung statistik priority dengan caching untuk performa
- * Menggunakan project unik berdasarkan nama+priority, dengan nilai tertinggi
- * @param {string} year - Tahun filter ('all', '2025', '2026')
- * @returns {Object} - Statistik priority
- */
 function calculatePriorityStats(year) {
     console.log(`Menghitung priority stats untuk tahun: ${year}`);
     
-    // Cek cache
     if (priorityStatsCache[year]) {
         console.log(`Menggunakan cache untuk tahun ${year}`);
         return priorityStatsCache[year];
     }
     
-    // Ambil deals berdasarkan tahun
     const yearDeals = getDealsByYear(year);
-    console.log(`Total deals untuk tahun ${year}: ${yearDeals.length}`);
-    
-    // Ambil project unik berdasarkan nama+priority dengan nilai tertinggi
     const uniqueProjects = getUniqueProjectsForDashboard(yearDeals);
-    console.log(`Unique projects (name+priority) untuk tahun ${year}: ${uniqueProjects.length}`);
     
-    // Hitung statistik berdasarkan priority
     const priorityStats = {
         'Hot Priority': { count: 0, value: 0, deals: [] },
         'Priority': { count: 0, value: 0, deals: [] },
@@ -542,36 +520,24 @@ function calculatePriorityStats(year) {
         const priority = deal.priority || 'Priority';
         if (priorityStats[priority]) {
             priorityStats[priority].count++;
-            // Gunakan displayValue yang sudah diset dengan nilai tertinggi
             priorityStats[priority].value += (deal.displayValue || deal.value || 0);
             priorityStats[priority].deals.push(deal);
         }
     });
     
-    // Log hasil per priority
-    Object.keys(priorityStats).forEach(key => {
-        console.log(`${key} untuk tahun ${year}: ${priorityStats[key].count} deals, nilai: Rp ${formatNumber(priorityStats[key].value)}`);
-    });
-    
-    // Simpan ke cache
     priorityStatsCache[year] = priorityStats;
     
     return priorityStats;
 }
 
-// Fungsi untuk membuat priority dashboard yang disederhanakan
 function createPriorityDashboard() {
     const priorityDashboard = document.querySelector('.priority-dashboard');
     if (!priorityDashboard) return;
     
-    console.log(`Membuat priority dashboard untuk tahun: ${activeYear}`);
-    
-    // Hitung statistik berdasarkan tahun yang aktif
     const priorityStats = calculatePriorityStats(activeYear);
     
     priorityDashboard.innerHTML = '';
     
-    // Buat card untuk setiap priority - hanya 5 priority
     const priorities = [
         { key: 'Hot Priority', icon: 'fa-fire', color: 'hot' },
         { key: 'Priority', icon: 'fa-exclamation-circle', color: 'priority' },
@@ -600,7 +566,6 @@ function createPriorityDashboard() {
         priorityDashboard.appendChild(card);
     });
     
-    // Tambahkan event listener untuk card priority
     document.querySelectorAll('.priority-card').forEach(card => {
         card.addEventListener('click', function() {
             const priority = this.dataset.priority;
@@ -610,7 +575,6 @@ function createPriorityDashboard() {
     });
 }
 
-// Fungsi untuk membuka modal priority - DIPERBAIKI: Urutkan berdasarkan update terbaru dan tampilkan tanggal update
 function openPriorityModal(priority, deals) {
     const modal = document.getElementById('priorityModal');
     const modalTitle = document.getElementById('priorityModalTitleText');
@@ -630,11 +594,10 @@ function openPriorityModal(priority, deals) {
             </div>
         `;
     } else {
-        // PERBAIKAN: Urutkan berdasarkan updatedAt terbaru (yang baru di-update di atas)
         const sortedDeals = [...deals].sort((a, b) => {
             const dateA = a.updatedAt ? (a.updatedAt.toDate ? a.updatedAt.toDate() : new Date(a.updatedAt)) : new Date(0);
             const dateB = b.updatedAt ? (b.updatedAt.toDate ? b.updatedAt.toDate() : new Date(b.updatedAt)) : new Date(0);
-            return dateB - dateA; // Descending (terbaru di atas)
+            return dateB - dateA;
         });
         
         const table = document.createElement('table');
@@ -657,7 +620,6 @@ function openPriorityModal(priority, deals) {
                     const originalValue = deal.value || 0;
                     const hasHigherValue = deal.hasHigherValueFromOtherPriority;
                     
-                    // PERBAIKAN: Gunakan updatedAt untuk menampilkan tanggal update terakhir
                     const lastUpdateDate = deal.updatedAt ? formatDateTime(deal.updatedAt) : (deal.createdAt ? formatDateTime(deal.createdAt) : '-');
                     
                     return `
@@ -711,7 +673,6 @@ function openPriorityModal(priority, deals) {
         
         modalContent.appendChild(table);
         
-        // Tambahkan event listener untuk tombol dan baris
         modalContent.querySelectorAll('.view-detail-btn, .view-detail-row').forEach(element => {
             element.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -721,7 +682,6 @@ function openPriorityModal(priority, deals) {
             });
         });
         
-        // Tambahkan event listener untuk tombol lihat semua entries
         modalContent.querySelectorAll('.view-all-entries-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -736,7 +696,13 @@ function openPriorityModal(priority, deals) {
     modal.classList.remove('hidden');
 }
 
-// Fungsi untuk menampilkan semua entries dari project yang sama dengan priority tertentu
+function closePriorityModal() {
+    const modal = document.getElementById('priorityModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
 function showAllEntriesForProject(dealName, priority) {
     const allEntries = deals.filter(deal => 
         deal.dealName?.trim() === dealName && 
@@ -748,14 +714,12 @@ function showAllEntriesForProject(dealName, priority) {
         return;
     }
     
-    // PERBAIKAN: Urutkan berdasarkan updatedAt terbaru untuk modal entries
     const sortedEntries = [...allEntries].sort((a, b) => {
         const dateA = a.updatedAt ? (a.updatedAt.toDate ? a.updatedAt.toDate() : new Date(a.updatedAt)) : new Date(0);
         const dateB = b.updatedAt ? (b.updatedAt.toDate ? b.updatedAt.toDate() : new Date(b.updatedAt)) : new Date(0);
         return dateB - dateA;
     });
     
-    // Buat modal khusus untuk menampilkan semua entries
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
     modal.id = 'allEntriesModal';
@@ -812,7 +776,6 @@ function showAllEntriesForProject(dealName, priority) {
     
     document.body.appendChild(modal);
     
-    // Event listener untuk menutup modal
     modal.querySelector('.close-all-entries').addEventListener('click', () => {
         modal.remove();
     });
@@ -823,7 +786,6 @@ function showAllEntriesForProject(dealName, priority) {
         }
     });
     
-    // Event listener untuk tombol view detail
     modal.querySelectorAll('.view-detail-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -834,17 +796,8 @@ function showAllEntriesForProject(dealName, priority) {
     });
 }
 
-// Fungsi untuk menutup modal priority
-function closePriorityModal() {
-    const modal = document.getElementById('priorityModal');
-    if (modal) {
-        modal.classList.add('hidden');
-    }
-}
-
 // ==================== FUNGSI PROGRESS BAR ====================
 
-// Fungsi untuk mengupdate progress bar berdasarkan stage
 function updateProgressBarFromStage(stage) {
     let progress = 0;
     let isOnHold = false;
@@ -878,7 +831,6 @@ function updateProgressBarFromStage(stage) {
     updateProgressBarUI(progress, isOnHold);
 }
 
-// Fungsi untuk mengupdate UI progress bar
 function updateProgressBarUI(progress, isOnHold = false) {
     const progressPercentage = document.getElementById('progressPercentage');
     const progressFill = document.getElementById('progressFill');
@@ -888,11 +840,9 @@ function updateProgressBarUI(progress, isOnHold = false) {
         return;
     }
     
-    // Update UI elements
     progressPercentage.textContent = `${progress}%`;
     progressFill.style.width = `${progress}%`;
     
-    // Update class untuk on-hold
     if (isOnHold) {
         progressFill.classList.add('onhold');
         progressPercentage.style.color = '#ef4444';
@@ -901,11 +851,9 @@ function updateProgressBarUI(progress, isOnHold = false) {
         progressPercentage.style.color = '#3b82f6';
     }
     
-    // Update checkpoints
     updateCheckpoints(progress, isOnHold);
 }
 
-// Fungsi untuk mengupdate checkpoint
 function updateCheckpoints(progress, isOnHold = false) {
     const checkpoints = document.querySelectorAll('.checkpoint');
     
@@ -934,7 +882,6 @@ function updateCheckpoints(progress, isOnHold = false) {
 
 // ==================== FUNGSI COMMENTS ====================
 
-// Fungsi untuk memuat komentar
 async function loadComments(dealId) {
     try {
         const querySnapshot = await commentsCollection
@@ -954,7 +901,6 @@ async function loadComments(dealId) {
     }
 }
 
-// Fungsi untuk merender komentar
 function renderComments(comments, containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -978,7 +924,6 @@ function renderComments(comments, containerId) {
         
         commentItem.className = `comment-item ${isManager ? 'manager' : 'sales'}`;
         
-        // Cek apakah user dapat menghapus komentar (admin, manager, atau pemilik komentar)
         const canDelete = currentUserRole === 'admin' || currentUserRole === 'manager' || isCurrentUser;
         
         commentItem.innerHTML = `
@@ -1002,7 +947,6 @@ function renderComments(comments, containerId) {
         container.appendChild(commentItem);
     });
     
-    // Tambahkan event listener untuk tombol hapus
     container.querySelectorAll('.comment-delete-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             e.stopPropagation();
@@ -1012,14 +956,12 @@ function renderComments(comments, containerId) {
         });
     });
     
-    // Update comments count
     const commentsCountElement = document.getElementById(containerId === 'commentsList' ? 'commentsCount' : 'detailCommentsCount');
     if (commentsCountElement) {
         commentsCountElement.textContent = `${comments.length} komentar`;
     }
 }
 
-// Fungsi untuk menghapus komentar
 async function deleteComment(commentId, dealId) {
     if (!commentId) {
         showToast("Komentar tidak ditemukan", 3000);
@@ -1031,12 +973,10 @@ async function deleteComment(commentId, dealId) {
         
         showToast("Komentar berhasil dihapus", 2000);
         
-        // Reload comments jika masih di deal yang sama
         if (currentDealIdForComments === dealId) {
             const comments = await loadComments(dealId);
             renderComments(comments, 'detailCommentsList');
             
-            // Juga update di modal edit jika terbuka
             if (document.getElementById('commentsList')) {
                 renderComments(comments, 'commentsList');
             }
@@ -1047,7 +987,6 @@ async function deleteComment(commentId, dealId) {
     }
 }
 
-// Fungsi untuk menambahkan komentar
 async function addComment(dealId, content) {
     if (!content.trim()) {
         showToast("Komentar tidak boleh kosong", 3000);
@@ -1064,18 +1003,15 @@ async function addComment(dealId, content) {
         
         await commentsCollection.add(commentData);
         
-        // Reload comments
         if (currentDealIdForComments === dealId) {
             const comments = await loadComments(dealId);
             renderComments(comments, 'detailCommentsList');
             
-            // Juga update di modal edit jika terbuka
             if (document.getElementById('commentsList')) {
                 renderComments(comments, 'commentsList');
             }
         }
         
-        // Reset input
         document.getElementById('detailCommentInput').value = '';
         if (document.getElementById('commentInput')) {
             document.getElementById('commentInput').value = '';
@@ -1091,7 +1027,6 @@ async function addComment(dealId, content) {
 
 // ==================== FUNGSI MERGE PROJECT DALAM DEAL CARD ====================
 
-// Fungsi untuk mengelompokkan deal dengan nama yang sama
 function groupDealsByNameAndPriority() {
     const groupedDeals = {};
     
@@ -1112,11 +1047,9 @@ function groupDealsByNameAndPriority() {
     return groupedDeals;
 }
 
-// Fungsi untuk mengidentifikasi deal dengan nama yang sama dan priority berbeda
 function identifyMergedProjects() {
     const groupedByProjectName = {};
     
-    // Kelompokkan berdasarkan nama project saja
     deals.forEach(deal => {
         const dealName = deal.dealName?.trim().toLowerCase();
         if (!dealName) return;
@@ -1143,7 +1076,6 @@ function identifyMergedProjects() {
     return mergedProjectsInfo;
 }
 
-// Fungsi untuk menampilkan deal card dengan fitur merge berdasarkan nama+priority
 function renderMergedDealCard(dealGroup) {
     const firstDeal = dealGroup[0];
     const dealName = firstDeal.dealName;
@@ -1151,10 +1083,8 @@ function renderMergedDealCard(dealGroup) {
     const priority = firstDeal.priority || 'Priority';
     const key = `${dealNameLower}|${priority}`;
     
-    // Ambil sales yang aktif untuk kombinasi ini, default ke sales pertama
     let activeSales = activeSalesPerProject[key] || firstDeal.salesName;
     
-    // Cari deal berdasarkan sales yang aktif
     let activeDeal = dealGroup.find(deal => deal.salesName === activeSales);
     if (!activeDeal) {
         activeDeal = firstDeal;
@@ -1162,19 +1092,16 @@ function renderMergedDealCard(dealGroup) {
         activeSalesPerProject[key] = activeSales;
     }
     
-    // Hitung nilai tertinggi dari semua variant project ini (semua priority)
     const allProjectDeals = deals.filter(deal => 
         deal.dealName?.trim().toLowerCase() === dealNameLower
     );
     const highestValueOverall = Math.max(...allProjectDeals.map(d => d.value || 0));
     
-    // Nilai tertinggi untuk kombinasi nama+priority ini
     const highestValueInGroup = Math.max(...dealGroup.map(d => d.value || 0));
     
     const hasMultipleSales = dealGroup.length > 1;
     const salesNames = [...new Set(dealGroup.map(deal => deal.salesName))];
     
-    // Informasi tentang project dengan priority berbeda
     const mergedProjectsInfo = identifyMergedProjects();
     const hasDifferentPriorities = mergedProjectsInfo[dealNameLower] && mergedProjectsInfo[dealNameLower].count > 1;
     const otherPriorities = hasDifferentPriorities ? 
@@ -1298,7 +1225,6 @@ function renderMergedDealCard(dealGroup) {
     return dealCard;
 }
 
-// Fungsi untuk setup event listener merge deal card
 function setupMergeDealCardEvents(dealCard, dealGroup) {
     const firstDeal = dealGroup[0];
     const dealNameLower = firstDeal.dealName?.toLowerCase().trim();
@@ -1315,7 +1241,6 @@ function setupMergeDealCardEvents(dealCard, dealGroup) {
                 dropdown.classList.toggle('show');
             });
             
-            // Event listener untuk item dropdown
             dropdown.querySelectorAll('.sales-dropdown-item').forEach(item => {
                 item.addEventListener('click', function(e) {
                     e.stopPropagation();
@@ -1325,19 +1250,15 @@ function setupMergeDealCardEvents(dealCard, dealGroup) {
                     
                     const key = `${dealName}|${priority}`;
                     
-                    // Update active sales untuk kombinasi ini
                     activeSalesPerProject[key] = selectedSales;
                     
-                    // Temukan semua deal card dengan kombinasi nama+priority yang sama
                     const allDealCards = document.querySelectorAll(`.deal-card[data-deal-name="${dealName}"][data-priority="${priority}"]`);
                     
-                    // Update semua deal card yang sama
                     allDealCards.forEach(card => {
                         const allDealsData = JSON.parse(card.dataset.allDeals || '[]');
                         const selectedDeal = dealGroup.find(deal => deal.salesName === selectedSales);
                         
                         if (selectedDeal) {
-                            // Update data di card
                             const salesNameElement = card.querySelector('.deal-details p:first-child');
                             const valueElement = card.querySelector('.deal-details p.font-semibold');
                             const stageElement = card.querySelector('.priority-badge:last-child');
@@ -1348,7 +1269,6 @@ function setupMergeDealCardEvents(dealCard, dealGroup) {
                                 salesNameElement.innerHTML = `<i class="fas fa-user-tie mr-1"></i> ${selectedSales}`;
                             }
                             
-                            // Nilai tetap menampilkan nilai tertinggi overall
                             if (valueElement) {
                                 const highestOverall = card.dataset.highestOverall;
                                 valueElement.innerHTML = `Rp ${formatNumber(highestOverall) || '0'} ${(selectedDeal.value || 0) < highestOverall ? '<span class="text-xs text-gray-500 ml-1">(max)</span>' : ''}`;
@@ -1402,28 +1322,23 @@ function setupMergeDealCardEvents(dealCard, dealGroup) {
                                 dateElement.innerHTML = dateHTML;
                             }
                             
-                            // Update dataset id
                             card.dataset.id = selectedDeal.id;
                         }
                     });
                     
-                    // Update active item di dropdown
                     dropdown.querySelectorAll('.sales-dropdown-item').forEach(i => {
                         i.classList.remove('active');
                     });
                     this.classList.add('active');
                     
-                    // Tutup dropdown
                     dropdown.classList.remove('show');
                     
-                    // Show toast notification
                     showToast(`Menampilkan data untuk sales: ${selectedSales} (nilai: nilai tertinggi dari semua priority)`, 2000);
                 });
             });
         }
     }
     
-    // Tutup dropdown ketika klik di luar
     document.addEventListener('click', function(e) {
         if (hasMultipleSales && dealCard && !dealCard.contains(e.target)) {
             const dropdown = dealCard.querySelector('.sales-dropdown');
@@ -1434,800 +1349,6 @@ function setupMergeDealCardEvents(dealCard, dealGroup) {
     });
 }
 
-// ==================== FUNGSI WIN DATE ====================
-
-// Fungsi untuk mendapatkan tanggal win
-function getWinDate(deal) {
-    if (deal.stage !== 'win' || !deal.updatedAt) return null;
-    
-    // Cari di aktivitas kapan status berubah menjadi win
-    const winActivity = activities.find(act => 
-        act.message && 
-        act.message.includes(`"${deal.dealName}"`) && 
-        act.message.includes('diperbarui') && 
-        act.message.includes('stage: win')
-    );
-    
-    if (winActivity) {
-        return winActivity.timestamp;
-    }
-    
-    return deal.updatedAt;
-}
-
-// ==================== FUNGSI RECYCLE BIN ====================
-
-// Fungsi untuk memuat data Recycle Bin
-async function loadRecycleBin() {
-    try {
-        const querySnapshot = await deletedDealsCollection
-            .orderBy("deletedAt", "desc")
-            .get();
-        
-        deletedDeals = [];
-        querySnapshot.forEach((doc) => {
-            deletedDeals.push({ id: doc.id, ...doc.data() });
-        });
-        
-        updateRecycleBinBadge();
-        return deletedDeals;
-    } catch (error) {
-        console.error("Error loading recycle bin:", error);
-        showToast("Gagal memuat Recycle Bin", 3000);
-        return [];
-    }
-}
-
-// Fungsi untuk memperbarui badge Recycle Bin
-function updateRecycleBinBadge() {
-    const recycleBinBadge = document.getElementById('recycle-bin-badge');
-    if (!recycleBinBadge) return;
-    
-    if (deletedDeals.length > 0) {
-        recycleBinBadge.textContent = deletedDeals.length;
-        recycleBinBadge.classList.remove('hidden');
-    } else {
-        recycleBinBadge.classList.add('hidden');
-    }
-}
-
-// Fungsi untuk membuka modal Recycle Bin
-async function openRecycleBinModal() {
-    if (currentUserRole !== 'admin') {
-        showToast("Hanya admin yang dapat mengakses Recycle Bin", 3000);
-        return;
-    }
-    
-    try {
-        await loadRecycleBin();
-        const recycleBinContent = document.getElementById('recycleBinContent');
-        const emptyMessage = document.getElementById('emptyRecycleBinMessage');
-        
-        if (deletedDeals.length === 0) {
-            recycleBinContent.innerHTML = '';
-            emptyMessage.classList.remove('hidden');
-        } else {
-            emptyMessage.classList.add('hidden');
-            renderRecycleBinContent();
-        }
-        
-        document.getElementById('recycleBinModal').classList.remove('hidden');
-        document.getElementById('recycleBinModalContent').classList.remove('modal-content-leave-active');
-        document.getElementById('recycleBinModalContent').classList.add('modal-content-enter-active');
-    } catch (error) {
-        console.error("Error opening recycle bin:", error);
-        showToast("Gagal membuka Recycle Bin", 3000);
-    }
-}
-
-// Fungsi untuk merender konten Recycle Bin
-function renderRecycleBinContent() {
-    const recycleBinContent = document.getElementById('recycleBinContent');
-    recycleBinContent.innerHTML = '';
-    
-    deletedDeals.forEach(deal => {
-        const row = document.createElement('tr');
-        row.className = 'border-b hover:bg-gray-50';
-        
-        row.innerHTML = `
-            <td class="p-3 text-sm">${deal.dealName || 'No Name'}</td>
-            <td class="p-3 text-sm">${deal.salesName || '-'}</td>
-            <td class="p-3 text-sm">Rp ${formatNumber(deal.value) || '0'}</td>
-            <td class="p-3 text-sm">${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}</td>
-            <td class="p-3 text-sm">${formatDateTime(deal.deletedAt)}</td>
-            <td class="p-3 text-sm">${deal.deletedByEmail || '-'}</td>
-            <td class="p-3 text-sm">
-                <button class="restore-deal-btn text-green-600 hover:text-green-800 mr-3" data-id="${deal.id}">
-                    <i class="fas fa-undo mr-1"></i> Restore
-                </button>
-                <button class="permanent-delete-btn text-red-600 hover:text-red-800" data-id="${deal.id}" data-name="${deal.dealName || 'No Name'}">
-                    <i class="fas fa-trash mr-1"></i> Hapus Permanen
-                </button>
-            </td>
-        `;
-        
-        recycleBinContent.appendChild(row);
-    });
-}
-
-// Fungsi untuk restore deal
-async function restoreDeal(deletedDealId) {
-    try {
-        const deletedDeal = deletedDeals.find(d => d.id === deletedDealId);
-        if (!deletedDeal) {
-            showToast("Data tidak ditemukan di Recycle Bin", 3000);
-            return;
-        }
-        
-        // Hapus field yang tidak diperlukan
-        const { id, originalId, deletedAt, deletedBy, deletedByEmail, ...dealData } = deletedDeal;
-        
-        // Simpan kembali ke collection deals
-        await dealsCollection.add(dealData);
-        
-        // Hapus dari recycle bin
-        await deletedDealsCollection.doc(deletedDealId).delete();
-        
-        showToast(`Deal "${dealData.dealName}" berhasil dipulihkan!`, 2000);
-        
-        // Log aktivitas
-        await activitiesCollection.add({
-            message: `Deal "${dealData.dealName}" dipulihkan dari Recycle Bin oleh ${auth.currentUser.email}.`,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            userEmail: auth.currentUser.email,
-            read: false
-        });
-        
-        // Refresh tampilan dengan filter yang aktif
-        await loadRecycleBin();
-        renderRecycleBinContent();
-        updateRecycleBinBadge();
-        loadDealsFromFirebase();
-        
-    } catch (error) {
-        console.error("Error restoring deal:", error);
-        showToast("Gagal memulihkan deal", 3000);
-    }
-}
-
-// Variabel untuk menyimpan data yang akan dihapus permanen
-let permanentDeleteDealId = null;
-let permanentDeleteDealName = '';
-
-// Fungsi untuk konfirmasi hapus permanen
-function confirmPermanentDelete(deletedDealId, dealName) {
-    permanentDeleteDealId = deletedDealId;
-    permanentDeleteDealName = dealName;
-    
-    document.getElementById('permanentDeleteDealName').textContent = dealName;
-    document.getElementById('permanentDeleteModal').classList.remove('hidden');
-    document.getElementById('permanentDeleteModalContent').classList.remove('modal-content-leave-active');
-    document.getElementById('permanentDeleteModalContent').classList.add('modal-content-enter-active');
-}
-
-// Fungsi untuk menghapus permanen
-async function permanentDeleteDeal() {
-    if (!permanentDeleteDealId) return;
-
-    try {
-        await deletedDealsCollection.doc(permanentDeleteDealId).delete();
-        
-        showToast(`Deal "${permanentDeleteDealName}" berhasil dihapus permanen!`, 2000);
-        
-        // Log aktivitas
-        await activitiesCollection.add({
-            message: `Deal "${permanentDeleteDealName}" dihapus permanen dari Recycle Bin oleh ${auth.currentUser.email}.`,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            userEmail: auth.currentUser.email,
-            read: false
-        });
-        
-        // Refresh tampilan
-        await loadRecycleBin();
-        renderRecycleBinContent();
-        updateRecycleBinBadge();
-        closePermanentDeleteModal();
-        
-    } catch (error) {
-        console.error("Error permanent deleting deal:", error);
-        showToast("Gagal menghapus permanen deal", 3000);
-    }
-}
-
-// Fungsi untuk menutup modal hapus permanen
-function closePermanentDeleteModal() {
-    const permanentDeleteModalContent = document.getElementById('permanentDeleteModalContent');
-    if (!permanentDeleteModalContent) return;
-
-    permanentDeleteModalContent.classList.remove('modal-content-enter-active');
-    permanentDeleteModalContent.classList.add('modal-content-leave-active');
-    
-    permanentDeleteModalContent.addEventListener('transitionend', function handler() {
-        document.getElementById('permanentDeleteModal').classList.add('hidden');
-        permanentDeleteModalContent.classList.remove('modal-content-leave-active');
-        permanentDeleteModalContent.removeEventListener('transitionend', handler);
-    }, { once: true });
-}
-
-// Fungsi untuk mengosongkan Recycle Bin
-async function emptyRecycleBin() {
-    if (deletedDeals.length === 0) {
-        showToast("Recycle Bin sudah kosong", 3000);
-        return;
-    }
-    
-    document.getElementById('recycleBinCount').textContent = deletedDeals.length;
-    document.getElementById('emptyRecycleBinModal').classList.remove('hidden');
-    document.getElementById('emptyRecycleBinModalContent').classList.remove('modal-content-leave-active');
-    document.getElementById('emptyRecycleBinModalContent').classList.add('modal-content-enter-active');
-}
-
-// Fungsi untuk konfirmasi kosongkan Recycle Bin
-async function confirmEmptyRecycleBin() {
-    try {
-        // Hapus semua dokumen dalam deletedDeals collection
-        const batch = db.batch();
-        deletedDeals.forEach(deal => {
-            const docRef = deletedDealsCollection.doc(deal.id);
-            batch.delete(docRef);
-        });
-        
-        await batch.commit();
-        
-        showToast(`Recycle Bin berhasil dikosongkan! ${deletedDeals.length} deal dihapus permanen.`, 3000);
-        
-        // Log aktivitas
-        await activitiesCollection.add({
-            message: `Recycle Bin dikosongkan oleh ${auth.currentUser.email}. ${deletedDeals.length} deal dihapus permanen.`,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            userEmail: auth.currentUser.email,
-            read: false
-        });
-        
-        // Refresh tampilan
-        await loadRecycleBin();
-        renderRecycleBinContent();
-        updateRecycleBinBadge();
-        closeEmptyRecycleBinModal();
-        
-    } catch (error) {
-        console.error("Error emptying recycle bin:", error);
-        showToast("Gagal mengosongkan Recycle Bin", 3000);
-    }
-}
-
-// Fungsi untuk menutup modal kosongkan Recycle Bin
-function closeEmptyRecycleBinModal() {
-    const emptyRecycleBinModalContent = document.getElementById('emptyRecycleBinModalContent');
-    if (!emptyRecycleBinModalContent) return;
-
-    emptyRecycleBinModalContent.classList.remove('modal-content-enter-active');
-    emptyRecycleBinModalContent.classList.add('modal-content-leave-active');
-    
-    emptyRecycleBinModalContent.addEventListener('transitionend', function handler() {
-        document.getElementById('emptyRecycleBinModal').classList.add('hidden');
-        emptyRecycleBinModalContent.classList.remove('modal-content-leave-active');
-        emptyRecycleBinModalContent.removeEventListener('transitionend', handler);
-    }, { once: true });
-}
-
-// Fungsi untuk menutup modal Recycle Bin
-function closeRecycleBinModal() {
-    const recycleBinModalContent = document.getElementById('recycleBinModalContent');
-    if (!recycleBinModalContent) return;
-
-    recycleBinModalContent.classList.remove('modal-content-enter-active');
-    recycleBinModalContent.classList.add('modal-content-leave-active');
-    
-    recycleBinModalContent.addEventListener('transitionend', function handler() {
-        document.getElementById('recycleBinModal').classList.add('hidden');
-        recycleBinModalContent.classList.remove('modal-content-leave-active');
-        recycleBinModalContent.removeEventListener('transitionend', handler);
-    }, { once: true });
-}
-
-// ==================== FUNGSI AKTIVITAS - DIPERBAIKI DENGAN CLICKABLE ====================
-
-// Fungsi untuk memuat aktivitas dari Firebase
-function loadActivitiesFromFirebase() {
-    console.log("Loading activities from Firebase...");
-    
-    let query = activitiesCollection.orderBy("timestamp", "desc").limit(50);
-    
-    query.get()
-        .then((querySnapshot) => {
-            activities = [];
-            querySnapshot.forEach((doc) => {
-                const activityData = doc.data();
-                if (activityData.timestamp && typeof activityData.timestamp.toDate !== 'function') {
-                    activityData.timestamp = firebase.firestore.Timestamp.fromMillis(activityData.timestamp);
-                }
-                activities.push({ id: doc.id, ...activityData });
-            });
-            console.log("Activities loaded:", activities.length, activities);
-            updateActivityBadge();
-        })
-        .catch((error) => {
-            console.error("Error loading activities:", error);
-            showToast("Gagal memuat aktivitas terbaru", 3000);
-        });
-}
-
-// Fungsi untuk memperbarui badge aktivitas
-function updateActivityBadge() {
-    const activityBadge = document.getElementById('activity-badge');
-    if (!activityBadge) return;
-    
-    const unreadCount = activities.filter(act => !act.read).length;
-    
-    if (unreadCount > 0) {
-        activityBadge.textContent = unreadCount;
-        activityBadge.classList.remove('hidden');
-    } else {
-        activityBadge.classList.add('hidden');
-    }
-}
-
-// Fungsi untuk mengekstrak nama deal dari pesan aktivitas
-function extractDealNameFromActivity(message) {
-    if (!message) return null;
-    
-    // Pattern: "Deal \"Nama Deal\" ..." atau "Deal \"Nama Deal\""
-    const match = message.match(/Deal "([^"]+)"/);
-    if (match && match[1]) {
-        return match[1];
-    }
-    
-    return null;
-}
-
-// Fungsi untuk mencari deal berdasarkan nama
-function findDealByName(dealName) {
-    if (!dealName) return null;
-    
-    // Cari deal dengan nama yang sama (case insensitive)
-    return deals.find(deal => 
-        deal.dealName && deal.dealName.toLowerCase() === dealName.toLowerCase()
-    );
-}
-
-// Fungsi untuk menyimpan scroll position activity modal
-function saveActivityModalState() {
-    const activityModalContent = document.getElementById('activityModalContent');
-    if (activityModalContent) {
-        activityModalState.scrollPosition = activityModalContent.scrollTop;
-    }
-}
-
-// Fungsi untuk mengembalikan scroll position activity modal
-function restoreActivityModalState() {
-    const activityModalContent = document.getElementById('activityModalContent');
-    if (activityModalContent && activityModalState.isOpen) {
-        setTimeout(() => {
-            activityModalContent.scrollTop = activityModalState.scrollPosition;
-        }, 100);
-    }
-}
-
-// Fungsi untuk membuka modal aktivitas dengan clickable items
-function openActivityModal() {
-    try {
-        const activityModal = document.getElementById('activityModal');
-        const activityFeed = document.getElementById('activity-feed-modal');
-        const activityModalContent = document.getElementById('activityModalContent');
-
-        if (!activityModal || !activityFeed || !activityModalContent) {
-            console.error("Elemen modal aktivitas tidak ditemukan.");
-            showToast("Gagal membuka aktivitas: Elemen tidak lengkap.", 3000);
-            return;
-        }
-        
-        activityFeed.innerHTML = '';
-        
-        if (activities.length === 0) {
-            activityFeed.innerHTML = `
-                <div class="text-center text-gray-500 py-4">
-                    <i class="fas fa-inbox text-3xl mb-2"></i>
-                    <p>Tidak ada aktivitas terbaru</p>
-                </div>
-            `;
-        } else {
-            const sortedActivities = [...activities].sort((a, b) => {
-                const tsA = a.timestamp ? (a.timestamp.toDate ? a.timestamp.toDate().getTime() : a.timestamp) : 0;
-                const tsB = b.timestamp ? (b.timestamp.toDate ? b.timestamp.toDate().getTime() : b.timestamp) : 0;
-                return tsB - tsA;
-            });
-
-            sortedActivities.forEach(activity => {
-                const activityItem = document.createElement('div');
-                activityItem.className = 'activity-item cursor-pointer hover:bg-gray-100 transition duration-200';
-                
-                // Ekstrak nama deal dari pesan
-                const dealName = extractDealNameFromActivity(activity.message);
-                const deal = findDealByName(dealName);
-                
-                activityItem.innerHTML = `
-                    <div class="flex items-start">
-                        <div class="flex-1">
-                            <p>${activity.message || 'Aktivitas tidak tersedia'}</p>
-                            <div class="activity-date">
-                                ${formatDateTime(activity.timestamp)}
-                                ${activity.read ? '' : '<span class="ml-2 text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">Baru</span>'}
-                            </div>
-                        </div>
-                        ${deal ? `
-                            <button class="ml-2 text-blue-600 hover:text-blue-800 view-activity-detail" data-deal-id="${deal.id}">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        ` : ''}
-                    </div>
-                `;
-                
-                activityFeed.appendChild(activityItem);
-                
-                // Tambahkan event listener untuk klik pada seluruh item
-                if (deal) {
-                    activityItem.addEventListener('click', function(e) {
-                        // Jangan buka jika yang diklik adalah tombol detail
-                        if (e.target.closest('.view-activity-detail')) return;
-                        
-                        const dealId = deal.id;
-                        // Simpan posisi scroll sebelum membuka detail
-                        saveActivityModalState();
-                        // Buka detail deal (z-index lebih tinggi)
-                        openDealDetailModal(dealId);
-                    });
-                    
-                    // Event listener khusus untuk tombol detail
-                    const detailBtn = activityItem.querySelector('.view-activity-detail');
-                    if (detailBtn) {
-                        detailBtn.addEventListener('click', function(e) {
-                            e.stopPropagation();
-                            const dealId = this.dataset.dealId;
-                            // Simpan posisi scroll sebelum membuka detail
-                            saveActivityModalState();
-                            // Buka detail deal (z-index lebih tinggi)
-                            openDealDetailModal(dealId);
-                        });
-                    }
-                }
-            });
-        }
-        
-        activityModal.classList.remove('hidden');
-        activityModalContent.classList.remove('modal-content-leave-active');
-        activityModalContent.classList.add('modal-content-enter-active');
-        
-        // Set state modal terbuka
-        activityModalState.isOpen = true;
-        
-        markActivitiesAsRead();
-    } catch (error) {
-        console.error("Error opening activity modal:", error);
-        showToast("Gagal membuka aktivitas", 3000);
-    }
-}
-
-// Fungsi untuk menandai aktivitas sebagai telah dibaca
-function markActivitiesAsRead() {
-    const batch = db.batch();
-    const unreadActivities = activities.filter(act => !act.read);
-    
-    unreadActivities.forEach(activity => {
-        const activityRef = activitiesCollection.doc(activity.id);
-        batch.update(activityRef, { read: true });
-    });
-    
-    if (unreadActivities.length > 0) {
-        batch.commit()
-            .then(() => {
-                console.log("Activities marked as read");
-                updateActivityBadge();
-            })
-            .catch(error => {
-                console.error("Error marking activities as read:", error);
-            });
-    }
-}
-
-// Fungsi untuk menutup modal aktivitas
-function closeActivityModal() {
-    console.log("closeActivityModal() called.");
-    const activityModalContent = document.getElementById('activityModalContent');
-    if (!activityModalContent) {
-        console.error("Elemen activityModalContent tidak ditemukan saat menutup modal.");
-        return;
-    }
-
-    activityModalContent.classList.remove('modal-content-enter-active');
-    activityModalContent.classList.add('modal-content-leave-active');
-    
-    activityModalContent.addEventListener('transitionend', function handler() {
-        document.getElementById('activityModal').classList.add('hidden');
-        activityModalContent.classList.remove('modal-content-leave-active');
-        activityModalContent.removeEventListener('transitionend', handler);
-        console.log("Modal aktivitas disembunyikan.");
-        // Set state modal tertutup
-        activityModalState.isOpen = false;
-        activityModalState.scrollPosition = 0;
-    }, { once: true });
-}
-
-// ==================== FUNGSI UTILITAS ====================
-
-// Fungsi helper untuk format tanggal dan waktu
-function formatDateTime(timestamp) {
-    if (!timestamp) return '-';
-    try {
-        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-        return date.toLocaleString('id-ID', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    } catch (e) {
-        return '-';
-    }
-}
-
-// Fungsi helper untuk format angka
-function formatNumber(num) {
-    if (num === null || num === undefined || isNaN(num)) {
-        return '0';
-    }
-    return new Intl.NumberFormat('id-ID').format(num);
-}
-
-// Fungsi helper untuk format tanggal
-function formatDate(timestamp) {
-    if (!timestamp) return '-';
-    try {
-        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-        return date.toLocaleDateString('id-ID');
-    } catch (e) {
-        return '-';
-    }
-}
-
-// Fungsi untuk menampilkan toast notifikasi
-function showToast(message, duration = 3000) {
-    const toastContainer = document.getElementById('toast-container');
-    if (!toastContainer) return;
-    
-    const toast = document.createElement('div');
-    toast.className = 'toast';
-    toast.innerText = message;
-    toastContainer.appendChild(toast);
-
-    requestAnimationFrame(() => {
-        toast.classList.add('show');
-    });
-
-    setTimeout(() => {
-        toast.classList.remove('show');
-        toast.addEventListener('transitionend', () => toast.remove(), { once: true });
-    }, duration);
-}
-
-// Fungsi untuk mendapatkan class priority badge
-function getPriorityBadgeClass(priority) {
-    switch(priority) {
-        case 'Priority':
-            return 'priority-badge-priority';
-        case 'Hot Priority':
-            return 'priority-badge-hot';
-        case 'Win':
-            return 'priority-badge-win';
-        case 'Behind':
-            return 'priority-badge-behind';
-        case 'On Track':
-            return 'priority-badge-ontrack';
-        default:
-            return 'priority-badge-priority';
-    }
-}
-
-// ==================== FUNGSI DEALS ====================
-
-// Fungsi untuk mengisi dropdown tahun
-function populateYearDropdown() {
-    const filterYearSelect = document.getElementById('filterYear');
-    if (!filterYearSelect) return;
-
-    const allYearsOption = document.createElement('option');
-    allYearsOption.value = 'all';
-    allYearsOption.textContent = 'Semua Tahun';
-    filterYearSelect.innerHTML = '';
-    filterYearSelect.appendChild(allYearsOption);
-
-    const sortedYears = Array.from(uniqueYears).sort((a, b) => parseInt(b) - parseInt(a));
-    sortedYears.forEach(year => {
-        const option = document.createElement('option');
-        option.value = year;
-        option.textContent = year;
-        filterYearSelect.appendChild(option);
-    });
-    
-    // Set nilai sesuai activeYear
-    if (activeYear && filterYearSelect.querySelector(`option[value="${activeYear}"]`)) {
-        filterYearSelect.value = activeYear;
-    }
-}
-
-// Fungsi untuk memuat konsultan dari GitHub JSON
-async function loadConsultantsFromFirebase() {
-    console.log("Loading consultants from GitHub JSON...");
-    uniqueConsultants.clear();
-    try {
-        const response = await fetch('https://raw.githubusercontent.com/bandeng77/pipelines.github.io/main/consultants.json');
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        data.forEach(consultantName => {
-            if (consultantName) {
-                uniqueConsultants.add(consultantName);
-            }
-        });
-        console.log("Consultants loaded from JSON:", uniqueConsultants.size);
-    } catch (error) {
-        console.error("Error loading consultants from JSON:", error);
-        showToast("Gagal memuat daftar konsultan dari GitHub.", 3000);
-    }
-}
-
-// Fungsi untuk memuat deals dari Firebase dengan error handling
-async function loadDealsFromFirebase() {
-    console.log("Loading deals from Firebase...");
-    
-    let query = dealsCollection.orderBy("createdAt", "desc");
-    
-    try {
-        const querySnapshot = await query.get();
-        deals = [];
-        uniqueContractors.clear();
-        uniquePICs.clear();
-        uniqueOwners.clear();
-        uniqueProducts.clear();
-        uniqueFacilities.clear();
-        uniquePackages.clear();
-        uniqueYears.clear();
-        uniqueSales.clear();
-
-        querySnapshot.forEach((doc) => {
-            const dealData = doc.data();
-            
-            // Konversi timestamp jika perlu
-            if (dealData.createdAt) {
-                if (dealData.createdAt.seconds !== undefined && dealData.createdAt.nanoseconds !== undefined) {
-                    // Sudah dalam format Firestore Timestamp
-                } else if (typeof dealData.createdAt.toDate === 'function') {
-                    // Sudah dalam format Firestore Timestamp
-                } else {
-                    // Coba konversi
-                    try {
-                        dealData.createdAt = firebase.firestore.Timestamp.fromDate(new Date(dealData.createdAt));
-                    } catch (e) {
-                        console.warn("Could not convert createdAt for deal:", doc.id);
-                    }
-                }
-            }
-            
-            // Pastikan updatedAt ada (untuk keperluan sorting)
-            if (!dealData.updatedAt) {
-                dealData.updatedAt = dealData.createdAt;
-            }
-            
-            deals.push({ id: doc.id, ...dealData });
-
-            // Kumpulkan data unik
-            if (dealData.contractor) {
-                if (Array.isArray(dealData.contractor)) {
-                    dealData.contractor.forEach(c => {
-                        if (c) uniqueContractors.add(c);
-                    });
-                } else {
-                    uniqueContractors.add(dealData.contractor);
-                }
-            }
-            if (dealData.pic) uniquePICs.add(dealData.pic);
-            if (dealData.owner) uniqueOwners.add(dealData.owner);
-            if (dealData.product) {
-                if (Array.isArray(dealData.product)) {
-                    dealData.product.forEach(p => {
-                        if (p) uniqueProducts.add(p);
-                    });
-                } else {
-                    uniqueProducts.add(dealData.product);
-                }
-            }
-            if (dealData.facility) uniqueFacilities.add(dealData.facility);
-            if (dealData.package) uniquePackages.add(dealData.package);
-            if (dealData.salesName) uniqueSales.add(dealData.salesName);
-            
-            // Kumpulkan tahun dengan aman
-            if (dealData.createdAt) {
-                try {
-                    let year;
-                    if (dealData.createdAt.toDate) {
-                        year = dealData.createdAt.toDate().getFullYear().toString();
-                    } else if (dealData.createdAt.seconds) {
-                        year = new Date(dealData.createdAt.seconds * 1000).getFullYear().toString();
-                    } else {
-                        year = new Date(dealData.createdAt).getFullYear().toString();
-                    }
-                    uniqueYears.add(year);
-                } catch (e) {
-                    console.warn("Could not extract year for deal:", doc.id, e);
-                }
-            }
-        });
-        
-        console.log("Total deals loaded:", deals.length);
-        console.log("Unique years found:", Array.from(uniqueYears));
-        
-        // Reset semua cache
-        priorityStatsCache = {
-            'all': null,
-            '2025': null,
-            '2026': null
-        };
-        
-        dealsByYearCache = {
-            'all': null,
-            '2025': null,
-            '2026': null
-        };
-        
-        populateYearDropdown();
-        populateFilterDropdowns();
-        
-        // Buat priority dashboard yang disederhanakan
-        createPriorityDashboard();
-        
-        // Terapkan filter yang aktif
-        applyActiveFilters();
-        
-    } catch (error) {
-        console.error("Error loading deals:", error);
-        showToast("Gagal memuat data deals", 3000);
-    }
-}
-
-// Fungsi untuk mendapatkan nama sales berdasarkan email
-function getSalesNameFromEmail(email) {
-    return emailToSalesNameMap[email] || email.split('@')[0];
-}
-
-// Fungsi untuk memeriksa apakah user dapat mengedit/menghapus deal
-function canUserEditDeal(deal) {
-    // Admin dan manager dapat mengedit semua deal
-    if (currentUserRole === 'admin' || currentUserRole === 'manager') {
-        return true;
-    }
-    
-    // User Bintang dapat mengedit semua deal
-    const currentUser = auth.currentUser;
-    
-    const allowedEmails = [
-        'bintang@genetek.co.id',
-        'andy@genetek.co.id'
-    ];
-    
-    if (currentUser && allowedEmails.includes(currentUser.email)) {
-        return true;
-    }
-
-    // Untuk user lain, hanya dapat mengedit deal mereka sendiri
-    if (!currentUser) return false;
-    
-    const userSalesName = getSalesNameFromEmail(currentUser.email);
-    return deal.salesName === userSalesName;
-}
-
-// Fungsi untuk render deal card individual (untuk deal non-merge)
 function renderIndividualDealCard(deal) {
     const dealCard = document.createElement('div');
     dealCard.className = 'deal-card';
@@ -2235,13 +1356,11 @@ function renderIndividualDealCard(deal) {
     dealCard.dataset.dealName = deal.dealName?.toLowerCase();
     dealCard.dataset.priority = deal.priority || 'Priority';
     
-    // Hitung nilai tertinggi dari semua project dengan nama yang sama (semua priority)
     const allProjectDeals = deals.filter(d => 
         d.dealName?.trim().toLowerCase() === deal.dealName?.trim().toLowerCase()
     );
     const highestValueOverall = Math.max(...allProjectDeals.map(d => d.value || 0));
     
-    // Informasi tentang project dengan priority berbeda
     const mergedProjectsInfo = identifyMergedProjects();
     const dealNameLower = deal.dealName?.toLowerCase().trim();
     const hasDifferentPriorities = mergedProjectsInfo[dealNameLower] && mergedProjectsInfo[dealNameLower].count > 1;
@@ -2332,24 +1451,20 @@ function renderIndividualDealCard(deal) {
     return dealCard;
 }
 
-// Fungsi untuk render deal dalam format list - DIPERBAIKI: dengan wrap text dan informasi priority
 function renderDealList(deal, index) {
     const row = document.createElement('tr');
     row.dataset.id = deal.id;
     row.className = 'hover:bg-gray-50 cursor-pointer view-detail-row';
-    row.dataset.id = deal.id;
     
     const canEdit = canUserEditDeal(deal);
     const priorityBadgeClass = getPriorityBadgeClass(deal.priority);
     const winDate = getWinDate(deal);
     
-    // Hitung nilai tertinggi dari semua project dengan nama yang sama (semua priority)
     const allProjectDeals = deals.filter(d => 
         d.dealName?.trim().toLowerCase() === deal.dealName?.trim().toLowerCase()
     );
     const highestValueOverall = Math.max(...allProjectDeals.map(d => d.value || 0));
     
-    // Format kontraktor dengan wrap text
     let contractorText = '-';
     if (deal.contractor) {
         if (Array.isArray(deal.contractor)) {
@@ -2359,7 +1474,6 @@ function renderDealList(deal, index) {
         }
     }
     
-    // Batasi panjang teks untuk tampilan yang lebih baik, tapi tetap wrap
     const maxLength = 100;
     let dealNameDisplay = deal.dealName || 'No Name';
     if (dealNameDisplay.length > maxLength) {
@@ -2435,7 +1549,6 @@ function renderDealList(deal, index) {
     return row;
 }
 
-// Fungsi untuk menampilkan semua priority dari project yang sama
 function showAllPrioritiesForProject(dealName) {
     const allEntries = deals.filter(deal => deal.dealName?.trim() === dealName);
     
@@ -2444,7 +1557,6 @@ function showAllPrioritiesForProject(dealName) {
         return;
     }
     
-    // Kelompokkan berdasarkan priority
     const byPriority = {};
     allEntries.forEach(deal => {
         const priority = deal.priority || 'Priority';
@@ -2454,7 +1566,6 @@ function showAllPrioritiesForProject(dealName) {
         byPriority[priority].push(deal);
     });
     
-    // PERBAIKAN: Urutkan entries dalam setiap priority berdasarkan updatedAt terbaru
     Object.keys(byPriority).forEach(priority => {
         byPriority[priority].sort((a, b) => {
             const dateA = a.updatedAt ? (a.updatedAt.toDate ? a.updatedAt.toDate() : new Date(a.updatedAt)) : new Date(0);
@@ -2463,7 +1574,6 @@ function showAllPrioritiesForProject(dealName) {
         });
     });
     
-    // Buat modal khusus untuk menampilkan semua priority
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
     modal.id = 'allPrioritiesModal';
@@ -2525,7 +1635,6 @@ function showAllPrioritiesForProject(dealName) {
     
     document.body.appendChild(modal);
     
-    // Event listener untuk menutup modal
     modal.querySelector('.close-all-priorities').addEventListener('click', () => {
         modal.remove();
     });
@@ -2536,7 +1645,6 @@ function showAllPrioritiesForProject(dealName) {
         }
     });
     
-    // Event listener untuk tombol view detail
     modal.querySelectorAll('.view-detail-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -2547,7 +1655,924 @@ function showAllPrioritiesForProject(dealName) {
     });
 }
 
-// Fungsi untuk mengisi dropdown dengan opsi unik
+// ==================== FUNGSI WIN DATE ====================
+
+function getWinDate(deal) {
+    if (deal.stage !== 'win' || !deal.updatedAt) return null;
+    
+    const winActivity = activities.find(act => 
+        act.message && 
+        act.message.includes(`"${deal.dealName}"`) && 
+        act.message.includes('diperbarui') && 
+        act.message.includes('stage: win')
+    );
+    
+    if (winActivity) {
+        return winActivity.timestamp;
+    }
+    
+    return deal.updatedAt;
+}
+
+// ==================== FUNGSI RECYCLE BIN ====================
+
+async function loadRecycleBin() {
+    try {
+        const querySnapshot = await deletedDealsCollection
+            .orderBy("deletedAt", "desc")
+            .get();
+        
+        deletedDeals = [];
+        querySnapshot.forEach((doc) => {
+            deletedDeals.push({ id: doc.id, ...doc.data() });
+        });
+        
+        updateRecycleBinBadge();
+        return deletedDeals;
+    } catch (error) {
+        console.error("Error loading recycle bin:", error);
+        showToast("Gagal memuat Recycle Bin", 3000);
+        return [];
+    }
+}
+
+function updateRecycleBinBadge() {
+    const recycleBinBadge = document.getElementById('recycle-bin-badge');
+    if (!recycleBinBadge) return;
+    
+    if (deletedDeals.length > 0) {
+        recycleBinBadge.textContent = deletedDeals.length;
+        recycleBinBadge.classList.remove('hidden');
+    } else {
+        recycleBinBadge.classList.add('hidden');
+    }
+}
+
+async function openRecycleBinModal() {
+    if (currentUserRole !== 'admin') {
+        showToast("Hanya admin yang dapat mengakses Recycle Bin", 3000);
+        return;
+    }
+    
+    try {
+        await loadRecycleBin();
+        const recycleBinContent = document.getElementById('recycleBinContent');
+        const emptyMessage = document.getElementById('emptyRecycleBinMessage');
+        
+        if (deletedDeals.length === 0) {
+            recycleBinContent.innerHTML = '';
+            emptyMessage.classList.remove('hidden');
+        } else {
+            emptyMessage.classList.add('hidden');
+            renderRecycleBinContent();
+        }
+        
+        document.getElementById('recycleBinModal').classList.remove('hidden');
+        document.getElementById('recycleBinModalContent').classList.remove('modal-content-leave-active');
+        document.getElementById('recycleBinModalContent').classList.add('modal-content-enter-active');
+    } catch (error) {
+        console.error("Error opening recycle bin:", error);
+        showToast("Gagal membuka Recycle Bin", 3000);
+    }
+}
+
+function renderRecycleBinContent() {
+    const recycleBinContent = document.getElementById('recycleBinContent');
+    recycleBinContent.innerHTML = '';
+    
+    deletedDeals.forEach(deal => {
+        const row = document.createElement('tr');
+        row.className = 'border-b hover:bg-gray-50';
+        
+        row.innerHTML = `
+            <td class="p-3 text-sm">${deal.dealName || 'No Name'}</td>
+            <td class="p-3 text-sm">${deal.salesName || '-'}</td>
+            <td class="p-3 text-sm">Rp ${formatNumber(deal.value) || '0'}</td>
+            <td class="p-3 text-sm">${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}</td>
+            <td class="p-3 text-sm">${formatDateTime(deal.deletedAt)}</td>
+            <td class="p-3 text-sm">${deal.deletedByEmail || '-'}</td>
+            <td class="p-3 text-sm">
+                <button class="restore-deal-btn text-green-600 hover:text-green-800 mr-3" data-id="${deal.id}">
+                    <i class="fas fa-undo mr-1"></i> Restore
+                </button>
+                <button class="permanent-delete-btn text-red-600 hover:text-red-800" data-id="${deal.id}" data-name="${deal.dealName || 'No Name'}">
+                    <i class="fas fa-trash mr-1"></i> Hapus Permanen
+                </button>
+            </td>
+        `;
+        
+        recycleBinContent.appendChild(row);
+    });
+}
+
+async function restoreDeal(deletedDealId) {
+    try {
+        const deletedDeal = deletedDeals.find(d => d.id === deletedDealId);
+        if (!deletedDeal) {
+            showToast("Data tidak ditemukan di Recycle Bin", 3000);
+            return;
+        }
+        
+        const { id, originalId, deletedAt, deletedBy, deletedByEmail, ...dealData } = deletedDeal;
+        
+        await dealsCollection.add(dealData);
+        
+        await deletedDealsCollection.doc(deletedDealId).delete();
+        
+        showToast(`Deal "${dealData.dealName}" berhasil dipulihkan!`, 2000);
+        
+        await activitiesCollection.add({
+            message: `Deal "${dealData.dealName}" dipulihkan dari Recycle Bin oleh ${auth.currentUser.email}.`,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            userEmail: auth.currentUser.email,
+            read: false
+        });
+        
+        await loadRecycleBin();
+        renderRecycleBinContent();
+        updateRecycleBinBadge();
+        loadDealsFromFirebase();
+        
+    } catch (error) {
+        console.error("Error restoring deal:", error);
+        showToast("Gagal memulihkan deal", 3000);
+    }
+}
+
+let permanentDeleteDealId = null;
+let permanentDeleteDealName = '';
+
+function confirmPermanentDelete(deletedDealId, dealName) {
+    permanentDeleteDealId = deletedDealId;
+    permanentDeleteDealName = dealName;
+    
+    document.getElementById('permanentDeleteDealName').textContent = dealName;
+    document.getElementById('permanentDeleteModal').classList.remove('hidden');
+    document.getElementById('permanentDeleteModalContent').classList.remove('modal-content-leave-active');
+    document.getElementById('permanentDeleteModalContent').classList.add('modal-content-enter-active');
+}
+
+async function permanentDeleteDeal() {
+    if (!permanentDeleteDealId) return;
+
+    try {
+        await deletedDealsCollection.doc(permanentDeleteDealId).delete();
+        
+        showToast(`Deal "${permanentDeleteDealName}" berhasil dihapus permanen!`, 2000);
+        
+        await activitiesCollection.add({
+            message: `Deal "${permanentDeleteDealName}" dihapus permanen dari Recycle Bin oleh ${auth.currentUser.email}.`,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            userEmail: auth.currentUser.email,
+            read: false
+        });
+        
+        await loadRecycleBin();
+        renderRecycleBinContent();
+        updateRecycleBinBadge();
+        closePermanentDeleteModal();
+        
+    } catch (error) {
+        console.error("Error permanent deleting deal:", error);
+        showToast("Gagal menghapus permanen deal", 3000);
+    }
+}
+
+function closePermanentDeleteModal() {
+    const permanentDeleteModalContent = document.getElementById('permanentDeleteModalContent');
+    if (!permanentDeleteModalContent) return;
+
+    permanentDeleteModalContent.classList.remove('modal-content-enter-active');
+    permanentDeleteModalContent.classList.add('modal-content-leave-active');
+    
+    permanentDeleteModalContent.addEventListener('transitionend', function handler() {
+        document.getElementById('permanentDeleteModal').classList.add('hidden');
+        permanentDeleteModalContent.classList.remove('modal-content-leave-active');
+        permanentDeleteModalContent.removeEventListener('transitionend', handler);
+    }, { once: true });
+}
+
+async function emptyRecycleBin() {
+    if (deletedDeals.length === 0) {
+        showToast("Recycle Bin sudah kosong", 3000);
+        return;
+    }
+    
+    document.getElementById('recycleBinCount').textContent = deletedDeals.length;
+    document.getElementById('emptyRecycleBinModal').classList.remove('hidden');
+    document.getElementById('emptyRecycleBinModalContent').classList.remove('modal-content-leave-active');
+    document.getElementById('emptyRecycleBinModalContent').classList.add('modal-content-enter-active');
+}
+
+async function confirmEmptyRecycleBin() {
+    try {
+        const batch = db.batch();
+        deletedDeals.forEach(deal => {
+            const docRef = deletedDealsCollection.doc(deal.id);
+            batch.delete(docRef);
+        });
+        
+        await batch.commit();
+        
+        showToast(`Recycle Bin berhasil dikosongkan! ${deletedDeals.length} deal dihapus permanen.`, 3000);
+        
+        await activitiesCollection.add({
+            message: `Recycle Bin dikosongkan oleh ${auth.currentUser.email}. ${deletedDeals.length} deal dihapus permanen.`,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            userEmail: auth.currentUser.email,
+            read: false
+        });
+        
+        await loadRecycleBin();
+        renderRecycleBinContent();
+        updateRecycleBinBadge();
+        closeEmptyRecycleBinModal();
+        
+    } catch (error) {
+        console.error("Error emptying recycle bin:", error);
+        showToast("Gagal mengosongkan Recycle Bin", 3000);
+    }
+}
+
+function closeEmptyRecycleBinModal() {
+    const emptyRecycleBinModalContent = document.getElementById('emptyRecycleBinModalContent');
+    if (!emptyRecycleBinModalContent) return;
+
+    emptyRecycleBinModalContent.classList.remove('modal-content-enter-active');
+    emptyRecycleBinModalContent.classList.add('modal-content-leave-active');
+    
+    emptyRecycleBinModalContent.addEventListener('transitionend', function handler() {
+        document.getElementById('emptyRecycleBinModal').classList.add('hidden');
+        emptyRecycleBinModalContent.classList.remove('modal-content-leave-active');
+        emptyRecycleBinModalContent.removeEventListener('transitionend', handler);
+    }, { once: true });
+}
+
+function closeRecycleBinModal() {
+    const recycleBinModalContent = document.getElementById('recycleBinModalContent');
+    if (!recycleBinModalContent) return;
+
+    recycleBinModalContent.classList.remove('modal-content-enter-active');
+    recycleBinModalContent.classList.add('modal-content-leave-active');
+    
+    recycleBinModalContent.addEventListener('transitionend', function handler() {
+        document.getElementById('recycleBinModal').classList.add('hidden');
+        recycleBinModalContent.classList.remove('modal-content-leave-active');
+        recycleBinModalContent.removeEventListener('transitionend', handler);
+    }, { once: true });
+}
+
+// ==================== FUNGSI AKTIVITAS - DIPERBAIKI ====================
+
+async function loadActivitiesFromFirebase(forceRefresh = false) {
+    console.log("Loading activities from Firebase...");
+    
+    const now = Date.now();
+    if (!forceRefresh && activitiesCache.lastFetch && (now - activitiesCache.lastFetch) < CACHE_DURATION) {
+        console.log("Menggunakan cache activities");
+        activities = activitiesCache.data;
+        updateActivityBadge();
+        return;
+    }
+    
+    try {
+        let query = activitiesCollection.orderBy("timestamp", "desc").limit(100);
+        
+        const querySnapshot = await query.get();
+        activities = [];
+        
+        querySnapshot.forEach((doc) => {
+            const activityData = doc.data();
+            if (activityData.timestamp && typeof activityData.timestamp.toDate !== 'function') {
+                activityData.timestamp = firebase.firestore.Timestamp.fromMillis(activityData.timestamp);
+            }
+            activities.push({ id: doc.id, ...activityData });
+        });
+        
+        console.log("Activities loaded:", activities.length);
+        
+        activitiesCache = {
+            data: activities,
+            lastFetch: now
+        };
+        
+        updateActivityBadge();
+    } catch (error) {
+        console.error("Error loading activities:", error);
+        showToast("Gagal memuat aktivitas terbaru", 3000);
+    }
+}
+
+function updateActivityBadge() {
+    const activityBadge = document.getElementById('activity-badge');
+    if (!activityBadge) return;
+    
+    const unreadCount = activities.filter(act => !act.read).length;
+    
+    if (unreadCount > 0) {
+        activityBadge.textContent = unreadCount;
+        activityBadge.classList.remove('hidden');
+    } else {
+        activityBadge.classList.add('hidden');
+    }
+}
+
+function extractDealNameFromActivity(message) {
+    if (!message) return null;
+    
+    console.log("Extracting deal name from:", message);
+    
+    const patterns = [
+        /Deal "([^"]+)"/,
+        /"([^"]+)"\s+(ditambahkan|diperbarui)/,
+        /proyek "([^"]+)"/i,
+        /project "([^"]+)"/i,
+        /:\s*"([^"]+)"/,
+        /deal\s+([^"\s]+(?:\s+[^"\s]+)*)/i
+    ];
+    
+    for (const pattern of patterns) {
+        const match = message.match(pattern);
+        if (match && match[1]) {
+            const extractedName = match[1].trim();
+            console.log("Extracted deal name:", extractedName);
+            return extractedName;
+        }
+    }
+    
+    const dealIndex = message.toLowerCase().indexOf('deal');
+    if (dealIndex !== -1) {
+        const afterDeal = message.substring(dealIndex + 4).trim();
+        const words = afterDeal.split(' ');
+        let name = '';
+        for (const word of words) {
+            if (word.includes('ditambahkan') || word.includes('diperbarui') || word.includes('oleh')) {
+                break;
+            }
+            name += (name ? ' ' : '') + word;
+        }
+        if (name) {
+            console.log("Extracted deal name (fallback):", name);
+            return name;
+        }
+    }
+    
+    return null;
+}
+
+async function findDealByName(dealName) {
+    if (!dealName) return null;
+    
+    console.log("Mencari deal dengan nama:", dealName);
+    
+    const normalizedSearchName = dealName.trim().toLowerCase();
+    
+    for (const [id, deal] of dealsByIdCache.entries()) {
+        if (deal.dealName && deal.dealName.trim().toLowerCase() === normalizedSearchName) {
+            console.log("Deal ditemukan di cache:", deal);
+            return deal;
+        }
+    }
+    
+    let deal = deals.find(deal => 
+        deal.dealName && deal.dealName.trim().toLowerCase() === normalizedSearchName
+    );
+    
+    if (deal) {
+        console.log("Deal ditemukan di array lokal:", deal);
+        dealsByIdCache.set(deal.id, deal);
+        return deal;
+    }
+    
+    deal = deals.find(deal => 
+        deal.dealName && deal.dealName.trim().toLowerCase().includes(normalizedSearchName)
+    );
+    
+    if (deal) {
+        console.log("Deal ditemukan dengan partial match:", deal);
+        dealsByIdCache.set(deal.id, deal);
+        return deal;
+    }
+    
+    try {
+        console.log("Mencari deal di Firestore...");
+        
+        const exactQuery = await dealsCollection
+            .where('dealName', '==', dealName)
+            .limit(1)
+            .get();
+        
+        if (!exactQuery.empty) {
+            const doc = exactQuery.docs[0];
+            deal = { id: doc.id, ...doc.data() };
+            console.log("Deal ditemukan di Firestore (exact):", deal);
+            
+            deals.push(deal);
+            dealsByIdCache.set(deal.id, deal);
+            return deal;
+        }
+        
+        const startQuery = await dealsCollection
+            .where('dealName', '>=', dealName)
+            .where('dealName', '<=', dealName + '\uf8ff')
+            .limit(1)
+            .get();
+        
+        if (!startQuery.empty) {
+            const doc = startQuery.docs[0];
+            deal = { id: doc.id, ...doc.data() };
+            console.log("Deal ditemukan di Firestore (starts with):", deal);
+            
+            deals.push(deal);
+            dealsByIdCache.set(deal.id, deal);
+            return deal;
+        }
+        
+        const allDeals = await dealsCollection.limit(50).get();
+        for (const doc of allDeals.docs) {
+            const data = doc.data();
+            if (data.dealName && data.dealName.toLowerCase().includes(normalizedSearchName)) {
+                deal = { id: doc.id, ...data };
+                console.log("Deal ditemukan di Firestore (contains):", deal);
+                
+                deals.push(deal);
+                dealsByIdCache.set(deal.id, deal);
+                return deal;
+            }
+        }
+        
+    } catch (error) {
+        console.error("Error mencari deal di Firestore:", error);
+    }
+    
+    console.log("Deal tidak ditemukan untuk nama:", dealName);
+    return null;
+}
+
+function saveActivityModalState() {
+    const activityModalContent = document.getElementById('activityModalContent');
+    if (activityModalContent) {
+        activityModalState.scrollPosition = activityModalContent.scrollTop;
+    }
+}
+
+function restoreActivityModalState() {
+    const activityModalContent = document.getElementById('activityModalContent');
+    if (activityModalContent && activityModalState.isOpen) {
+        setTimeout(() => {
+            activityModalContent.scrollTop = activityModalState.scrollPosition;
+        }, 100);
+    }
+}
+
+async function openActivityModal() {
+    try {
+        const activityModal = document.getElementById('activityModal');
+        const activityFeed = document.getElementById('activity-feed-modal');
+        const activityModalContent = document.getElementById('activityModalContent');
+
+        if (!activityModal || !activityFeed || !activityModalContent) {
+            console.error("Elemen modal aktivitas tidak ditemukan.");
+            showToast("Gagal membuka aktivitas: Elemen tidak lengkap.", 3000);
+            return;
+        }
+        
+        activityFeed.innerHTML = `
+            <div class="text-center text-gray-500 py-4">
+                <i class="fas fa-spinner fa-spin text-3xl mb-2"></i>
+                <p>Memuat aktivitas...</p>
+            </div>
+        `;
+        
+        activityModal.classList.remove('hidden');
+        
+        await loadActivitiesFromFirebase(true);
+        
+        activityFeed.innerHTML = '';
+        
+        if (activities.length === 0) {
+            activityFeed.innerHTML = `
+                <div class="text-center text-gray-500 py-4">
+                    <i class="fas fa-inbox text-3xl mb-2"></i>
+                    <p>Tidak ada aktivitas terbaru</p>
+                </div>
+            `;
+        } else {
+            const sortedActivities = [...activities].sort((a, b) => {
+                const tsA = a.timestamp ? (a.timestamp.toDate ? a.timestamp.toDate().getTime() : a.timestamp) : 0;
+                const tsB = b.timestamp ? (b.timestamp.toDate ? b.timestamp.toDate().getTime() : b.timestamp) : 0;
+                return tsB - tsA;
+            });
+
+            for (const activity of sortedActivities) {
+                const activityItem = document.createElement('div');
+                activityItem.className = 'activity-item p-3 border-b hover:bg-gray-50 transition duration-200';
+                
+                const dealName = extractDealNameFromActivity(activity.message);
+                
+                let deal = null;
+                let isLoading = false;
+                
+                if (dealName) {
+                    isLoading = true;
+                    deal = await findDealByName(dealName);
+                }
+                
+                const timeStr = activity.timestamp ? formatDateTime(activity.timestamp) : 'Waktu tidak diketahui';
+                const isUnread = !activity.read;
+                
+                activityItem.innerHTML = `
+                    <div class="flex items-start">
+                        <div class="flex-1">
+                            <p class="text-sm ${isUnread ? 'font-semibold' : ''}">${activity.message || 'Aktivitas tidak tersedia'}</p>
+                            <div class="flex items-center mt-1 text-xs text-gray-500">
+                                <i class="fas fa-clock mr-1"></i>
+                                <span>${timeStr}</span>
+                                ${isUnread ? '<span class="ml-2 bg-blue-500 text-white px-2 py-0.5 rounded-full text-xs">Baru</span>' : ''}
+                                ${deal ? '<span class="ml-2 text-green-600"><i class="fas fa-check-circle"></i> Deal tersedia</span>' : ''}
+                            </div>
+                        </div>
+                        ${deal ? `
+                            <div class="ml-2 flex space-x-1">
+                                <button class="view-activity-detail text-blue-600 hover:text-blue-800 p-1" 
+                                        data-deal-id="${deal.id}" 
+                                        data-deal-name="${deal.dealName}"
+                                        title="Lihat detail deal">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="view-activity-deal text-green-600 hover:text-green-800 p-1" 
+                                        data-deal-id="${deal.id}"
+                                        data-deal-name="${deal.dealName}"
+                                        title="Buka deal">
+                                    <i class="fas fa-external-link-alt"></i>
+                                </button>
+                            </div>
+                        ` : isLoading ? `
+                            <div class="ml-2">
+                                <i class="fas fa-spinner fa-spin text-gray-400"></i>
+                            </div>
+                        ` : `
+                            <div class="ml-2 text-xs text-gray-400 italic" title="Deal mungkin sudah dihapus">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                        `}
+                    </div>
+                `;
+                
+                if (deal) {
+                    activityItem.addEventListener('click', function(e) {
+                        if (e.target.closest('button')) return;
+                        
+                        const dealId = deal.id;
+                        saveActivityModalState();
+                        openDealDetailModal(dealId);
+                    });
+                    
+                    const detailBtn = activityItem.querySelector('.view-activity-detail');
+                    if (detailBtn) {
+                        detailBtn.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            const dealId = this.dataset.dealId;
+                            saveActivityModalState();
+                            openDealDetailModal(dealId);
+                        });
+                    }
+                    
+                    const openBtn = activityItem.querySelector('.view-activity-deal');
+                    if (openBtn) {
+                        openBtn.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            const dealId = this.dataset.dealId;
+                            saveActivityModalState();
+                            openDealDetailModal(dealId);
+                        });
+                    }
+                } else if (!isLoading) {
+                    activityItem.addEventListener('click', function() {
+                        showToast("Deal sudah tidak tersedia (mungkin sudah dihapus)", 3000);
+                    });
+                }
+                
+                activityFeed.appendChild(activityItem);
+            }
+        }
+        
+        activityModalContent.classList.remove('modal-content-leave-active');
+        activityModalContent.classList.add('modal-content-enter-active');
+        
+        activityModalState.isOpen = true;
+        
+        markActivitiesAsRead();
+        
+    } catch (error) {
+        console.error("Error opening activity modal:", error);
+        showToast("Gagal membuka aktivitas", 3000);
+    }
+}
+
+function markActivitiesAsRead() {
+    const batch = db.batch();
+    const unreadActivities = activities.filter(act => !act.read);
+    
+    unreadActivities.forEach(activity => {
+        const activityRef = activitiesCollection.doc(activity.id);
+        batch.update(activityRef, { read: true });
+    });
+    
+    if (unreadActivities.length > 0) {
+        batch.commit()
+            .then(() => {
+                console.log("Activities marked as read");
+                unreadActivities.forEach(act => act.read = true);
+                updateActivityBadge();
+            })
+            .catch(error => {
+                console.error("Error marking activities as read:", error);
+            });
+    }
+}
+
+function closeActivityModal() {
+    const activityModalContent = document.getElementById('activityModalContent');
+    if (!activityModalContent) return;
+
+    activityModalContent.classList.remove('modal-content-enter-active');
+    activityModalContent.classList.add('modal-content-leave-active');
+    
+    activityModalContent.addEventListener('transitionend', function handler() {
+        document.getElementById('activityModal').classList.add('hidden');
+        activityModalContent.classList.remove('modal-content-leave-active');
+        activityModalContent.removeEventListener('transitionend', handler);
+        
+        activityModalState.isOpen = false;
+        activityModalState.scrollPosition = 0;
+    }, { once: true });
+}
+
+// ==================== FUNGSI UTILITAS ====================
+
+function formatDateTime(timestamp) {
+    if (!timestamp) return '-';
+    try {
+        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+        return date.toLocaleString('id-ID', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch (e) {
+        return '-';
+    }
+}
+
+function formatNumber(num) {
+    if (num === null || num === undefined || isNaN(num)) {
+        return '0';
+    }
+    return new Intl.NumberFormat('id-ID').format(num);
+}
+
+function formatDate(timestamp) {
+    if (!timestamp) return '-';
+    try {
+        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+        return date.toLocaleDateString('id-ID');
+    } catch (e) {
+        return '-';
+    }
+}
+
+function showToast(message, duration = 3000) {
+    const toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) return;
+    
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerText = message;
+    toastContainer.appendChild(toast);
+
+    requestAnimationFrame(() => {
+        toast.classList.add('show');
+    });
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+        toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+    }, duration);
+}
+
+function getPriorityBadgeClass(priority) {
+    switch(priority) {
+        case 'Priority':
+            return 'priority-badge-priority';
+        case 'Hot Priority':
+            return 'priority-badge-hot';
+        case 'Win':
+            return 'priority-badge-win';
+        case 'Behind':
+            return 'priority-badge-behind';
+        case 'On Track':
+            return 'priority-badge-ontrack';
+        default:
+            return 'priority-badge-priority';
+    }
+}
+
+// ==================== FUNGSI DEALS ====================
+
+function populateYearDropdown() {
+    const filterYearSelect = document.getElementById('filterYear');
+    if (!filterYearSelect) return;
+
+    const allYearsOption = document.createElement('option');
+    allYearsOption.value = 'all';
+    allYearsOption.textContent = 'Semua Tahun';
+    filterYearSelect.innerHTML = '';
+    filterYearSelect.appendChild(allYearsOption);
+
+    const sortedYears = Array.from(uniqueYears).sort((a, b) => parseInt(b) - parseInt(a));
+    sortedYears.forEach(year => {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        filterYearSelect.appendChild(option);
+    });
+    
+    if (activeYear && filterYearSelect.querySelector(`option[value="${activeYear}"]`)) {
+        filterYearSelect.value = activeYear;
+    }
+}
+
+async function loadConsultantsFromFirebase() {
+    console.log("Loading consultants from GitHub JSON...");
+    uniqueConsultants.clear();
+    try {
+        const response = await fetch('https://raw.githubusercontent.com/bandeng77/pipelines.github.io/main/consultants.json');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        data.forEach(consultantName => {
+            if (consultantName) {
+                uniqueConsultants.add(consultantName);
+            }
+        });
+        console.log("Consultants loaded from JSON:", uniqueConsultants.size);
+    } catch (error) {
+        console.error("Error loading consultants from JSON:", error);
+        showToast("Gagal memuat daftar konsultan dari GitHub.", 3000);
+    }
+}
+
+async function loadDealsFromFirebase(forceRefresh = false) {
+    console.log("Loading deals from Firebase...");
+    
+    if (forceRefresh) {
+        dealsByIdCache.clear();
+    }
+    
+    let query = dealsCollection.orderBy("createdAt", "desc");
+    
+    try {
+        const querySnapshot = await query.get();
+        deals = [];
+        uniqueContractors.clear();
+        uniquePICs.clear();
+        uniqueOwners.clear();
+        uniqueProducts.clear();
+        uniqueFacilities.clear();
+        uniquePackages.clear();
+        uniqueYears.clear();
+        uniqueSales.clear();
+
+        querySnapshot.forEach((doc) => {
+            const dealData = doc.data();
+            
+            if (dealData.createdAt) {
+                if (!dealData.createdAt.toDate) {
+                    try {
+                        dealData.createdAt = firebase.firestore.Timestamp.fromDate(new Date(dealData.createdAt));
+                    } catch (e) {
+                        console.warn("Could not convert createdAt for deal:", doc.id);
+                    }
+                }
+            }
+            
+            if (!dealData.updatedAt) {
+                dealData.updatedAt = dealData.createdAt;
+            }
+            
+            const deal = { id: doc.id, ...dealData };
+            deals.push(deal);
+            dealsByIdCache.set(doc.id, deal);
+
+            if (dealData.contractor) {
+                if (Array.isArray(dealData.contractor)) {
+                    dealData.contractor.forEach(c => {
+                        if (c) uniqueContractors.add(c);
+                    });
+                } else {
+                    uniqueContractors.add(dealData.contractor);
+                }
+            }
+            if (dealData.pic) uniquePICs.add(dealData.pic);
+            if (dealData.owner) uniqueOwners.add(dealData.owner);
+            if (dealData.product) {
+                if (Array.isArray(dealData.product)) {
+                    dealData.product.forEach(p => {
+                        if (p) uniqueProducts.add(p);
+                    });
+                } else {
+                    uniqueProducts.add(dealData.product);
+                }
+            }
+            if (dealData.facility) uniqueFacilities.add(dealData.facility);
+            if (dealData.package) uniquePackages.add(dealData.package);
+            if (dealData.salesName) uniqueSales.add(dealData.salesName);
+            
+            if (dealData.createdAt) {
+                try {
+                    let year;
+                    if (dealData.createdAt.toDate) {
+                        year = dealData.createdAt.toDate().getFullYear().toString();
+                    } else if (dealData.createdAt.seconds) {
+                        year = new Date(dealData.createdAt.seconds * 1000).getFullYear().toString();
+                    } else {
+                        year = new Date(dealData.createdAt).getFullYear().toString();
+                    }
+                    uniqueYears.add(year);
+                } catch (e) {
+                    console.warn("Could not extract year for deal:", doc.id, e);
+                }
+            }
+        });
+        
+        console.log("Total deals loaded:", deals.length);
+        console.log("Unique years found:", Array.from(uniqueYears));
+        
+        priorityStatsCache = {
+            'all': null,
+            '2025': null,
+            '2026': null
+        };
+        
+        dealsByYearCache = {
+            'all': null,
+            '2025': null,
+            '2026': null
+        };
+        
+        populateYearDropdown();
+        populateFilterDropdowns();
+        createPriorityDashboard();
+        applyActiveFilters();
+        
+    } catch (error) {
+        console.error("Error loading deals:", error);
+        showToast("Gagal memuat data deals", 3000);
+    }
+}
+
+function getDealById(dealId) {
+    if (dealsByIdCache.has(dealId)) {
+        return dealsByIdCache.get(dealId);
+    }
+    
+    const deal = deals.find(d => d.id === dealId);
+    if (deal) {
+        dealsByIdCache.set(dealId, deal);
+    }
+    return deal;
+}
+
+function getSalesNameFromEmail(email) {
+    return emailToSalesNameMap[email] || email.split('@')[0];
+}
+
+function canUserEditDeal(deal) {
+    if (currentUserRole === 'admin' || currentUserRole === 'manager') {
+        return true;
+    }
+    
+    const currentUser = auth.currentUser;
+    
+    const allowedEmails = [
+        'bintang@genetek.co.id',
+        'andy@genetek.co.id'
+    ];
+    
+    if (currentUser && allowedEmails.includes(currentUser.email)) {
+        return true;
+    }
+
+    if (!currentUser) return false;
+    
+    const userSalesName = getSalesNameFromEmail(currentUser.email);
+    return deal.salesName === userSalesName;
+}
+
 function populateDropdown(selectElementId, uniqueValues, selectedValue = 'all') {
     const selectElement = document.getElementById(selectElementId);
     if (!selectElement) {
@@ -2579,7 +2604,6 @@ function populateDropdown(selectElementId, uniqueValues, selectedValue = 'all') 
     }
 }
 
-// Fungsi untuk mengisi dropdown filter tambahan
 function populateFilterDropdowns() {
     populateDropdown('filterPriority', ['Priority', 'Hot Priority', 'Win', 'Behind', 'On Track'], activeFilters.priority);
     populateDropdown('filterStage', ['identified', 'prospect', 'tender-me', 'tender-main-con', 'contract-award', 'win', 'lost', 'on-hold'], activeFilters.stage);
@@ -2591,11 +2615,9 @@ function populateFilterDropdowns() {
     populateDropdown('filterPackage', uniquePackages, activeFilters.package);
     populateDropdown('filterYear', uniqueYears, activeFilters.year);
     
-    // Set nilai input pencarian
     document.getElementById('searchDeals').value = activeFilters.searchTerm;
 }
 
-// Fungsi helper untuk memformat input angka secara real-time
 function formatNumberInput(inputElement) {
     let value = inputElement.value.replace(/[^0-9]/g, '');
     
@@ -2610,7 +2632,6 @@ function formatNumberInput(inputElement) {
 
 // ==================== FUNGSI STATISTIK MODAL ====================
 
-// Fungsi untuk membuka modal statistik
 function openStatsModal() {
     const statsModal = document.getElementById('statsModal');
     if (!statsModal) return;
@@ -2619,17 +2640,13 @@ function openStatsModal() {
     document.querySelector('#statsModal .modal-content-enter').classList.remove('modal-content-leave-active');
     document.querySelector('#statsModal .modal-content-enter').classList.add('modal-content-enter-active');
     
-    // Set tab aktif ke overview
     switchStatsTab('overview');
     
-    // Render semua chart
     renderAllCharts();
     
-    // Isi dropdown sales filter
     populateSalesFilter();
 }
 
-// Fungsi untuk menutup modal statistik
 function closeStatsModal() {
     const statsModalContent = document.querySelector('#statsModal .modal-content-enter');
     if (!statsModalContent) return;
@@ -2644,9 +2661,7 @@ function closeStatsModal() {
     }, { once: true });
 }
 
-// Fungsi untuk mengganti tab statistik
 function switchStatsTab(tabName) {
-    // Update active tab button
     document.querySelectorAll('.stats-tab').forEach(tab => {
         tab.classList.remove('active', 'border-blue-600', 'text-blue-600');
         tab.classList.add('border-transparent');
@@ -2658,7 +2673,6 @@ function switchStatsTab(tabName) {
         activeTab.classList.remove('border-transparent');
     }
     
-    // Show active tab content
     document.querySelectorAll('.stats-tab-content').forEach(content => {
         content.classList.add('hidden');
     });
@@ -2667,7 +2681,6 @@ function switchStatsTab(tabName) {
     if (activeContent) {
         activeContent.classList.remove('hidden');
         
-        // Render chart sesuai tab
         switch(tabName) {
             case 'sales':
                 renderSalesCharts();
@@ -2679,12 +2692,10 @@ function switchStatsTab(tabName) {
     }
 }
 
-// Fungsi untuk mengisi dropdown filter sales
 function populateSalesFilter() {
     const salesFilter = document.getElementById('salesFilter');
     if (!salesFilter) return;
     
-    // Simpan nilai yang dipilih sebelumnya
     const currentValue = salesFilter.value;
     
     salesFilter.innerHTML = '<option value="all">Semua Sales</option>';
@@ -2696,7 +2707,6 @@ function populateSalesFilter() {
         salesFilter.appendChild(option);
     });
     
-    // Kembalikan nilai yang dipilih sebelumnya
     if (currentValue && Array.from(salesFilter.options).some(opt => opt.value === currentValue)) {
         salesFilter.value = currentValue;
     }
@@ -2704,13 +2714,11 @@ function populateSalesFilter() {
 
 // ==================== FUNGSI STATISTIK PER SALES ====================
 
-// Fungsi untuk memproses data per sales
 function processSalesData(salesName = 'all') {
     const salesDeals = salesName === 'all' 
         ? deals 
         : deals.filter(deal => deal.salesName === salesName);
     
-    // Gunakan project unik berdasarkan nama+priority untuk statistik
     const uniqueProjects = getUniqueProjectsForDashboard(salesDeals);
     
     const stats = {
@@ -2736,31 +2744,25 @@ function processSalesData(salesName = 'all') {
     uniqueProjects.forEach(deal => {
         const dealValue = deal.displayValue || deal.value || 0;
         
-        // Total nilai
         stats.totalValue += dealValue;
         
-        // Win/Lost count
         if (deal.stage === 'win') {
             stats.winCount++;
         } else if (deal.stage === 'lost') {
             stats.lostCount++;
         }
         
-        // Stage distribution
         const stage = deal.stage || 'unknown';
         stats.stageDistribution[stage] = (stats.stageDistribution[stage] || 0) + 1;
         
-        // Priority distribution
         const priority = deal.priority || 'Priority';
         stats.priorityDistribution[priority] = (stats.priorityDistribution[priority] || 0) + 1;
         
-        // Store deals by priority
         if (!stats.dealsByPriority[priority]) {
             stats.dealsByPriority[priority] = [];
         }
         stats.dealsByPriority[priority].push(deal);
         
-        // Monthly timeline
         if (deal.createdAt) {
             const dealDate = deal.createdAt.toDate ? deal.createdAt.toDate() : new Date(deal.createdAt);
             const monthYear = dealDate.toLocaleString('id-ID', { 
@@ -2777,7 +2779,6 @@ function processSalesData(salesName = 'all') {
             stats.monthlyTimeline[monthYear].value += dealValue;
         }
         
-        // By product
         if (deal.product) {
             const products = Array.isArray(deal.product) ? deal.product : [deal.product];
             products.forEach(product => {
@@ -2785,24 +2786,20 @@ function processSalesData(salesName = 'all') {
             });
         }
         
-        // By facility
         if (deal.facility) {
             stats.byFacility[deal.facility] = (stats.byFacility[deal.facility] || 0) + 1;
         }
         
-        // Min/Max values
         if (dealValue > stats.maxDealValue) stats.maxDealValue = dealValue;
         if (dealValue < stats.minDealValue) stats.minDealValue = dealValue;
     });
     
-    // Calculate win rate
     stats.winRate = stats.totalDeals > 0 ? (stats.winCount / stats.totalDeals * 100).toFixed(1) : 0;
     stats.avgDealValue = stats.totalDeals > 0 ? stats.totalValue / stats.totalDeals : 0;
     
     return stats;
 }
 
-// Fungsi untuk merender chart per sales dengan clickable features
 function renderSalesCharts() {
     console.log("Rendering sales charts...");
     
@@ -2811,14 +2808,12 @@ function renderSalesCharts() {
         const selectedSales = salesFilter ? salesFilter.value : 'all';
         const salesData = processSalesData(selectedSales);
         
-        // Update metric boxes
         document.getElementById('salesTotalValue').textContent = `Rp ${formatNumber(salesData.totalValue)}`;
         document.getElementById('salesWinRate').textContent = `${salesData.winRate}%`;
         document.getElementById('salesTotalDeals').textContent = salesData.totalDeals;
         document.getElementById('salesAvgValue').textContent = `Rp ${formatNumber(salesData.avgDealValue)}`;
         document.getElementById('salesMaxValue').textContent = `Rp ${formatNumber(salesData.maxDealValue)}`;
         
-        // Render stage distribution chart
         const stageCtx = document.getElementById('salesStageChart');
         if (!stageCtx) {
             console.error("Canvas salesStageChart not found");
@@ -2833,8 +2828,6 @@ function renderSalesCharts() {
             stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
         );
         const stageData = Object.values(salesData.stageDistribution);
-        
-        console.log("Stage distribution data:", stageLabels, stageData);
         
         salesCharts.salesStageChart = new Chart(stageCtx.getContext('2d'), {
             type: 'doughnut',
@@ -2861,7 +2854,6 @@ function renderSalesCharts() {
             }
         });
         
-        // Render priority distribution chart dengan click handler
         const priorityCtx = document.getElementById('salesPriorityChart');
         if (!priorityCtx) {
             console.error("Canvas salesPriorityChart not found");
@@ -2874,8 +2866,6 @@ function renderSalesCharts() {
         
         const priorityLabels = Object.keys(salesData.priorityDistribution);
         const priorityData = Object.values(salesData.priorityDistribution);
-        
-        console.log("Priority distribution data:", priorityLabels, priorityData);
         
         salesCharts.salesPriorityChart = new Chart(priorityCtx.getContext('2d'), {
             type: 'bar',
@@ -2941,7 +2931,6 @@ function renderSalesCharts() {
             }
         });
         
-        // Render timeline chart
         const timelineCtx = document.getElementById('salesTimelineChart');
         if (!timelineCtx) {
             console.error("Canvas salesTimelineChart not found");
@@ -2964,8 +2953,6 @@ function renderSalesCharts() {
         
         const timelineCountData = sortedMonths.map(month => salesData.monthlyTimeline[month].count);
         const timelineValueData = sortedMonths.map(month => salesData.monthlyTimeline[month].value);
-        
-        console.log("Timeline data:", sortedMonths, timelineCountData, timelineValueData);
         
         salesCharts.salesTimelineChart = new Chart(timelineCtx.getContext('2d'), {
             type: 'line',
@@ -3043,13 +3030,11 @@ function renderSalesCharts() {
 
 // ==================== FUNGSI STATISTIK PER PRIORITY ====================
 
-// Fungsi untuk memproses data per priority
 function processPriorityData(priority = 'all') {
     const priorityDeals = priority === 'all' 
         ? deals 
         : deals.filter(deal => deal.priority === priority);
     
-    // Gunakan project unik berdasarkan nama+priority untuk statistik
     const uniqueProjects = getUniqueProjectsForDashboard(priorityDeals);
     
     const stats = {
@@ -3074,31 +3059,25 @@ function processPriorityData(priority = 'all') {
     uniqueProjects.forEach(deal => {
         const dealValue = deal.displayValue || deal.value || 0;
         
-        // Total nilai
         stats.totalValue += dealValue;
         
-        // Win count
         if (deal.stage === 'win') {
             stats.winCount++;
         }
         
-        // Stage distribution
         const stage = deal.stage || 'unknown';
         stats.stageDistribution[stage] = (stats.stageDistribution[stage] || 0) + 1;
         stats.valueByStage[stage] = (stats.valueByStage[stage] || 0) + dealValue;
         
-        // Store deals by stage
         if (!stats.dealsByStage[stage]) {
             stats.dealsByStage[stage] = [];
         }
         stats.dealsByStage[stage].push(deal);
         
-        // Sales distribution
         if (deal.salesName) {
             stats.salesDistribution[deal.salesName] = (stats.salesDistribution[deal.salesName] || 0) + 1;
         }
         
-        // Monthly timeline
         if (deal.createdAt) {
             const dealDate = deal.createdAt.toDate ? deal.createdAt.toDate() : new Date(deal.createdAt);
             const monthYear = dealDate.toLocaleString('id-ID', { 
@@ -3115,19 +3094,16 @@ function processPriorityData(priority = 'all') {
             stats.monthlyTimeline[monthYear].value += dealValue;
         }
         
-        // Min/Max values
         if (dealValue > stats.maxDealValue) stats.maxDealValue = dealValue;
         if (dealValue < stats.minDealValue) stats.minDealValue = dealValue;
     });
     
-    // Calculate statistics
     stats.avgDealValue = stats.totalDeals > 0 ? stats.totalValue / stats.totalDeals : 0;
     stats.winRate = stats.totalDeals > 0 ? (stats.winCount / stats.totalDeals * 100).toFixed(1) : 0;
     
     return stats;
 }
 
-// Fungsi untuk merender chart per priority dengan clickable features
 function renderPriorityCharts() {
     console.log("Rendering priority charts...");
     
@@ -3136,7 +3112,6 @@ function renderPriorityCharts() {
         const selectedPriority = priorityFilter ? priorityFilter.value : 'all';
         const priorityData = processPriorityData(selectedPriority);
         
-        // Update metric boxes
         document.getElementById('priorityTotalValue').textContent = `Rp ${formatNumber(priorityData.totalValue)}`;
         document.getElementById('priorityAvgValue').textContent = `Rp ${formatNumber(priorityData.avgDealValue)}`;
         document.getElementById('priorityTotalDeals').textContent = priorityData.totalDeals;
@@ -3144,7 +3119,6 @@ function renderPriorityCharts() {
         document.getElementById('priorityMaxValue').textContent = `Rp ${formatNumber(priorityData.maxDealValue)}`;
         document.getElementById('priorityMinValue').textContent = `Rp ${formatNumber(priorityData.minDealValue === Infinity ? 0 : priorityData.minDealValue)}`;
         
-        // Render stage distribution chart dengan click handler
         const stageCtx = document.getElementById('priorityStageChart');
         if (!stageCtx) {
             console.error("Canvas priorityStageChart not found");
@@ -3162,8 +3136,6 @@ function renderPriorityCharts() {
         const stageValueData = Object.keys(priorityData.valueByStage).map(stage => 
             priorityData.valueByStage[stage]
         );
-        
-        console.log("Stage distribution data:", stageLabels, stageData, stageValueData);
         
         const backgroundColors = stageLabels.map((stage, index) => {
             const colors = [
@@ -3257,7 +3229,6 @@ function renderPriorityCharts() {
             }
         });
         
-        // Render sales distribution chart
         const salesCtx = document.getElementById('prioritySalesChart');
         if (!salesCtx) {
             console.error("Canvas prioritySalesChart not found");
@@ -3268,15 +3239,12 @@ function renderPriorityCharts() {
             salesCharts.prioritySalesChart.destroy();
         }
         
-        // Ambil top 10 sales untuk chart
         const sortedSales = Object.entries(priorityData.salesDistribution)
             .sort((a, b) => b[1] - a[1])
             .slice(0, 10);
         
         const salesLabels = sortedSales.map(([name]) => name);
         const salesData = sortedSales.map(([, count]) => count);
-        
-        console.log("Sales distribution data:", salesLabels, salesData);
         
         salesCharts.prioritySalesChart = new Chart(salesCtx.getContext('2d'), {
             type: 'bar',
@@ -3309,7 +3277,6 @@ function renderPriorityCharts() {
             }
         });
         
-        // Render timeline chart
         const timelineCtx = document.getElementById('priorityTimelineChart');
         if (!timelineCtx) {
             console.error("Canvas priorityTimelineChart not found");
@@ -3332,8 +3299,6 @@ function renderPriorityCharts() {
         
         const timelineCountData = sortedMonths.map(month => priorityData.monthlyTimeline[month].count);
         const timelineValueData = sortedMonths.map(month => priorityData.monthlyTimeline[month].value);
-        
-        console.log("Priority timeline data:", sortedMonths, timelineCountData, timelineValueData);
         
         salesCharts.priorityTimelineChart = new Chart(timelineCtx.getContext('2d'), {
             type: 'line',
@@ -3411,13 +3376,10 @@ function renderPriorityCharts() {
 
 // ==================== FUNGSI STATISTIK OVERVIEW ====================
 
-// Fungsi untuk memproses data deals menjadi format yang siap untuk chart
 function processDealDataForCharts(dealsData) {
     console.log("Processing deal data for charts, total deals:", dealsData.length);
     
-    // Gunakan project unik berdasarkan nama+priority untuk statistik
     const uniqueProjects = getUniqueProjectsForDashboard(dealsData);
-    console.log("Unique projects for stats:", uniqueProjects.length);
     
     const stageSelect = document.getElementById('stage');
     const allStages = stageSelect ? Array.from(stageSelect.options).map(option => option.value).filter(value => value !== '') : 
@@ -3457,7 +3419,6 @@ function processDealDataForCharts(dealsData) {
     uniqueProjects.forEach(deal => {
         const dealValue = deal.displayValue || deal.value || 0;
         
-        // Deal size distribution
         if (dealValue < 500000000) {
             dealSizes['Small (< Rp 500 Juta)']++;
         } else if (dealValue >= 500000000 && dealValue <= 2000000000) {
@@ -3466,14 +3427,10 @@ function processDealDataForCharts(dealsData) {
             dealSizes['Large (> Rp 2 Miliar)']++;
         }
         
-        // Win rate data
         if (deal.stage && winRateDataMap.hasOwnProperty(deal.stage)) {
             winRateDataMap[deal.stage]++;
-        } else {
-            console.warn(`Deal with unknown stage: ${deal.stage}`);
         }
         
-        // Deals by sales
         if (deal.salesName) {
             dealsBySales[deal.salesName] = (dealsBySales[deal.salesName] || 0) + 1;
             salesValue[deal.salesName] = (salesValue[deal.salesName] || 0) + dealValue;
@@ -3482,7 +3439,6 @@ function processDealDataForCharts(dealsData) {
             }
         }
         
-        // Deals by product
         const productsInDeal = Array.isArray(deal.product) ? deal.product : (deal.product ? [deal.product] : []);
         productsInDeal.forEach(product => {
             const productKey = product || 'Unknown Product';
@@ -3490,19 +3446,15 @@ function processDealDataForCharts(dealsData) {
             productValue[productKey] = (productValue[productKey] || 0) + dealValue;
         });
         
-        // Pipeline value (excluding lost and won deals)
         if (deal.stage !== 'lost' && deal.stage !== 'win') {
             if (deal.createdAt) {
                 const dealDate = deal.createdAt.toDate ? deal.createdAt.toDate() : new Date(deal.createdAt);
                 const monthYear = dealDate.toLocaleString('id-ID', { month: 'short', year: 'numeric' });
                 pipelineValueByMonth[monthYear] = (pipelineValueByMonth[monthYear] || 0) + dealValue;
-            } else {
-                console.warn(`Deal ID: ${deal.id} has invalid or missing createdAt timestamp for pipeline value calculation.`);
             }
         }
     });
     
-    // Find top sales
     let maxSalesValue = 0;
     let topSalesName = '';
     for (const salesName in salesValue) {
@@ -3536,18 +3488,15 @@ function processDealDataForCharts(dealsData) {
     stats.pipelineValueLabels = sortedMonths;
     stats.pipelineValueData = sortedMonths.map(month => pipelineValueByMonth[month]);
     
-    console.log("Processed stats:", stats);
     return stats;
 }
 
-// Fungsi untuk merender semua chart overview
 function renderAllCharts() {
     console.log("Rendering all overview charts...");
     
     try {
         const processedStats = processDealDataForCharts(deals);
         
-        // Deal Size Chart
         const dealSizeCtx = document.getElementById('dealSizeChart');
         if (!dealSizeCtx) {
             console.error("Canvas dealSizeChart not found");
@@ -3588,7 +3537,6 @@ function renderAllCharts() {
             }
         });
         
-        // Win Rate Chart
         const winRateCtx = document.getElementById('winRateChart');
         if (!winRateCtx) {
             console.error("Canvas winRateChart not found");
@@ -3632,7 +3580,6 @@ function renderAllCharts() {
             }
         });
         
-        // Deals by Sales Chart
         const dealsBySalesCtx = document.getElementById('dealsBySalesChart');
         if (!dealsBySalesCtx) {
             console.error("Canvas dealsBySalesChart not found");
@@ -3687,7 +3634,6 @@ function renderAllCharts() {
             }
         });
         
-        // Deals by Product Chart
         const dealsByProductPackageCtx = document.getElementById('dealsByProductPackageChart');
         if (!dealsByProductPackageCtx) {
             console.error("Canvas dealsByProductPackageChart not found");
@@ -3698,7 +3644,6 @@ function renderAllCharts() {
             charts.dealsByProductPackageChart.destroy();
         }
         
-        // Limit to top 15 products for better visualization
         const productEntries = Object.entries(
             processedStats.dealsByProductLabels.reduce((acc, label, index) => {
                 acc[label] = processedStats.dealsByProductData[index];
@@ -3749,7 +3694,6 @@ function renderAllCharts() {
             }
         });
         
-        // Pipeline Value Chart
         const pipelineValueCtx = document.getElementById('pipelineValueChart');
         if (!pipelineValueCtx) {
             console.error("Canvas pipelineValueChart not found");
@@ -3801,8 +3745,6 @@ function renderAllCharts() {
             }
         });
         
-        console.log("All overview charts rendered successfully");
-        
     } catch (error) {
         console.error("Error rendering overview charts:", error);
         showToast("Gagal merender chart overview", 3000);
@@ -3811,17 +3753,14 @@ function renderAllCharts() {
 
 // ==================== FUNGSI CLICKABLE CHART ====================
 
-// Fungsi untuk menampilkan daftar project berdasarkan priority pada chart sales
 function showDealsByPriority(salesFilter, priority) {
     const selectedSales = salesFilter.value;
     const filteredDeals = selectedSales === 'all' 
         ? deals.filter(deal => deal.priority === priority)
         : deals.filter(deal => deal.salesName === selectedSales && deal.priority === priority);
     
-    // Gunakan project unik berdasarkan nama+priority
     const uniqueFilteredDeals = getUniqueProjectsForDashboard(filteredDeals);
     
-    // PERBAIKAN: Urutkan berdasarkan updatedAt terbaru
     const sortedDeals = [...uniqueFilteredDeals].sort((a, b) => {
         const dateA = a.updatedAt ? (a.updatedAt.toDate ? a.updatedAt.toDate() : new Date(a.updatedAt)) : new Date(0);
         const dateB = b.updatedAt ? (b.updatedAt.toDate ? b.updatedAt.toDate() : new Date(b.updatedAt)) : new Date(0);
@@ -3833,12 +3772,10 @@ function showDealsByPriority(salesFilter, priority) {
         return;
     }
     
-    // Tampilkan modal dengan daftar project
     document.getElementById('clickableChartModalTitle').textContent = `Project dengan Priority "${priority}" - ${selectedSales === 'all' ? 'Semua Sales' : selectedSales}`;
     const modalContent = document.getElementById('clickableChartModalContent');
     modalContent.innerHTML = '';
     
-    // Buat tabel untuk menampilkan project
     const table = document.createElement('table');
     table.className = 'min-w-full divide-y divide-gray-200 mt-4';
     table.innerHTML = `
@@ -3879,7 +3816,6 @@ function showDealsByPriority(salesFilter, priority) {
     
     modalContent.appendChild(table);
     
-    // Tambahkan event listener untuk baris yang dapat diklik
     modalContent.querySelectorAll('.view-detail-row').forEach(row => {
         row.addEventListener('click', function() {
             const dealId = this.dataset.id;
@@ -3891,17 +3827,14 @@ function showDealsByPriority(salesFilter, priority) {
     document.getElementById('clickableChartModal').classList.remove('hidden');
 }
 
-// Fungsi untuk menampilkan daftar project berdasarkan stage pada chart priority
 function showDealsByStage(priorityFilter, stage) {
     const selectedPriority = priorityFilter.value;
     const filteredDeals = selectedPriority === 'all' 
         ? deals.filter(deal => deal.stage === stage)
         : deals.filter(deal => deal.priority === selectedPriority && deal.stage === stage);
     
-    // Gunakan project unik berdasarkan nama+priority
     const uniqueFilteredDeals = getUniqueProjectsForDashboard(filteredDeals);
     
-    // PERBAIKAN: Urutkan berdasarkan updatedAt terbaru
     const sortedDeals = [...uniqueFilteredDeals].sort((a, b) => {
         const dateA = a.updatedAt ? (a.updatedAt.toDate ? a.updatedAt.toDate() : new Date(a.updatedAt)) : new Date(0);
         const dateB = b.updatedAt ? (b.updatedAt.toDate ? b.updatedAt.toDate() : new Date(b.updatedAt)) : new Date(0);
@@ -3913,12 +3846,10 @@ function showDealsByStage(priorityFilter, stage) {
         return;
     }
     
-    // Tampilkan modal dengan daftar project
     document.getElementById('clickableChartModalTitle').textContent = `Project dengan Stage "${stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}" - ${selectedPriority === 'all' ? 'Semua Priority' : selectedPriority}`;
     const modalContent = document.getElementById('clickableChartModalContent');
     modalContent.innerHTML = '';
     
-    // Buat tabel untuk menampilkan project
     const table = document.createElement('table');
     table.className = 'min-w-full divide-y divide-gray-200 mt-4';
     table.innerHTML = `
@@ -3958,7 +3889,6 @@ function showDealsByStage(priorityFilter, stage) {
     
     modalContent.appendChild(table);
     
-    // Tambahkan event listener untuk baris yang dapat diklik
     modalContent.querySelectorAll('.view-detail-row').forEach(row => {
         row.addEventListener('click', function() {
             const dealId = this.dataset.id;
@@ -3970,14 +3900,12 @@ function showDealsByStage(priorityFilter, stage) {
     document.getElementById('clickableChartModal').classList.remove('hidden');
 }
 
-// Fungsi untuk menutup modal clickable chart
 function closeClickableChartModal() {
     document.getElementById('clickableChartModal').classList.add('hidden');
 }
 
 // ==================== PERBAIKAN PERHITUNGAN NILAI ====================
 
-// Fungsi untuk menghitung nilai berdasarkan sebelum diskon dan diskon
 function calculateValueFromBeforeDiscount() {
     const beforeDiscountRaw = document.getElementById('beforeDiscount').value.replace(/[^0-9]/g, '');
     const beforeDiscount = parseFloat(beforeDiscountRaw) || 0;
@@ -3994,14 +3922,12 @@ function calculateValueFromBeforeDiscount() {
         valueInput.value = new Intl.NumberFormat('id-ID').format(Math.round(calculatedValue));
     }
     
-    // Update format input beforeDiscount
     const beforeDiscountInput = document.getElementById('beforeDiscount');
     if (beforeDiscount > 0 && beforeDiscountInput) {
         beforeDiscountInput.value = new Intl.NumberFormat('id-ID').format(beforeDiscount);
     }
 }
 
-// Update event listener untuk beforeDiscount
 function updateBeforeDiscountEventListeners() {
     const beforeDiscountInput = document.getElementById('beforeDiscount');
     const discountInput = document.getElementById('discount');
@@ -4020,7 +3946,6 @@ function updateBeforeDiscountEventListeners() {
 
 // ==================== FUNGSI SORTABLE ====================
 
-// Nonaktifkan fitur drag & drop untuk semua user
 function initSortable() {
     const pipelineStage = document.getElementById('pipelines-stage');
     if (!pipelineStage) return;
@@ -4029,13 +3954,12 @@ function initSortable() {
         sortableInstances['pipelines-stage'].destroy();
     }
 
-    // Nonaktifkan Sortable untuk semua user
     sortableInstances['pipelines-stage'] = new Sortable(pipelineStage, {
         animation: 150,
         ghostClass: 'sortable-ghost',
         chosenClass: 'sortable-chosen',
         dragClass: 'sortable-drag',
-        disabled: true, // Nonaktifkan drag & drop untuk semua user
+        disabled: true,
         onEnd: function(evt) {
             // Tidak ada aksi karena disabled
         }
@@ -4044,7 +3968,6 @@ function initSortable() {
 
 // ==================== FUNGSI PERMISSIONS ====================
 
-// Fungsi untuk menerapkan permissions berdasarkan role
 function applyUserPermissions() {
     try {
         const isAdmin = currentUserRole === 'admin';
@@ -4066,7 +3989,6 @@ function applyUserPermissions() {
         if (searchInput) searchInput.classList.remove('hidden');
         if (openFilterPanelBtn) openFilterPanelBtn.classList.remove('hidden');
         
-        // Tampilkan tombol Recycle Bin hanya untuk admin
         if (recycleBinFab) {
             if (isAdmin) {
                 recycleBinFab.classList.remove('hidden');
@@ -4086,12 +4008,10 @@ function applyUserPermissions() {
 
 // ==================== FUNGSI EVENT LISTENERS ====================
 
-// Event delegation untuk tombol aksi
 function initEventListeners() {
     console.log("Initializing event listeners...");
     
     try {
-        // Inisialisasi elemen DOM untuk search consultant
         consultantSearchInput = document.getElementById('consultantSearch');
         consultantHiddenInput = document.getElementById('consultant');
         consultantSuggestionsDiv = document.getElementById('consultantSuggestions');
@@ -4100,9 +4020,7 @@ function initEventListeners() {
         packageSelect = document.getElementById('package');
         newPackageInput = document.getElementById('newPackage');
         
-        // Event delegation untuk tombol aksi
         document.addEventListener('click', function(e) {
-            // Tombol view detail
             if (e.target.closest('.view-detail-btn')) {
                 const dealCard = e.target.closest('.deal-card, tr');
                 if (dealCard) {
@@ -4111,7 +4029,6 @@ function initEventListeners() {
                 }
             }
             
-            // Baris view detail (untuk list view dan tabel)
             if (e.target.closest('.view-detail-row') && !e.target.closest('button')) {
                 const row = e.target.closest('.view-detail-row');
                 if (row && row.dataset.id) {
@@ -4119,7 +4036,6 @@ function initEventListeners() {
                 }
             }
             
-            // Tombol lihat semua entries untuk priority tertentu
             if (e.target.closest('.view-all-entries-btn')) {
                 const btn = e.target.closest('.view-all-entries-btn');
                 const dealName = btn.dataset.dealName;
@@ -4127,14 +4043,12 @@ function initEventListeners() {
                 showAllEntriesForProject(dealName, priority);
             }
             
-            // Tombol lihat semua priority untuk project
             if (e.target.closest('.view-all-priorities-btn')) {
                 const btn = e.target.closest('.view-all-priorities-btn');
                 const dealName = btn.dataset.dealName;
                 showAllPrioritiesForProject(dealName);
             }
             
-            // Tombol edit deal
             if (e.target.closest('.edit-deal-btn')) {
                 const dealCard = e.target.closest('.deal-card, tr');
                 if (dealCard) {
@@ -4143,7 +4057,6 @@ function initEventListeners() {
                 }
             }
             
-            // Tombol delete deal
             if (e.target.closest('.delete-deal-btn')) {
                 const dealCard = e.target.closest('.deal-card, tr');
                 if (dealCard) {
@@ -4155,38 +4068,31 @@ function initEventListeners() {
                 }
             }
             
-            // Tombol remove contractor
             if (e.target.closest('.remove-contractor-btn')) {
                 removeContractorField(e.target.closest('.remove-contractor-btn'));
             }
             
-            // Tombol remove product
             if (e.target.closest('.remove-product-btn')) {
                 removeProductField(e.target.closest('.remove-product-btn'));
             }
             
-            // Tombol Recycle Bin Floating Action Button
             if (e.target.closest('#recycleBinFab')) {
                 openRecycleBinModal();
             }
             
-            // Tombol close Recycle Bin modal
             if (e.target.closest('.close-recycle-bin')) {
                 closeRecycleBinModal();
             }
             
-            // Tombol empty Recycle Bin
             if (e.target.closest('#emptyRecycleBinBtn')) {
                 emptyRecycleBin();
             }
             
-            // Tombol restore deal di Recycle Bin
             if (e.target.closest('.restore-deal-btn')) {
                 const dealId = e.target.closest('.restore-deal-btn').dataset.id;
                 restoreDeal(dealId);
             }
             
-            // Tombol hapus permanen di Recycle Bin
             if (e.target.closest('.permanent-delete-btn')) {
                 const button = e.target.closest('.permanent-delete-btn');
                 const dealId = button.dataset.id;
@@ -4194,27 +4100,22 @@ function initEventListeners() {
                 confirmPermanentDelete(dealId, dealName);
             }
             
-            // Tombol cancel permanent delete
             if (e.target.closest('.cancel-permanent-delete')) {
                 closePermanentDeleteModal();
             }
             
-            // Tombol confirm permanent delete
             if (e.target.closest('#confirmPermanentDeleteBtn')) {
                 permanentDeleteDeal();
             }
             
-            // Tombol cancel empty bin
             if (e.target.closest('.cancel-empty-bin')) {
                 closeEmptyRecycleBinModal();
             }
             
-            // Tombol confirm empty bin
             if (e.target.closest('#confirmEmptyBinBtn')) {
                 confirmEmptyRecycleBin();
             }
             
-            // Tombol hapus opsi dropdown
             if (e.target.closest('.delete-option-btn')) {
                 const button = e.target.closest('.delete-option-btn');
                 const targetField = button.dataset.target;
@@ -4226,7 +4127,6 @@ function initEventListeners() {
                 }
             }
             
-            // Tombol close clickable chart modal
             if (e.target.closest('#clickableChartModalClose') || e.target.closest('#clickableChartModal')) {
                 if (e.target.closest('#clickableChartModal') && !e.target.closest('.clickable-modal-content')) {
                     document.getElementById('clickableChartModal').classList.add('hidden');
@@ -4235,7 +4135,6 @@ function initEventListeners() {
                 }
             }
             
-            // Tombol close priority modal
             if (e.target.closest('#priorityModalClose') || e.target.closest('#priorityModal')) {
                 if (e.target.closest('#priorityModal') && !e.target.closest('.priority-modal-content')) {
                     closePriorityModal();
@@ -4244,13 +4143,11 @@ function initEventListeners() {
                 }
             }
             
-            // Tombol close all entries modal
             if (e.target.closest('.close-all-entries')) {
                 const modal = document.getElementById('allEntriesModal');
                 if (modal) modal.remove();
             }
             
-            // Tombol close all priorities modal
             if (e.target.closest('.close-all-priorities')) {
                 const modal = document.getElementById('allPrioritiesModal');
                 if (modal) modal.remove();
@@ -4265,7 +4162,6 @@ function initEventListeners() {
             });
         }
 
-        // Tombol New Deal
         const newDealBtn = document.getElementById('newDealBtn');
         if (newDealBtn) {
             newDealBtn.addEventListener('click', function(e) {
@@ -4290,7 +4186,6 @@ function initEventListeners() {
         const openFilterPanelBtn = document.getElementById('openFilterPanelBtn');
         if (openFilterPanelBtn) openFilterPanelBtn.addEventListener('click', openFilterPanel);
 
-        // Tombol di modal deal
         const cancelDealBtn = document.getElementById('cancelDealBtn');
         if (cancelDealBtn) cancelDealBtn.addEventListener('click', closeDealModal);
         
@@ -4311,7 +4206,6 @@ function initEventListeners() {
             });
         }
         
-        // Event listener untuk stage change
         const stageSelect = document.getElementById('stage');
         if (stageSelect) {
             stageSelect.addEventListener('change', function() {
@@ -4319,12 +4213,10 @@ function initEventListeners() {
             });
         }
         
-        // Tombol di modal detail deal
         const closeDetailBtn = document.getElementById('closeDetailBtn');
         if (closeDetailBtn) {
             closeDetailBtn.addEventListener('click', function() {
                 closeDealDetailModal();
-                // Setelah menutup detail, kembalikan ke activity modal jika masih terbuka
                 if (activityModalState.isOpen) {
                     restoreActivityModalState();
                 }
@@ -4342,21 +4234,18 @@ function initEventListeners() {
             });
         }
         
-        // Tombol di modal aktivitas
         const closeActivityBtn = document.getElementById('closeActivityBtn');
         if (closeActivityBtn) closeActivityBtn.addEventListener('click', closeActivityModal);
         
         const closeActivityFooterBtn = document.getElementById('closeActivityFooterBtn');
         if (closeActivityFooterBtn) closeActivityFooterBtn.addEventListener('click', closeActivityModal);
         
-        // Tombol di modal konfirmasi hapus
         const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
         if (cancelDeleteBtn) cancelDeleteBtn.addEventListener('click', closeDeleteModal);
         
         const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
         if (confirmDeleteBtn) confirmDeleteBtn.addEventListener('click', deleteDeal);
         
-        // Tombol di panel filter
         const closeFilterBtn = document.getElementById('closeFilterBtn');
         if (closeFilterBtn) closeFilterBtn.addEventListener('click', closeFilterPanel);
         
@@ -4366,11 +4255,9 @@ function initEventListeners() {
         const applyFilterBtn = document.getElementById('applyFilterBtn');
         if (applyFilterBtn) applyFilterBtn.addEventListener('click', applyFiltersAndClosePanel);
         
-        // Tombol di stats modal
         const closeStatsBtn = document.getElementById('closeStatsBtn');
         if (closeStatsBtn) closeStatsBtn.addEventListener('click', closeStatsModal);
 
-        // Tab navigation
         document.querySelectorAll('.stats-tab').forEach(tab => {
             tab.addEventListener('click', function() {
                 const tabName = this.dataset.tab;
@@ -4378,28 +4265,22 @@ function initEventListeners() {
             });
         });
         
-        // Sales filter change
         const salesFilter = document.getElementById('salesFilter');
         if (salesFilter) salesFilter.addEventListener('change', renderSalesCharts);
         
-        // Priority filter change
         const priorityFilter = document.getElementById('priorityFilter');
         if (priorityFilter) priorityFilter.addEventListener('change', renderPriorityCharts);
 
-        // Input events
         const searchDeals = document.getElementById('searchDeals');
         if (searchDeals) searchDeals.addEventListener('keyup', filterDeals);
         
-        // Update event listeners untuk perhitungan nilai
         updateBeforeDiscountEventListeners();
 
-        // Handle facility select and input
         if (facilitySelect && newFacilityInput) {
             facilitySelect.addEventListener('change', handleFacilitySelectChange);
             newFacilityInput.addEventListener('input', handleNewFacilityInput);
         }
         
-        // Handle package select and input
         if (packageSelect && newPackageInput) {
             packageSelect.addEventListener('change', handlePackageSelectChange);
             newPackageInput.addEventListener('input', handleNewPackageInput);
@@ -4407,7 +4288,6 @@ function initEventListeners() {
 
         setupConsultantSearch();
         
-        // Tampilkan/sembunyikan tombol hapus pada dropdown berdasarkan role
         toggleDeleteOptionButtons();
         
     } catch (error) {
@@ -4440,7 +4320,6 @@ function handleNewPackageInput() {
     }
 }
 
-// Fungsi untuk menampilkan/menyembunyikan tombol hapus pada dropdown
 function toggleDeleteOptionButtons() {
     const deleteButtons = document.querySelectorAll('.delete-option-btn');
     const canDelete = currentUserRole === 'admin' || currentUserRole === 'manager';
@@ -4456,7 +4335,6 @@ function toggleDeleteOptionButtons() {
 
 // ==================== FUNGSI LAINNYA ====================
 
-// Fungsi untuk menginisialisasi toggle view
 function initViewToggle() {
     const cardViewBtn = document.getElementById('cardViewBtn');
     const listViewBtn = document.getElementById('listViewBtn');
@@ -4467,7 +4345,6 @@ function initViewToggle() {
     }
 }
 
-// Fungsi untuk beralih antara tampilan card dan list
 function switchView(viewType) {
     if (currentView === viewType) return;
     
@@ -4479,11 +4356,9 @@ function switchView(viewType) {
     if (cardViewBtn) cardViewBtn.classList.toggle('active', viewType === 'card');
     if (listViewBtn) listViewBtn.classList.toggle('active', viewType === 'list');
     
-    // Terapkan filter yang aktif dengan view baru
     applyActiveFilters();
 }
 
-// Fungsi untuk menerapkan filter yang aktif dengan error handling
 function applyActiveFilters() {
     try {
         let baseDeals = deals;
@@ -4491,7 +4366,6 @@ function applyActiveFilters() {
             baseDeals = deals.filter(deal => deal.stage !== 'lost');
         }
 
-        // Filter berdasarkan tahun yang dipilih
         baseDeals = getDealsByYear(activeYear);
 
         const filteredDeals = baseDeals.filter(deal => {
@@ -4541,13 +4415,12 @@ function applyActiveFilters() {
     }
 }
 
-// Fungsi untuk menyimpan filter yang aktif
 function saveActiveFilters() {
     try {
         activeFilters = {
             searchTerm: document.getElementById('searchDeals') ? document.getElementById('searchDeals').value.toLowerCase() : '',
             priority: document.getElementById('filterPriority') ? document.getElementById('filterPriority').value : 'all',
-            year: activeYear, // Gunakan activeYear, bukan dari dropdown
+            year: activeYear,
             stage: document.getElementById('filterStage') ? document.getElementById('filterStage').value : 'all',
             sales: document.getElementById('filterSales') ? document.getElementById('filterSales').value : 'all',
             consultant: document.getElementById('filterConsultant') ? document.getElementById('filterConsultant').value : 'all',
@@ -4561,20 +4434,15 @@ function saveActiveFilters() {
     }
 }
 
-// Fungsi untuk filter deals
 function filterDeals() {
     try {
-        // Simpan filter yang aktif
         saveActiveFilters();
-        
-        // Terapkan filter yang aktif
         applyActiveFilters();
     } catch (error) {
         console.error("Error filtering deals:", error);
     }
 }
 
-// Fungsi untuk render deals yang sudah difilter dengan merge deal card
 function renderFilteredDeals(filteredDeals) {
     const pipelineStage = document.getElementById('pipelines-stage');
     if (!pipelineStage) return;
@@ -4592,7 +4460,6 @@ function renderFilteredDeals(filteredDeals) {
     }
     
     if (currentView === 'card') {
-        // Group deals by name+priority untuk merge
         const dealsByNameAndPriority = {};
         filteredDeals.forEach(deal => {
             const dealName = deal.dealName?.toLowerCase().trim();
@@ -4607,16 +4474,13 @@ function renderFilteredDeals(filteredDeals) {
             dealsByNameAndPriority[key].push(deal);
         });
         
-        // Render deal cards
         Object.values(dealsByNameAndPriority).forEach(dealGroup => {
             if (dealGroup.length > 0) {
                 if (dealGroup.length > 1) {
-                    // Multiple deals dengan nama+priority yang sama - render merged card
                     const mergedCard = renderMergedDealCard(dealGroup);
                     pipelineStage.appendChild(mergedCard);
                     setupMergeDealCardEvents(mergedCard, dealGroup);
                 } else {
-                    // Single deal - render individual card
                     const dealCard = renderIndividualDealCard(dealGroup[0]);
                     pipelineStage.appendChild(dealCard);
                 }
@@ -4625,7 +4489,6 @@ function renderFilteredDeals(filteredDeals) {
         
         initSortable();
     } else {
-        // Gunakan container khusus untuk list view agar tidak ada scroll horizontal
         const listContainer = document.createElement('div');
         listContainer.className = 'list-view-container';
         
@@ -4660,7 +4523,6 @@ function renderFilteredDeals(filteredDeals) {
     }
 }
 
-// Fungsi logout
 function logout() {
     auth.signOut()
         .then(() => {
@@ -4675,7 +4537,6 @@ function logout() {
         });
 }
 
-// Fungsi untuk membuka panel filter
 function openFilterPanel() {
     const filterPanel = document.getElementById('filterPanel');
     const filterPanelContent = document.getElementById('filterPanelContent');
@@ -4694,7 +4555,6 @@ function openFilterPanel() {
     filterPanelContent.classList.add('modal-content-enter-active');
 }
 
-// Fungsi untuk menutup panel filter
 function closeFilterPanel() {
     const filterPanelContent = document.getElementById('filterPanelContent');
     if (!filterPanelContent) {
@@ -4712,21 +4572,13 @@ function closeFilterPanel() {
     }, { once: true });
 }
 
-// Fungsi untuk menerapkan filter dan menutup panel
 function applyFiltersAndClosePanel() {
-    // Simpan filter yang dipilih
     saveActiveFilters();
-    
-    // Terapkan filter
     applyActiveFilters();
-    
-    // Tutup panel
     closeFilterPanel();
 }
 
-// Fungsi untuk mereset semua filter
 function resetFilters() {
-    // Reset filter di UI
     const filterPriority = document.getElementById('filterPriority');
     const filterYear = document.getElementById('filterYear');
     const filterStage = document.getElementById('filterStage');
@@ -4749,7 +4601,6 @@ function resetFilters() {
     if (filterPackage) filterPackage.value = 'all';
     if (searchDeals) searchDeals.value = '';
     
-    // Reset year badge
     document.querySelectorAll('.year-badge').forEach(badge => {
         badge.classList.remove('active');
         if (badge.dataset.year === 'all') {
@@ -4758,7 +4609,6 @@ function resetFilters() {
     });
     activeYear = 'all';
     
-    // Reset filter aktif
     activeFilters = {
         searchTerm: '',
         priority: 'all',
@@ -4772,7 +4622,6 @@ function resetFilters() {
         package: 'all'
     };
     
-    // Reset semua cache
     priorityStatsCache = {
         'all': null,
         '2025': null,
@@ -4785,14 +4634,12 @@ function resetFilters() {
         '2026': null
     };
     
-    // Terapkan filter reset
     applyActiveFilters();
-    
-    // Update priority dashboard
     createPriorityDashboard();
 }
 
 // ==================== FUNGSI SEARCH KONSULTAN ====================
+
 function setupConsultantSearch() {
     if (!consultantSearchInput || !consultantHiddenInput || !consultantSuggestionsDiv) {
         console.warn("Consultant search elements not found. Skipping setup.");
@@ -4869,7 +4716,6 @@ function handleDocumentClick(event) {
 
 // ==================== FUNGSI EXPORT EXCEL ====================
 
-// Fungsi untuk menginisialisasi elemen export
 function initExportElements() {
     const exportExcelBtn = document.getElementById('exportExcelBtn');
     const exportExcelModal = document.getElementById('exportExcelModal');
@@ -4889,7 +4735,6 @@ function initExportElements() {
     if (exportDateRange) exportDateRange.addEventListener('change', toggleCustomDateRange);
 }
 
-// Fungsi untuk menampilkan/menyembunyikan export button berdasarkan role
 function toggleExportButton() {
     const exportExcelBtn = document.getElementById('exportExcelBtn');
     if (exportExcelBtn) {
@@ -4901,14 +4746,12 @@ function toggleExportButton() {
     }
 }
 
-// Fungsi untuk membuka modal export
 function openExportModal() {
     const exportExcelModal = document.getElementById('exportExcelModal');
     const exportExcelModalContent = document.getElementById('exportExcelModalContent');
     
     if (!exportExcelModal || !exportExcelModalContent) return;
     
-    // Reset form
     const exportDateRange = document.getElementById('exportDateRange');
     const exportFormat = document.getElementById('exportFormat');
     const customDateRange = document.getElementById('customDateRange');
@@ -4922,7 +4765,6 @@ function openExportModal() {
     exportExcelModalContent.classList.add('modal-content-enter-active');
 }
 
-// Fungsi untuk menutup modal export
 function closeExportModal() {
     const exportExcelModalContent = document.getElementById('exportExcelModalContent');
     if (!exportExcelModalContent) return;
@@ -4937,7 +4779,6 @@ function closeExportModal() {
     }, { once: true });
 }
 
-// Fungsi untuk menampilkan/menyembunyikan input tanggal kustom
 function toggleCustomDateRange() {
     const dateRange = document.getElementById('exportDateRange');
     const customDateRange = document.getElementById('customDateRange');
@@ -4951,7 +4792,6 @@ function toggleCustomDateRange() {
     }
 }
 
-// Fungsi untuk mendapatkan data berdasarkan rentang tanggal
 function getDealsByDateRange() {
     const dateRange = document.getElementById('exportDateRange');
     const startDateInput = document.getElementById('exportStartDate');
@@ -4968,7 +4808,7 @@ function getDealsByDateRange() {
         }
         startDate = new Date(startDateInput.value);
         endDate = new Date(endDateInput.value);
-        endDate.setHours(23, 59, 59, 999); // Set to end of day
+        endDate.setHours(23, 59, 59, 999);
     } else {
         const now = new Date();
         
@@ -5003,7 +4843,6 @@ function getDealsByDateRange() {
     });
 }
 
-// Fungsi untuk export data ke Excel
 function exportToExcel() {
     if (currentUserRole !== 'admin') {
         showToast("Hanya admin yang dapat mengekspor data", 3000);
@@ -5028,26 +4867,21 @@ function exportToExcel() {
             worksheetData = prepareSummaryExportData(filteredDeals);
         }
         
-        // Buat worksheet
         const worksheet = XLSX.utils.json_to_sheet(worksheetData);
         
-        // Buat workbook
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Sales Pipeline Data");
         
-        // Generate nama file
         const dateRange = document.getElementById('exportDateRange');
         const dateRangeValue = dateRange ? dateRange.value : 'all';
         const formatType = formatValue === 'detailed' ? 'Detail' : 'Ringkasan';
         const fileName = `Sales_Pipeline_${formatType}_${dateRangeValue}_${new Date().toISOString().split('T')[0]}.xlsx`;
         
-        // Export ke file
         XLSX.writeFile(workbook, fileName);
         
         showToast("Data berhasil diekspor ke Excel", 3000);
         closeExportModal();
         
-        // Log aktivitas
         activitiesCollection.add({
             message: `Data diekspor ke Excel (${formatType}, ${dateRangeValue}) oleh ${auth.currentUser.email}.`,
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
@@ -5061,10 +4895,8 @@ function exportToExcel() {
     }
 }
 
-// Fungsi untuk menyiapkan data export detail
 function prepareDetailedExportData(dealsData) {
     return dealsData.map(deal => {
-        // Format kontraktor
         let contractorText = '';
         if (deal.contractor) {
             if (Array.isArray(deal.contractor)) {
@@ -5074,7 +4906,6 @@ function prepareDetailedExportData(dealsData) {
             }
         }
         
-        // Format produk
         let productText = '';
         if (deal.product) {
             if (Array.isArray(deal.product)) {
@@ -5108,9 +4939,7 @@ function prepareDetailedExportData(dealsData) {
     });
 }
 
-// Fungsi untuk menyiapkan data export ringkasan
 function prepareSummaryExportData(dealsData) {
-    // Gunakan project unik berdasarkan nama+priority untuk ringkasan
     const uniqueProjects = getUniqueProjectsForDashboard(dealsData);
     
     const summary = {};
@@ -5133,20 +4962,17 @@ function prepareSummaryExportData(dealsData) {
         summary[stage].dealCount++;
         summary[stage].totalValue += (deal.displayValue || deal.value || 0);
         
-        // Hitung per sales
         if (!summary[stage].salesCount[sales]) {
             summary[stage].salesCount[sales] = 0;
         }
         summary[stage].salesCount[sales]++;
         
-        // Hitung per produk
         if (!summary[stage].productCount[product]) {
             summary[stage].productCount[product] = 0;
         }
         summary[stage].productCount[product]++;
     });
     
-    // Konversi ke format array untuk Excel
     return Object.values(summary).map(item => {
         const topSales = Object.entries(item.salesCount)
             .sort((a, b) => b[1] - a[1])
@@ -5172,7 +4998,6 @@ function prepareSummaryExportData(dealsData) {
 
 // ==================== FUNGSI TAMBAHAN UNTUK DEAL ====================
 
-// Fungsi untuk menambahkan field kontraktor baru
 function addContractorField(initialValue = '') {
     const contractorListDiv = document.getElementById('contractorList');
     if (!contractorListDiv) return;
@@ -5226,14 +5051,12 @@ function addContractorField(initialValue = '') {
     }
 }
 
-// Fungsi untuk menghapus field kontraktor
 function removeContractorField(buttonElement) {
     if (buttonElement && buttonElement.closest('.flex')) {
         buttonElement.closest('.flex').remove();
     }
 }
 
-// Fungsi untuk menambahkan field produk baru
 function addProductField(initialValue = '') {
     const productListDiv = document.getElementById('productList');
     if (!productListDiv) return;
@@ -5304,14 +5127,12 @@ function addProductField(initialValue = '') {
     }
 }
 
-// Fungsi untuk menghapus field produk
 function removeProductField(buttonElement) {
     if (buttonElement && buttonElement.closest('.flex')) {
         buttonElement.closest('.flex').remove();
     }
 }
 
-// Fungsi untuk membuka modal deal
 async function openDealModal(dealId = null) {
     const dealModal = document.getElementById('dealModal');
     const modalTitle = document.getElementById('modalTitle');
@@ -5325,7 +5146,6 @@ async function openDealModal(dealId = null) {
     }
     
     try {
-        // Reset form
         if (dealForm) dealForm.reset();
         
         const dealIdInput = document.getElementById('dealId');
@@ -5363,7 +5183,6 @@ async function openDealModal(dealId = null) {
         const productList = document.getElementById('productList');
         if (productList) productList.innerHTML = '';
     
-        // Update facility dropdown
         if (facilitySelect) {
             facilitySelect.innerHTML = `
                 <option value="">Pilih Fasilitas</option>
@@ -5385,7 +5204,6 @@ async function openDealModal(dealId = null) {
             });
         }
     
-        // Update package dropdown
         if (packageSelect) {
             packageSelect.innerHTML = `
                 <option value="">Pilih Paket</option>
@@ -5420,7 +5238,6 @@ async function openDealModal(dealId = null) {
                 const dealNameInput = document.getElementById('dealName');
                 if (dealNameInput) dealNameInput.value = deal.dealName || '';
                 
-                // Handle value dan beforeDiscount
                 const beforeDiscountInput = document.getElementById('beforeDiscount');
                 if (beforeDiscountInput) {
                     beforeDiscountInput.value = deal.beforeDiscount ? new Intl.NumberFormat('id-ID').format(deal.beforeDiscount) : '';
@@ -5431,7 +5248,6 @@ async function openDealModal(dealId = null) {
                 
                 calculateValueFromBeforeDiscount();
                 
-                // Handle package
                 if (deal.package && packageSelect) {
                     const options = Array.from(packageSelect.options);
                     const hasOption = options.some(option => option.value === deal.package);
@@ -5515,10 +5331,8 @@ async function openDealModal(dealId = null) {
                 const remarksTextarea = document.getElementById('remarks');
                 if (remarksTextarea) remarksTextarea.value = deal.remarks || '';
                 
-                // Update progress bar dengan stage yang ada
                 updateProgressBarFromStage(deal.stage);
                 
-                // Load dan tampilkan komentar
                 currentDealIdForComments = deal.id;
                 const comments = await loadComments(deal.id);
                 renderComments(comments, 'commentsList');
@@ -5545,10 +5359,8 @@ async function openDealModal(dealId = null) {
             addContractorField();
             addProductField();
             
-            // Set progress bar ke default berdasarkan stage
             updateProgressBarFromStage(DEFAULT_STAGE);
             
-            // Sembunyikan comments section untuk deal baru
             if (commentsSection) {
                 commentsSection.style.display = 'none';
             }
@@ -5567,7 +5379,6 @@ async function openDealModal(dealId = null) {
     }
 }
 
-// Fungsi untuk menutup modal deal
 function closeDealModal() {
     const dealModalContent = document.getElementById('dealModalContent');
     if (!dealModalContent) return;
@@ -5583,7 +5394,6 @@ function closeDealModal() {
     }, { once: true });
 }
 
-// Fungsi untuk menyimpan deal
 async function saveDeal() {
     try {
         const dealId = document.getElementById('dealId').value;
@@ -5592,7 +5402,6 @@ async function saveDeal() {
         const stage = document.getElementById('stage').value;
         const priority = document.getElementById('priority').value;
         
-        // Validasi input wajib
         if (!dealName) {
             showToast("Nama proyek wajib diisi", 3000);
             return;
@@ -5603,7 +5412,6 @@ async function saveDeal() {
             return;
         }
         
-        // Ambil nilai sebelum diskon
         const beforeDiscountRaw = document.getElementById('beforeDiscount').value.replace(/[^0-9]/g, '');
         const beforeDiscount = parseFloat(beforeDiscountRaw) || 0;
         
@@ -5612,14 +5420,12 @@ async function saveDeal() {
             return;
         }
         
-        // Hitung nilai setelah diskon
         const discount = parseFloat(document.getElementById('discount').value) || 0;
         let calculatedValue = beforeDiscount;
         if (discount > 0 && discount <= 100) {
             calculatedValue = beforeDiscount * (1 - (discount / 100));
         }
         
-        // Ambil nilai package
         let packageValue = '';
         const packageSelect = document.getElementById('package');
         const newPackageInput = document.getElementById('newPackage');
@@ -5634,7 +5440,6 @@ async function saveDeal() {
             }
         }
         
-        // Ambil nilai facility
         let facilityValue = '';
         const facilitySelect = document.getElementById('facility');
         const newFacilityInput = document.getElementById('newFacility');
@@ -5649,7 +5454,6 @@ async function saveDeal() {
             }
         }
         
-        // Ambil produk
         const productElements = document.querySelectorAll('#productList select, #productList input[type="text"]');
         const products = [];
         for (let i = 0; i < productElements.length; i += 2) {
@@ -5671,7 +5475,6 @@ async function saveDeal() {
             }
         }
         
-        // Ambil kontraktor
         const contractorElements = document.querySelectorAll('#contractorList select, #contractorList input[type="text"]');
         const contractors = [];
         for (let i = 0; i < contractorElements.length; i += 2) {
@@ -5693,7 +5496,6 @@ async function saveDeal() {
             }
         }
         
-        // Ambil owner
         let ownerValue = '';
         const ownerSelect = document.getElementById('owner');
         const newOwnerInput = document.getElementById('newOwner');
@@ -5708,7 +5510,6 @@ async function saveDeal() {
             }
         }
         
-        // Ambil PIC
         let picValue = '';
         const picSelect = document.getElementById('pic');
         const newPicInput = document.getElementById('newPic');
@@ -5723,7 +5524,6 @@ async function saveDeal() {
             }
         }
         
-        // Data deal
         const dealData = {
             salesName: salesName,
             dealName: dealName,
@@ -5745,40 +5545,46 @@ async function saveDeal() {
             updatedBy: auth.currentUser.email
         };
         
-        // Tambahkan createdBy dan createdAt untuk deal baru
         if (!dealId) {
             dealData.createdBy = auth.currentUser.email;
             dealData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
         }
         
-        // Simpan ke Firebase
         if (dealId) {
-            // Update deal yang sudah ada
+            const oldDeal = getDealById(dealId);
+            
             await dealsCollection.doc(dealId).update(dealData);
+            
+            let changes = [];
+            if (oldDeal) {
+                if (oldDeal.stage !== stage) changes.push(`stage: ${oldDeal.stage} → ${stage}`);
+                if (oldDeal.priority !== priority) changes.push(`priority: ${oldDeal.priority} → ${priority}`);
+                if (oldDeal.value !== calculatedValue) changes.push(`nilai: Rp ${formatNumber(oldDeal.value)} → Rp ${formatNumber(calculatedValue)}`);
+            }
+            
+            const changeMessage = changes.length > 0 ? ` (${changes.join(', ')})` : '';
+            
+            await activitiesCollection.add({
+                message: `Deal "${dealName}" diperbarui oleh ${auth.currentUser.email}.${changeMessage}`,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                userEmail: auth.currentUser.email,
+                read: false
+            });
+            
             showToast(`Deal "${dealName}" berhasil diperbarui!`, 2000);
-            
-            // Log aktivitas
-            await activitiesCollection.add({
-                message: `Deal "${dealName}" diperbarui oleh ${auth.currentUser.email}.`,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                userEmail: auth.currentUser.email,
-                read: false
-            });
         } else {
-            // Tambah deal baru
-            await dealsCollection.add(dealData);
-            showToast(`Deal "${dealName}" berhasil ditambahkan!`, 2000);
+            const docRef = await dealsCollection.add(dealData);
             
-            // Log aktivitas
             await activitiesCollection.add({
-                message: `Deal "${dealName}" ditambahkan oleh ${auth.currentUser.email}.`,
+                message: `Deal "${dealName}" ditambahkan oleh ${auth.currentUser.email}. (Nilai: Rp ${formatNumber(calculatedValue)}, Tahap: ${stage}, Priority: ${priority})`,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                 userEmail: auth.currentUser.email,
                 read: false
             });
+            
+            showToast(`Deal "${dealName}" berhasil ditambahkan!`, 2000);
         }
         
-        // Reset semua cache
         priorityStatsCache = {
             'all': null,
             '2025': null,
@@ -5791,9 +5597,11 @@ async function saveDeal() {
             '2026': null
         };
         
-        // Tutup modal dan refresh data
+        activitiesCache.lastFetch = null;
+        
         closeDealModal();
-        loadDealsFromFirebase();
+        await loadDealsFromFirebase(true);
+        await loadActivitiesFromFirebase(true);
         
     } catch (error) {
         console.error("Error saving deal:", error);
@@ -5801,45 +5609,57 @@ async function saveDeal() {
     }
 }
 
-// Fungsi untuk mempersiapkan edit deal
 function prepareEditDeal(dealId) {
     openDealModal(dealId);
 }
 
-// Fungsi untuk membuka modal detail deal
 async function openDealDetailModal(dealId) {
     try {
-        const deal = deals.find(d => d.id === dealId);
+        let deal = getDealById(dealId);
+        
+        if (!deal) {
+            deal = deals.find(d => d.id === dealId);
+        }
+        
+        if (!deal) {
+            console.log("Deal tidak ditemukan di cache, mengambil dari Firestore...");
+            const dealDoc = await dealsCollection.doc(dealId).get();
+            if (dealDoc.exists) {
+                deal = { id: dealDoc.id, ...dealDoc.data() };
+                deals.push(deal);
+                dealsByIdCache.set(dealId, deal);
+            }
+        }
+        
         if (!deal) {
             showToast("Deal tidak ditemukan", 3000);
             return;
         }
         
-        // Hitung nilai tertinggi dari semua project dengan nama yang sama (semua priority)
         const allProjectDeals = deals.filter(d => 
             d.dealName?.trim().toLowerCase() === deal.dealName?.trim().toLowerCase()
         );
         const highestValueOverall = Math.max(...allProjectDeals.map(d => d.value || 0));
         
-        // Informasi tentang project dengan priority berbeda
         const mergedProjectsInfo = identifyMergedProjects();
         const dealNameLower = deal.dealName?.toLowerCase().trim();
         const hasDifferentPriorities = mergedProjectsInfo[dealNameLower] && mergedProjectsInfo[dealNameLower].count > 1;
         const allPriorities = hasDifferentPriorities ? mergedProjectsInfo[dealNameLower].priorities : [deal.priority];
         
-        // Update detail deal
         document.getElementById('dealDetailTitle').textContent = `Detail Deal: ${deal.dealName}`;
         document.getElementById('detailSalesName').textContent = deal.salesName || '-';
-        document.getElementById('detailValue').textContent = `Rp ${formatNumber(highestValueOverall) || '0'}`;
+        
+        const valueElement = document.getElementById('detailValue');
         if ((deal.value || 0) < highestValueOverall) {
-            const valueElement = document.getElementById('detailValue');
             valueElement.innerHTML = `Rp ${formatNumber(highestValueOverall)} <span class="text-xs text-gray-500">(nilai asli: Rp ${formatNumber(deal.value || 0)})</span>`;
+        } else {
+            valueElement.textContent = `Rp ${formatNumber(highestValueOverall) || '0'}`;
         }
+        
         document.getElementById('detailDiscount').textContent = deal.discount ? `${deal.discount}%` : '-';
         document.getElementById('detailBeforeDiscount').textContent = `Rp ${formatNumber(deal.beforeDiscount) || '0'}`;
         document.getElementById('detailPackage').textContent = deal.package || '-';
         
-        // Handle produk
         let productText = '-';
         if (deal.product) {
             if (Array.isArray(deal.product)) {
@@ -5854,7 +5674,6 @@ async function openDealDetailModal(dealId) {
         document.getElementById('detailOwner').textContent = deal.owner || '-';
         document.getElementById('detailConsultant').textContent = deal.consultant || '-';
         
-        // Handle kontraktor
         let contractorText = '-';
         if (deal.contractor) {
             if (Array.isArray(deal.contractor)) {
@@ -5868,11 +5687,14 @@ async function openDealDetailModal(dealId) {
         document.getElementById('detailPIC').textContent = deal.pic || '-';
         document.getElementById('detailPlanPO').textContent = deal.planPO || '-';
         document.getElementById('detailStage').textContent = deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-';
-        document.getElementById('detailPriority').textContent = deal.priority || '-';
+        
+        const priorityBadgeClass = getPriorityBadgeClass(deal.priority);
+        const priorityElement = document.getElementById('detailPriority');
+        priorityElement.innerHTML = `<span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">${deal.priority || '-'}</span>`;
+        
         document.getElementById('detailCreatedDate').textContent = formatDate(deal.createdAt);
         document.getElementById('detailRemarks').textContent = deal.remarks || '-';
         
-        // Tampilkan informasi project dengan priority lain jika ada
         const otherPrioritiesInfo = document.getElementById('otherPrioritiesInfo');
         if (otherPrioritiesInfo) {
             if (hasDifferentPriorities && allPriorities.length > 1) {
@@ -5895,7 +5717,6 @@ async function openDealDetailModal(dealId) {
                 `;
                 otherPrioritiesInfo.classList.remove('hidden');
                 
-                // Event listener untuk tombol lihat semua priority
                 const viewAllBtn = otherPrioritiesInfo.querySelector('.view-all-priorities-btn');
                 if (viewAllBtn) {
                     viewAllBtn.addEventListener('click', (e) => {
@@ -5909,7 +5730,6 @@ async function openDealDetailModal(dealId) {
             }
         }
         
-        // Update progress
         let progress = 0;
         switch (deal.stage) {
             case 'identified':
@@ -5935,12 +5755,10 @@ async function openDealDetailModal(dealId) {
         }
         document.getElementById('detailProgress').textContent = `${progress}%`;
         
-        // Load dan tampilkan komentar
         currentDealIdForComments = dealId;
         const comments = await loadComments(dealId);
         renderComments(comments, 'detailCommentsList');
         
-        // Tampilkan modal
         document.getElementById('dealDetailModal').classList.remove('hidden');
         const dealDetailModalContent = document.getElementById('dealDetailModalContent');
         if (dealDetailModalContent) {
@@ -5954,7 +5772,6 @@ async function openDealDetailModal(dealId) {
     }
 }
 
-// Fungsi untuk menutup modal detail deal
 function closeDealDetailModal() {
     const dealDetailModalContent = document.getElementById('dealDetailModalContent');
     if (!dealDetailModalContent) return;
@@ -5970,13 +5787,10 @@ function closeDealDetailModal() {
     }, { once: true });
 }
 
-// Fungsi untuk konfirmasi hapus deal
 function confirmDeleteDeal(dealId, dealName) {
-    // Simpan deal yang akan dihapus
-    window.dealToDeleteId = dealId;
-    window.dealToDeleteName = dealName;
+    dealToDeleteId = dealId;
+    dealToDeleteName = dealName;
     
-    // Tampilkan modal konfirmasi
     document.getElementById('dealToDeleteName').textContent = dealName;
     document.getElementById('deleteModal').classList.remove('hidden');
     const deleteModalContent = document.getElementById('deleteModalContent');
@@ -5986,7 +5800,6 @@ function confirmDeleteDeal(dealId, dealName) {
     }
 }
 
-// Fungsi untuk menutup modal konfirmasi hapus
 function closeDeleteModal() {
     const deleteModalContent = document.getElementById('deleteModalContent');
     if (!deleteModalContent) return;
@@ -6001,10 +5814,9 @@ function closeDeleteModal() {
     }, { once: true });
 }
 
-// Fungsi untuk menghapus deal (pindah ke Recycle Bin)
 async function deleteDeal() {
-    const dealId = window.dealToDeleteId;
-    const dealName = window.dealToDeleteName;
+    const dealId = dealToDeleteId;
+    const dealName = dealToDeleteName;
     
     if (!dealId) {
         showToast("Deal tidak ditemukan", 3000);
@@ -6012,7 +5824,6 @@ async function deleteDeal() {
     }
     
     try {
-        // Ambil data deal dari Firestore
         const dealDoc = await dealsCollection.doc(dealId).get();
         if (!dealDoc.exists) {
             showToast("Deal tidak ditemukan di database", 3000);
@@ -6021,7 +5832,6 @@ async function deleteDeal() {
         
         const dealData = dealDoc.data();
         
-        // Tambahkan informasi penghapusan
         const deletedDealData = {
             ...dealData,
             originalId: dealId,
@@ -6030,23 +5840,19 @@ async function deleteDeal() {
             deletedByEmail: auth.currentUser.email
         };
         
-        // Simpan ke Recycle Bin
         await deletedDealsCollection.add(deletedDealData);
         
-        // Hapus dari collection deals
         await dealsCollection.doc(dealId).delete();
         
-        showToast(`Deal "${dealName}" berhasil dipindahkan ke Recycle Bin!`, 2000);
-        
-        // Log aktivitas
         await activitiesCollection.add({
-            message: `Deal "${dealName}" dipindahkan ke Recycle Bin oleh ${auth.currentUser.email}.`,
+            message: `Deal "${dealName}" dipindahkan ke Recycle Bin oleh ${auth.currentUser.email}. (Nilai: Rp ${formatNumber(dealData.value || 0)})`,
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             userEmail: auth.currentUser.email,
             read: false
         });
         
-        // Reset semua cache
+        showToast(`Deal "${dealName}" berhasil dipindahkan ke Recycle Bin!`, 2000);
+        
         priorityStatsCache = {
             'all': null,
             '2025': null,
@@ -6059,11 +5865,13 @@ async function deleteDeal() {
             '2026': null
         };
         
-        // Tutup modal dan refresh data
-        closeDeleteModal();
-        loadDealsFromFirebase();
+        dealsByIdCache.delete(dealId);
+        activitiesCache.lastFetch = null;
         
-        // Update Recycle Bin jika admin
+        closeDeleteModal();
+        await loadDealsFromFirebase(true);
+        await loadActivitiesFromFirebase(true);
+        
         if (currentUserRole === 'admin') {
             loadRecycleBin();
         }
@@ -6074,11 +5882,24 @@ async function deleteDeal() {
     }
 }
 
-// Inisialisasi aplikasi setelah halaman dimuat
+// ==================== INISIALISASI ====================
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM loaded, initializing application...");
-    // Firebase auth sudah menangani inisialisasi melalui auth.onAuthStateChanged
 });
 
-// Ekspor fungsi yang diperlukan untuk event handler HTML
+// ==================== EKSPOR FUNGSI GLOBAL ====================
+
 window.openDealDetailModal = openDealDetailModal;
+window.closeActivityModal = closeActivityModal;
+window.closeDealDetailModal = closeDealDetailModal;
+window.closeDealModal = closeDealModal;
+window.closeDeleteModal = closeDeleteModal;
+window.closeFilterPanel = closeFilterPanel;
+window.closeStatsModal = closeStatsModal;
+window.closeRecycleBinModal = closeRecycleBinModal;
+window.closePermanentDeleteModal = closePermanentDeleteModal;
+window.closeEmptyRecycleBinModal = closeEmptyRecycleBinModal;
+window.closeExportModal = closeExportModal;
+window.closePriorityModal = closePriorityModal;
+window.closeClickableChartModal = closeClickableChartModal;
