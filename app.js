@@ -139,6 +139,9 @@ let dealsByIdCache = new Map();
 let dealToDeleteId = null;
 let dealToDeleteName = '';
 
+// Flag untuk mencegah multiple click
+let isActivityModalOpening = false;
+
 // ==================== FUNGSI UTAMA ====================
 
 // Fungsi untuk menangani perubahan status autentikasi
@@ -2125,7 +2128,16 @@ function restoreActivityModalState() {
     }
 }
 
+// Fungsi untuk membuka modal aktivitas dengan loading state langsung
 async function openActivityModal() {
+    // Cegah multiple click
+    if (isActivityModalOpening) {
+        console.log("Activity modal already opening, ignoring click");
+        return;
+    }
+    
+    isActivityModalOpening = true;
+    
     try {
         const activityModal = document.getElementById('activityModal');
         const activityFeed = document.getElementById('activity-feed-modal');
@@ -2134,25 +2146,35 @@ async function openActivityModal() {
         if (!activityModal || !activityFeed || !activityModalContent) {
             console.error("Elemen modal aktivitas tidak ditemukan.");
             showToast("Gagal membuka aktivitas: Elemen tidak lengkap.", 3000);
+            isActivityModalOpening = false;
             return;
         }
         
+        // Tampilkan modal dengan loading state langsung (tanpa delay)
+        activityModal.classList.remove('hidden');
+        activityModalContent.classList.remove('modal-content-leave-active');
+        activityModalContent.classList.add('modal-content-enter-active');
+        
+        // Tampilkan loading indicator
         activityFeed.innerHTML = `
-            <div class="text-center text-gray-500 py-4">
+            <div class="text-center text-gray-500 py-8">
                 <i class="fas fa-spinner fa-spin text-3xl mb-2"></i>
                 <p>Memuat aktivitas...</p>
             </div>
         `;
         
-        activityModal.classList.remove('hidden');
+        // Set isOpen ke true segera
+        activityModalState.isOpen = true;
         
+        // Load data di background
         await loadActivitiesFromFirebase(true);
         
+        // Render aktivitas
         activityFeed.innerHTML = '';
         
         if (activities.length === 0) {
             activityFeed.innerHTML = `
-                <div class="text-center text-gray-500 py-4">
+                <div class="text-center text-gray-500 py-8">
                     <i class="fas fa-inbox text-3xl mb-2"></i>
                     <p>Tidak ada aktivitas terbaru</p>
                 </div>
@@ -2164,19 +2186,20 @@ async function openActivityModal() {
                 return tsB - tsA;
             });
 
-            for (const activity of sortedActivities) {
+            // Gunakan Promise.all untuk mencari semua deal secara paralel
+            const activityPromises = sortedActivities.map(async (activity) => {
+                const dealName = extractDealNameFromActivity(activity.message);
+                if (dealName) {
+                    activity.deal = await findDealByName(dealName);
+                }
+                return activity;
+            });
+            
+            const activitiesWithDeals = await Promise.all(activityPromises);
+
+            activitiesWithDeals.forEach((activity) => {
                 const activityItem = document.createElement('div');
                 activityItem.className = 'activity-item p-3 border-b hover:bg-gray-50 transition duration-200';
-                
-                const dealName = extractDealNameFromActivity(activity.message);
-                
-                let deal = null;
-                let isLoading = false;
-                
-                if (dealName) {
-                    isLoading = true;
-                    deal = await findDealByName(dealName);
-                }
                 
                 const timeStr = activity.timestamp ? formatDateTime(activity.timestamp) : 'Waktu tidak diketahui';
                 const isUnread = !activity.read;
@@ -2189,27 +2212,17 @@ async function openActivityModal() {
                                 <i class="fas fa-clock mr-1"></i>
                                 <span>${timeStr}</span>
                                 ${isUnread ? '<span class="ml-2 bg-blue-500 text-white px-2 py-0.5 rounded-full text-xs">Baru</span>' : ''}
-                                ${deal ? '<span class="ml-2 text-green-600"><i class="fas fa-check-circle"></i> Deal tersedia</span>' : ''}
+                                ${activity.deal ? '<span class="ml-2 text-green-600"><i class="fas fa-check-circle"></i> Deal tersedia</span>' : ''}
                             </div>
                         </div>
-                        ${deal ? `
-                            <div class="ml-2 flex space-x-1">
-                                <button class="view-activity-detail text-blue-600 hover:text-blue-800 p-1" 
-                                        data-deal-id="${deal.id}" 
-                                        data-deal-name="${deal.dealName}"
+                        ${activity.deal ? `
+                            <div class="ml-2">
+                                <button class="view-activity-deal text-blue-600 hover:text-blue-800 p-1" 
+                                        data-deal-id="${activity.deal.id}" 
+                                        data-deal-name="${activity.deal.dealName}"
                                         title="Lihat detail deal">
                                     <i class="fas fa-eye"></i>
                                 </button>
-                                <button class="view-activity-deal text-green-600 hover:text-green-800 p-1" 
-                                        data-deal-id="${deal.id}"
-                                        data-deal-name="${deal.dealName}"
-                                        title="Buka deal">
-                                    <i class="fas fa-external-link-alt"></i>
-                                </button>
-                            </div>
-                        ` : isLoading ? `
-                            <div class="ml-2">
-                                <i class="fas fa-spinner fa-spin text-gray-400"></i>
                             </div>
                         ` : `
                             <div class="ml-2 text-xs text-gray-400 italic" title="Deal mungkin sudah dihapus">
@@ -2219,54 +2232,45 @@ async function openActivityModal() {
                     </div>
                 `;
                 
-                if (deal) {
+                if (activity.deal) {
                     activityItem.addEventListener('click', function(e) {
                         if (e.target.closest('button')) return;
                         
-                        const dealId = deal.id;
+                        const dealId = activity.deal.id;
                         saveActivityModalState();
                         openDealDetailModal(dealId);
                     });
                     
-                    const detailBtn = activityItem.querySelector('.view-activity-detail');
-                    if (detailBtn) {
-                        detailBtn.addEventListener('click', function(e) {
+                    const viewBtn = activityItem.querySelector('.view-activity-deal');
+                    if (viewBtn) {
+                        viewBtn.addEventListener('click', function(e) {
                             e.stopPropagation();
                             const dealId = this.dataset.dealId;
                             saveActivityModalState();
                             openDealDetailModal(dealId);
                         });
                     }
-                    
-                    const openBtn = activityItem.querySelector('.view-activity-deal');
-                    if (openBtn) {
-                        openBtn.addEventListener('click', function(e) {
-                            e.stopPropagation();
-                            const dealId = this.dataset.dealId;
-                            saveActivityModalState();
-                            openDealDetailModal(dealId);
-                        });
-                    }
-                } else if (!isLoading) {
+                } else {
                     activityItem.addEventListener('click', function() {
                         showToast("Deal sudah tidak tersedia (mungkin sudah dihapus)", 3000);
                     });
                 }
                 
                 activityFeed.appendChild(activityItem);
-            }
+            });
         }
         
-        activityModalContent.classList.remove('modal-content-leave-active');
-        activityModalContent.classList.add('modal-content-enter-active');
-        
-        activityModalState.isOpen = true;
-        
+        // Tandai sebagai sudah dibaca
         markActivitiesAsRead();
         
     } catch (error) {
         console.error("Error opening activity modal:", error);
         showToast("Gagal membuka aktivitas", 3000);
+    } finally {
+        // Reset flag setelah selesai
+        setTimeout(() => {
+            isActivityModalOpening = false;
+        }, 500);
     }
 }
 
