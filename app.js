@@ -173,7 +173,12 @@ auth.onAuthStateChanged(async (user) => {
 
             // Cek role admin/manager
             if (managerEmails.includes(user.email)) {
-                currentUserRole = user.email === 'admin@genetek.co.id' ? 'admin' : 'manager';
+                // Jika email adalah admin atau david, berikan role admin
+                if (user.email === 'admin@genetek.co.id' || user.email === 'david@genetek.co.id') {
+                    currentUserRole = 'admin';
+                } else {
+                    currentUserRole = 'manager';
+                }
                 await usersCollection.doc(user.uid).set({ 
                     role: currentUserRole,
                     email: user.email 
