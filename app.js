@@ -168,32 +168,49 @@ function getCurrentSalesName() {
  * - Sales: hanya melihat deals miliknya sendiri
  */
 function filterDealsByUser(dealsList) {
+    // Jika admin atau manager, tampilkan semua
     if (currentUserRole === 'admin' || currentUserRole === 'manager') {
+        console.log("Admin/Manager: menampilkan semua deals");
         return dealsList;
     }
     
     const currentSales = getCurrentSalesName();
     if (!currentSales) {
+        console.log("No sales name found for current user");
         return [];
     }
     
+    console.log(`Sales mode: filtering deals for sales: ${currentSales}`);
+    
     // Filter hanya deal yang salesName-nya sama dengan currentSales
-    return dealsList.filter(deal => deal.salesName === currentSales);
+    const filtered = dealsList.filter(deal => {
+        const dealSales = deal.salesName;
+        const match = dealSales === currentSales;
+        if (!match) {
+            console.log(`Excluding deal: ${deal.dealName} (sales: ${dealSales})`);
+        }
+        return match;
+    });
+    
+    console.log(`Filtered ${filtered.length} deals out of ${dealsList.length} for sales ${currentSales}`);
+    return filtered;
 }
 
 /**
  * Mendapatkan deals yang sudah difilter berdasarkan user
  */
 function getFilteredDeals() {
+    // Mulai dengan semua deals
     let baseDeals = deals;
     
-    // Filter berdasarkan role user (hanya deal milik sales yang login)
+    // PENTING: Filter berdasarkan role user TERLEBIH DAHULU
+    // Ini memastikan sales hanya melihat project miliknya
     baseDeals = filterDealsByUser(baseDeals);
     
-    // Filter berdasarkan tahun aktif
+    // Kemudian filter berdasarkan tahun aktif
     baseDeals = getDealsByYear(activeYear);
     
-    // Filter berdasarkan filter yang dipilih user
+    // Terakhir filter berdasarkan filter yang dipilih user di UI
     const filteredDeals = baseDeals.filter(deal => {
         const matchesSearch = 
             activeFilters.searchTerm === '' ||
@@ -235,6 +252,7 @@ function getFilteredDeals() {
             matchesConsultant && matchesContractor && matchesFacility && matchesProduct && matchesPackage;
     });
     
+    console.log(`Total filtered deals: ${filteredDeals.length}`);
     return filteredDeals;
 }
 
@@ -1985,7 +2003,7 @@ function showAllPrioritiesForProject(dealName) {
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                         </td>
-                                    </tr>
+                                    </table>
                                 `}).join('')}
                             </tbody>
                         </table>
@@ -2881,6 +2899,7 @@ async function loadDealsFromFirebase(forceRefresh = false) {
             const currentSales = getCurrentSalesName();
             if (currentSales) {
                 uniqueSales = new Set([currentSales]);
+                console.log("Filtered uniqueSales untuk dropdown:", Array.from(uniqueSales));
             }
         }
         
@@ -4776,6 +4795,7 @@ function applyActiveFilters() {
         // Gunakan fungsi getFilteredDeals yang sudah memfilter berdasarkan user
         const filteredDeals = getFilteredDeals();
         
+        console.log(`Applying filters: ${filteredDeals.length} deals to display`);
         renderFilteredDeals(filteredDeals);
     } catch (error) {
         console.error("Error applying active filters:", error);
