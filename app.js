@@ -177,6 +177,7 @@ function filterDealsByUser(dealsList) {
         return [];
     }
     
+    // Filter hanya deal yang salesName-nya sama dengan currentSales
     return dealsList.filter(deal => deal.salesName === currentSales);
 }
 
@@ -186,7 +187,7 @@ function filterDealsByUser(dealsList) {
 function getFilteredDeals() {
     let baseDeals = deals;
     
-    // Filter berdasarkan role user
+    // Filter berdasarkan role user (hanya deal milik sales yang login)
     baseDeals = filterDealsByUser(baseDeals);
     
     // Filter berdasarkan tahun aktif
@@ -2873,6 +2874,15 @@ async function loadDealsFromFirebase(forceRefresh = false) {
         
         console.log("Total deals loaded:", deals.length);
         console.log("Unique years found:", Array.from(uniqueYears));
+        
+        // Filter uniqueSales berdasarkan role user untuk dropdown
+        if (currentUserRole !== 'admin' && currentUserRole !== 'manager') {
+            // Untuk sales, hanya tampilkan nama sales mereka sendiri di dropdown
+            const currentSales = getCurrentSalesName();
+            if (currentSales) {
+                uniqueSales = new Set([currentSales]);
+            }
+        }
         
         priorityStatsCache = {
             'all': null,
