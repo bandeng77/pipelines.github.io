@@ -25,6 +25,8 @@ let activities = [];
 let charts = {};
 const DEFAULT_STAGE = 'identified';
 let currentUserRole = 'user';
+let currentUserEmail = null;
+let currentSalesName = null;
 let sortableInstances = {};
 let authInitialized = false;
 
@@ -100,6 +102,12 @@ const emailToSalesNameMap = {
     'yib_wahyu@genetek.co.id': 'YIB Wahyu'
 };
 
+// Reverse mapping dari nama sales ke email
+const salesNameToEmailMap = {};
+Object.entries(emailToSalesNameMap).forEach(([email, name]) => {
+    salesNameToEmailMap[name] = email;
+});
+
 // Daftar email manager
 const managerEmails = [
     'hadi@genetek.co.id',
@@ -144,6 +152,91 @@ let isActivityModalOpening = false;
 
 // ==================== FUNGSI UTAMA ====================
 
+/**
+ * Mendapatkan nama sales dari email yang login
+ */
+function getCurrentSalesName() {
+    if (currentUserEmail && emailToSalesNameMap[currentUserEmail]) {
+        return emailToSalesNameMap[currentUserEmail];
+    }
+    return null;
+}
+
+/**
+ * Filter deals berdasarkan user yang login
+ * - Admin/Manager: melihat semua deals
+ * - Sales: hanya melihat deals miliknya sendiri
+ */
+function filterDealsByUser(dealsList) {
+    if (currentUserRole === 'admin' || currentUserRole === 'manager') {
+        return dealsList;
+    }
+    
+    const currentSales = getCurrentSalesName();
+    if (!currentSales) {
+        return [];
+    }
+    
+    return dealsList.filter(deal => deal.salesName === currentSales);
+}
+
+/**
+ * Mendapatkan deals yang sudah difilter berdasarkan user
+ */
+function getFilteredDeals() {
+    let baseDeals = deals;
+    
+    // Filter berdasarkan role user
+    baseDeals = filterDealsByUser(baseDeals);
+    
+    // Filter berdasarkan tahun aktif
+    baseDeals = getDealsByYear(activeYear);
+    
+    // Filter berdasarkan filter yang dipilih user
+    const filteredDeals = baseDeals.filter(deal => {
+        const matchesSearch = 
+            activeFilters.searchTerm === '' ||
+            (deal.dealName && deal.dealName.toLowerCase().includes(activeFilters.searchTerm)) ||
+            (deal.salesName && deal.salesName.toLowerCase().includes(activeFilters.searchTerm));
+        
+        const matchesPriority = 
+            activeFilters.priority === 'all' || 
+            (deal.priority && deal.priority === activeFilters.priority);
+        
+        const matchesStage = activeFilters.stage === 'all' || 
+                            (deal.stage && deal.stage === activeFilters.stage);
+
+        const matchesSales = activeFilters.sales === 'all' || 
+                            (deal.salesName && deal.salesName === activeFilters.sales);
+
+        const matchesConsultant = activeFilters.consultant === 'all' || 
+                                (deal.consultant && deal.consultant === activeFilters.consultant);
+        
+        const matchesContractor = activeFilters.contractor === 'all' || 
+                                (deal.contractor && 
+                                (Array.isArray(deal.contractor) ? 
+                                deal.contractor.includes(activeFilters.contractor) : 
+                                deal.contractor === activeFilters.contractor));
+
+        const matchesProduct = activeFilters.product === 'all' || 
+                            (deal.product && 
+                            (Array.isArray(deal.product) ? 
+                            deal.product.includes(activeFilters.product) : 
+                            deal.product === activeFilters.product));
+
+        const matchesFacility = activeFilters.facility === 'all' || 
+                                (deal.facility && deal.facility === activeFilters.facility);
+
+        const matchesPackage = activeFilters.package === 'all' || 
+                            (deal.package && deal.package === activeFilters.package);
+        
+        return matchesSearch && matchesPriority && matchesStage && matchesSales &&
+            matchesConsultant && matchesContractor && matchesFacility && matchesProduct && matchesPackage;
+    });
+    
+    return filteredDeals;
+}
+
 // Fungsi untuk menangani perubahan status autentikasi
 auth.onAuthStateChanged(async (user) => {
     if (authInitialized) return;
@@ -165,6 +258,9 @@ auth.onAuthStateChanged(async (user) => {
 
     if (user && window.location.pathname.includes('app.html')) {
         try {
+            // Simpan email user yang login
+            currentUserEmail = user.email;
+            
             // Update welcome message
             const userWelcome = document.getElementById('userWelcome');
             if (userWelcome) {
@@ -196,8 +292,14 @@ auth.onAuthStateChanged(async (user) => {
                     currentUserRole = userDoc.data().role || 'user';
                 }
             }
-
+            
+            // Dapatkan nama sales dari email
+            currentSalesName = getCurrentSalesName();
+            
             console.log("Current role:", currentUserRole);
+            console.log("Current sales name:", currentSalesName);
+            console.log("Current user email:", currentUserEmail);
+            
             applyUserPermissions();
             
             // Load data dengan urutan yang benar
@@ -371,13 +473,6 @@ function getUniqueProjectsForDashboard(dealsList) {
     }
     
     console.log(`Unique projects: ${finalUniqueProjects.length} dari ${dealsList.length} total deals`);
-    console.log(`Detail:`, finalUniqueProjects.map(p => ({
-        name: p.dealName,
-        value: p.value,
-        displayValue: p.displayValue,
-        isLast: p.isLastActiveProject,
-        activeCount: p.activeProjectsCount
-    })));
     
     return finalUniqueProjects;
 }
@@ -604,7 +699,9 @@ function calculatePriorityStats(year) {
     }
     
     const yearDeals = getDealsByYear(year);
-    const uniqueProjects = getUniqueProjectsForDashboard(yearDeals);
+    // Filter deals berdasarkan user
+    const userYearDeals = filterDealsByUser(yearDeals);
+    const uniqueProjects = getUniqueProjectsForDashboard(userYearDeals);
     
     const priorityStats = {
         'Hot Priority': { count: 0, value: 0, deals: [] },
@@ -681,7 +778,8 @@ function openPriorityModal(priority, deals) {
     if (!modal || !modalTitle || !modalContent) return;
     
     const yearText = activeYear === 'all' ? 'Semua Tahun' : `Tahun ${activeYear}`;
-    modalTitle.textContent = `${priority} Projects (${yearText})`;
+    const userText = (currentUserRole === 'admin' || currentUserRole === 'manager') ? '' : ` - ${currentSalesName || currentUserEmail}`;
+    modalTitle.textContent = `${priority} Projects (${yearText})${userText}`;
     modalContent.innerHTML = '';
     
     if (deals.length === 0) {
@@ -2979,9 +3077,15 @@ function populateSalesFilter() {
 // ==================== FUNGSI STATISTIK PER SALES ====================
 
 function processSalesData(salesName = 'all') {
-    const salesDeals = salesName === 'all' 
-        ? deals 
-        : deals.filter(deal => deal.salesName === salesName);
+    let salesDeals;
+    if (salesName === 'all') {
+        salesDeals = deals;
+    } else {
+        salesDeals = deals.filter(deal => deal.salesName === salesName);
+    }
+    
+    // Filter berdasarkan user untuk sales
+    salesDeals = filterDealsByUser(salesDeals);
     
     const uniqueProjects = getUniqueProjectsForDashboard(salesDeals);
     
@@ -3295,9 +3399,15 @@ function renderSalesCharts() {
 // ==================== FUNGSI STATISTIK PER PRIORITY ====================
 
 function processPriorityData(priority = 'all') {
-    const priorityDeals = priority === 'all' 
-        ? deals 
-        : deals.filter(deal => deal.priority === priority);
+    let priorityDeals;
+    if (priority === 'all') {
+        priorityDeals = deals;
+    } else {
+        priorityDeals = deals.filter(deal => deal.priority === priority);
+    }
+    
+    // Filter berdasarkan user
+    priorityDeals = filterDealsByUser(priorityDeals);
     
     const uniqueProjects = getUniqueProjectsForDashboard(priorityDeals);
     
@@ -3643,7 +3753,10 @@ function renderPriorityCharts() {
 function processDealDataForCharts(dealsData) {
     console.log("Processing deal data for charts, total deals:", dealsData.length);
     
-    const uniqueProjects = getUniqueProjectsForDashboard(dealsData);
+    // Filter berdasarkan user
+    const userDealsData = filterDealsByUser(dealsData);
+    
+    const uniqueProjects = getUniqueProjectsForDashboard(userDealsData);
     
     const stageSelect = document.getElementById('stage');
     const allStages = stageSelect ? Array.from(stageSelect.options).map(option => option.value).filter(value => value !== '') : 
@@ -4019,9 +4132,15 @@ function renderAllCharts() {
 
 function showDealsByPriority(salesFilter, priority) {
     const selectedSales = salesFilter.value;
-    const filteredDeals = selectedSales === 'all' 
-        ? deals.filter(deal => deal.priority === priority)
-        : deals.filter(deal => deal.salesName === selectedSales && deal.priority === priority);
+    let filteredDeals;
+    if (selectedSales === 'all') {
+        filteredDeals = deals.filter(deal => deal.priority === priority);
+    } else {
+        filteredDeals = deals.filter(deal => deal.salesName === selectedSales && deal.priority === priority);
+    }
+    
+    // Filter berdasarkan user
+    filteredDeals = filterDealsByUser(filteredDeals);
     
     const uniqueFilteredDeals = getUniqueProjectsForDashboard(filteredDeals);
     
@@ -4099,9 +4218,15 @@ function showDealsByPriority(salesFilter, priority) {
 
 function showDealsByStage(priorityFilter, stage) {
     const selectedPriority = priorityFilter.value;
-    const filteredDeals = selectedPriority === 'all' 
-        ? deals.filter(deal => deal.stage === stage)
-        : deals.filter(deal => deal.priority === selectedPriority && deal.stage === stage);
+    let filteredDeals;
+    if (selectedPriority === 'all') {
+        filteredDeals = deals.filter(deal => deal.stage === stage);
+    } else {
+        filteredDeals = deals.filter(deal => deal.priority === selectedPriority && deal.stage === stage);
+    }
+    
+    // Filter berdasarkan user
+    filteredDeals = filterDealsByUser(filteredDeals);
     
     const uniqueFilteredDeals = getUniqueProjectsForDashboard(filteredDeals);
     
@@ -4638,53 +4763,8 @@ function switchView(viewType) {
 
 function applyActiveFilters() {
     try {
-        let baseDeals = deals;
-        if (currentUserRole !== 'admin' && currentUserRole !== 'manager') {
-            baseDeals = deals.filter(deal => deal.stage !== 'lost');
-        }
-
-        baseDeals = getDealsByYear(activeYear);
-
-        const filteredDeals = baseDeals.filter(deal => {
-            const matchesSearch = 
-                activeFilters.searchTerm === '' ||
-                (deal.dealName && deal.dealName.toLowerCase().includes(activeFilters.searchTerm)) ||
-                (deal.salesName && deal.salesName.toLowerCase().includes(activeFilters.searchTerm));
-            
-            const matchesPriority = 
-                activeFilters.priority === 'all' || 
-                (deal.priority && deal.priority === activeFilters.priority);
-            
-            const matchesStage = activeFilters.stage === 'all' || 
-                                (deal.stage && deal.stage === activeFilters.stage);
-
-            const matchesSales = activeFilters.sales === 'all' || 
-                                (deal.salesName && deal.salesName === activeFilters.sales);
-
-            const matchesConsultant = activeFilters.consultant === 'all' || 
-                                    (deal.consultant && deal.consultant === activeFilters.consultant);
-            
-            const matchesContractor = activeFilters.contractor === 'all' || 
-                                    (deal.contractor && 
-                                    (Array.isArray(deal.contractor) ? 
-                                    deal.contractor.includes(activeFilters.contractor) : 
-                                    deal.contractor === activeFilters.contractor));
-
-            const matchesProduct = activeFilters.product === 'all' || 
-                                (deal.product && 
-                                (Array.isArray(deal.product) ? 
-                                deal.product.includes(activeFilters.product) : 
-                                deal.product === activeFilters.product));
-
-            const matchesFacility = activeFilters.facility === 'all' || 
-                                    (deal.facility && deal.facility === activeFilters.facility);
-
-            const matchesPackage = activeFilters.package === 'all' || 
-                                (deal.package && deal.package === activeFilters.package);
-            
-            return matchesSearch && matchesPriority && matchesStage && matchesSales &&
-                matchesConsultant && matchesContractor && matchesFacility && matchesProduct && matchesPackage;
-        });
+        // Gunakan fungsi getFilteredDeals yang sudah memfilter berdasarkan user
+        const filteredDeals = getFilteredDeals();
         
         renderFilteredDeals(filteredDeals);
     } catch (error) {
@@ -4727,10 +4807,14 @@ function renderFilteredDeals(filteredDeals) {
     pipelineStage.innerHTML = '';
     
     if (filteredDeals.length === 0) {
+        const message = (currentUserRole === 'admin' || currentUserRole === 'manager') 
+            ? 'Tidak ada deals yang sesuai dengan filter.'
+            : `Tidak ada pipeline untuk sales ${currentSalesName || currentUserEmail}. Silakan tambahkan deal baru.`;
+        
         pipelineStage.innerHTML = `
             <div class="empty-stage-message text-center text-gray-400 p-4 text-sm w-full">
                 <i class="fas fa-search text-3xl mb-2"></i>
-                <p>Tidak ada deals yang sesuai dengan filter.</p>
+                <p>${message}</p>
             </div>
         `;
         return;
@@ -5628,9 +5712,18 @@ async function openDealModal(dealId = null) {
             
             const currentUser = auth.currentUser;
             if (currentUser && currentUserRole === 'user') {
-                const userSalesName = getSalesNameFromEmail(currentUser.email);
+                const userSalesName = getCurrentSalesName();
                 const salesNameSelect = document.getElementById('salesName');
-                if (salesNameSelect) salesNameSelect.value = userSalesName;
+                if (salesNameSelect && userSalesName) {
+                    salesNameSelect.value = userSalesName;
+                    // Untuk sales, disable dropdown salesName agar tidak bisa diganti
+                    salesNameSelect.disabled = true;
+                }
+            } else {
+                const salesNameSelect = document.getElementById('salesName');
+                if (salesNameSelect) {
+                    salesNameSelect.disabled = false;
+                }
             }
             
             addContractorField();
@@ -5668,6 +5761,12 @@ function closeDealModal() {
         dealModalContent.classList.remove('modal-content-leave-active');
         dealModalContent.removeEventListener('transitionend', handler);
         currentDealIdForComments = null;
+        
+        // Reset salesName select disabled state
+        const salesNameSelect = document.getElementById('salesName');
+        if (salesNameSelect) {
+            salesNameSelect.disabled = false;
+        }
     }, { once: true });
 }
 
