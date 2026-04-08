@@ -187,7 +187,9 @@ function filterDealsByUser(dealsList) {
         const dealSales = deal.salesName;
         const match = dealSales === currentSales;
         if (!match) {
-            console.log(`Excluding deal: ${deal.dealName} (sales: ${dealSales})`);
+            console.log(`Excluding deal: ${deal.dealName} (sales: ${dealSales}) - not matching ${currentSales}`);
+        } else {
+            console.log(`Including deal: ${deal.dealName} (sales: ${dealSales})`);
         }
         return match;
     });
