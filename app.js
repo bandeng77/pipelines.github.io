@@ -200,6 +200,7 @@ function filterDealsByUser(dealsList) {
 
 /**
  * Mendapatkan deals yang sudah difilter berdasarkan user
+ * INI ADALAH FUNGSI UTAMA YANG DIGUNAKAN UNTUK MENDAPATKAN DATA YANG AKAN DITAMPILKAN
  */
 function getFilteredDeals() {
     // Mulai dengan semua deals
@@ -254,8 +255,30 @@ function getFilteredDeals() {
             matchesConsultant && matchesContractor && matchesFacility && matchesProduct && matchesPackage;
     });
     
-    console.log(`Total filtered deals: ${filteredDeals.length}`);
+    console.log(`Total filtered deals untuk user ${currentSalesName || currentUserEmail}: ${filteredDeals.length}`);
     return filteredDeals;
+}
+
+/**
+ * Mendapatkan deals yang sudah difilter berdasarkan user UNTUK DASHBOARD (unique projects)
+ * Fungsi ini memastikan bahwa hanya project milik sales yang bersangkutan yang ditampilkan
+ */
+function getFilteredUniqueProjectsForDashboard() {
+    // Dapatkan deals yang sudah difilter berdasarkan user
+    const userFilteredDeals = getFilteredDeals();
+    
+    // Jika user adalah sales, pastikan hanya project miliknya yang masuk ke unique projects
+    if (currentUserRole !== 'admin' && currentUserRole !== 'manager') {
+        const currentSales = getCurrentSalesName();
+        if (currentSales) {
+            // Filter ulang untuk memastikan tidak ada project sales lain
+            const salesOnlyDeals = userFilteredDeals.filter(deal => deal.salesName === currentSales);
+            console.log(`Unique projects untuk sales ${currentSales}: ${salesOnlyDeals.length} deals`);
+            return getUniqueProjectsForDashboard(salesOnlyDeals);
+        }
+    }
+    
+    return getUniqueProjectsForDashboard(userFilteredDeals);
 }
 
 // Fungsi untuk menangani perubahan status autentikasi
@@ -1255,10 +1278,10 @@ async function addComment(dealId, content) {
 
 // ==================== FUNGSI MERGE PROJECT DALAM DEAL CARD ====================
 
-function groupDealsByNameAndPriority() {
+function groupDealsByNameAndPriority(dealsList) {
     const groupedDeals = {};
     
-    deals.forEach(deal => {
+    dealsList.forEach(deal => {
         const dealName = deal.dealName?.trim().toLowerCase();
         const priority = deal.priority || 'Priority';
         if (!dealName) return;
@@ -1275,10 +1298,10 @@ function groupDealsByNameAndPriority() {
     return groupedDeals;
 }
 
-function identifyMergedProjects() {
+function identifyMergedProjects(dealsList) {
     const groupedByProjectName = {};
     
-    deals.forEach(deal => {
+    dealsList.forEach(deal => {
         const dealName = deal.dealName?.trim().toLowerCase();
         if (!dealName) return;
         
@@ -1362,7 +1385,7 @@ function renderMergedDealCard(dealGroup) {
     const hasMultipleSales = dealGroup.length > 1;
     const salesNames = [...new Set(dealGroup.map(deal => deal.salesName))];
     
-    const mergedProjectsInfo = identifyMergedProjects();
+    const mergedProjectsInfo = identifyMergedProjects(deals);
     const hasDifferentPriorities = mergedProjectsInfo[dealNameLower] && mergedProjectsInfo[dealNameLower].count > 1;
     const otherPriorities = hasDifferentPriorities ? 
         mergedProjectsInfo[dealNameLower].priorities.filter(p => p !== priority) : [];
@@ -1679,7 +1702,7 @@ function renderIndividualDealCard(deal) {
         displayValue = highestValueOverall;
     }
     
-    const mergedProjectsInfo = identifyMergedProjects();
+    const mergedProjectsInfo = identifyMergedProjects(deals);
     const dealNameLower = deal.dealName?.toLowerCase().trim();
     const hasDifferentPriorities = mergedProjectsInfo[dealNameLower] && mergedProjectsInfo[dealNameLower].count > 1;
     const otherPriorities = hasDifferentPriorities ? 
@@ -1938,7 +1961,7 @@ function showAllPrioritiesForProject(dealName) {
     
     const highestValue = isLastProject ? 
         (activeEntries[0]?.value || 0) : 
-        Math.max(...activeEntries.map(d => d.value || 0));
+        Math.max(...allEntries.map(d => d.value || 0));
     
     modal.innerHTML = `
         <div class="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] overflow-hidden">
@@ -2005,7 +2028,7 @@ function showAllPrioritiesForProject(dealName) {
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                         </td>
-                                    </table>
+                                    </tr>
                                 `}).join('')}
                             </tbody>
                         </table>
@@ -4792,12 +4815,17 @@ function switchView(viewType) {
     applyActiveFilters();
 }
 
+/**
+ * FUNGSI UTAMA UNTUK MENAMPILKAN DEALS DI PIPELINES STAGE
+ * Fungsi ini menggunakan getFilteredDeals() yang sudah memfilter berdasarkan user
+ */
 function applyActiveFilters() {
     try {
         // Gunakan fungsi getFilteredDeals yang sudah memfilter berdasarkan user
+        // dan filter-filter lainnya (search, priority, stage, dll)
         const filteredDeals = getFilteredDeals();
         
-        console.log(`Applying filters: ${filteredDeals.length} deals to display`);
+        console.log(`Applying filters: ${filteredDeals.length} deals to display for user ${currentSalesName || currentUserEmail}`);
         renderFilteredDeals(filteredDeals);
     } catch (error) {
         console.error("Error applying active filters:", error);
@@ -4832,6 +4860,10 @@ function filterDeals() {
     }
 }
 
+/**
+ * RENDER FILTERED DEALS KE PIPELINES STAGE
+ * Data yang masuk ke fungsi ini sudah terfilter berdasarkan user
+ */
 function renderFilteredDeals(filteredDeals) {
     const pipelineStage = document.getElementById('pipelines-stage');
     if (!pipelineStage) return;
@@ -4853,6 +4885,7 @@ function renderFilteredDeals(filteredDeals) {
     }
     
     if (currentView === 'card') {
+        // Kelompokkan deals berdasarkan nama project dan priority
         const dealsByNameAndPriority = {};
         filteredDeals.forEach(deal => {
             const dealName = deal.dealName?.toLowerCase().trim();
@@ -6061,7 +6094,7 @@ async function openDealDetailModal(dealId) {
             displayValue = Math.max(...activeProjects.map(d => d.value || 0));
         }
         
-        const mergedProjectsInfo = identifyMergedProjects();
+        const mergedProjectsInfo = identifyMergedProjects(deals);
         const dealNameLower = deal.dealName?.toLowerCase().trim();
         const hasDifferentPriorities = mergedProjectsInfo[dealNameLower] && mergedProjectsInfo[dealNameLower].count > 1;
         const allPriorities = hasDifferentPriorities ? mergedProjectsInfo[dealNameLower].priorities : [deal.priority];
