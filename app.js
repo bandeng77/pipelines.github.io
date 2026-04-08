@@ -166,6 +166,8 @@ function getCurrentSalesName() {
  * Filter deals berdasarkan user yang login
  * - Admin/Manager: melihat semua deals
  * - Sales: hanya melihat deals miliknya sendiri
+ * 
+ * INI ADALAH FUNGSI PALING PENTING UNTUK FILTER BERDASARKAN SALES
  */
 function filterDealsByUser(dealsList) {
     // Jika admin atau manager, tampilkan semua
@@ -199,21 +201,26 @@ function filterDealsByUser(dealsList) {
 }
 
 /**
- * Mendapatkan deals yang sudah difilter berdasarkan user
+ * MENDAPATKAN DEALS YANG SUDAH DIFILTER BERDASARKAN USER
  * INI ADALAH FUNGSI UTAMA YANG DIGUNAKAN UNTUK MENDAPATKAN DATA YANG AKAN DITAMPILKAN
+ * 
+ * URUTAN FILTER YANG BENAR:
+ * 1. Filter berdasarkan role user (sales hanya lihat project sendiri)
+ * 2. Filter berdasarkan tahun aktif
+ * 3. Filter berdasarkan filter yang dipilih user di UI
  */
 function getFilteredDeals() {
-    // Mulai dengan semua deals
+    // Langkah 1: Mulai dengan semua deals
     let baseDeals = deals;
     
-    // PENTING: Filter berdasarkan role user TERLEBIH DAHULU
+    // Langkah 2: PENTING! Filter berdasarkan role user TERLEBIH DAHULU
     // Ini memastikan sales hanya melihat project miliknya
     baseDeals = filterDealsByUser(baseDeals);
     
-    // Kemudian filter berdasarkan tahun aktif
-    baseDeals = getDealsByYear(activeYear);
+    // Langkah 3: Kemudian filter berdasarkan tahun aktif
+    baseDeals = getDealsByYear(activeYear, baseDeals);
     
-    // Terakhir filter berdasarkan filter yang dipilih user di UI
+    // Langkah 4: Terakhir filter berdasarkan filter yang dipilih user di UI
     const filteredDeals = baseDeals.filter(deal => {
         const matchesSearch = 
             activeFilters.searchTerm === '' ||
@@ -255,16 +262,30 @@ function getFilteredDeals() {
             matchesConsultant && matchesContractor && matchesFacility && matchesProduct && matchesPackage;
     });
     
-    console.log(`Total filtered deals untuk user ${currentSalesName || currentUserEmail}: ${filteredDeals.length}`);
+    console.log(`[getFilteredDeals] Final filtered deals for ${currentSalesName || currentUserEmail}: ${filteredDeals.length} deals`);
     return filteredDeals;
 }
 
 /**
- * Mendapatkan daftar project unik untuk dashboard (HANYA dari deals yang sudah difilter user)
+ * Mendapatkan deals yang sudah difilter berdasarkan user UNTUK DASHBOARD (unique projects)
+ * Fungsi ini memastikan bahwa hanya project milik sales yang bersangkutan yang ditampilkan
  */
 function getFilteredUniqueProjectsForDashboard() {
-    const filteredDeals = getFilteredDeals();
-    return getUniqueProjectsForDashboard(filteredDeals);
+    // Dapatkan deals yang sudah difilter berdasarkan user
+    const userFilteredDeals = getFilteredDeals();
+    
+    // Jika user adalah sales, pastikan hanya project miliknya yang masuk ke unique projects
+    if (currentUserRole !== 'admin' && currentUserRole !== 'manager') {
+        const currentSales = getCurrentSalesName();
+        if (currentSales) {
+            // Filter ulang untuk memastikan tidak ada project sales lain
+            const salesOnlyDeals = userFilteredDeals.filter(deal => deal.salesName === currentSales);
+            console.log(`[getFilteredUniqueProjectsForDashboard] Unique projects untuk sales ${currentSales}: ${salesOnlyDeals.length} deals`);
+            return getUniqueProjectsForDashboard(salesOnlyDeals);
+        }
+    }
+    
+    return getUniqueProjectsForDashboard(userFilteredDeals);
 }
 
 // Fungsi untuk menangani perubahan status autentikasi
@@ -502,7 +523,7 @@ function getUniqueProjectsForDashboard(dealsList) {
         }
     }
     
-    console.log(`Unique projects: ${finalUniqueProjects.length} dari ${dealsList.length} total deals`);
+    console.log(`[getUniqueProjectsForDashboard] Unique projects: ${finalUniqueProjects.length} dari ${dealsList.length} total deals`);
     
     return finalUniqueProjects;
 }
@@ -554,21 +575,27 @@ function initYearFilter() {
 
 /**
  * Filter deals berdasarkan tahun yang dipilih dengan caching
+ * Memperhatikan filter user terlebih dahulu
  */
-function getDealsByYear(year) {
+function getDealsByYear(year, baseDeals = null) {
+    // Jika baseDeals tidak diberikan, gunakan deals yang sudah difilter user
+    const sourceDeals = baseDeals !== null ? baseDeals : filterDealsByUser(deals);
+    
     // Cek cache
-    if (dealsByYearCache[year]) {
+    if (dealsByYearCache[year] && baseDeals === null) {
         console.log(`Mengambil data tahun ${year} dari cache: ${dealsByYearCache[year].length} deals`);
         return dealsByYearCache[year];
     }
     
     if (year === 'all') {
-        dealsByYearCache[year] = deals;
-        console.log(`Semua tahun: ${deals.length} deals`);
-        return deals;
+        if (baseDeals === null) {
+            dealsByYearCache[year] = sourceDeals;
+        }
+        console.log(`Semua tahun: ${sourceDeals.length} deals`);
+        return sourceDeals;
     }
     
-    const filtered = deals.filter(deal => {
+    const filtered = sourceDeals.filter(deal => {
         if (!deal.createdAt) return false;
         
         try {
@@ -590,7 +617,9 @@ function getDealsByYear(year) {
         }
     });
     
-    dealsByYearCache[year] = filtered;
+    if (baseDeals === null) {
+        dealsByYearCache[year] = filtered;
+    }
     console.log(`Tahun ${year}: ${filtered.length} deals ditemukan`);
     
     return filtered;
@@ -879,11 +908,11 @@ function openPriorityModal(priority, deals) {
                                     <i class="fas fa-copy mr-1"></i>${deal.totalEntries}x
                                 </span>
                             ` : ''}
-                        </td>
+                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${deal.salesName || '-'}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold" title="${valueTooltip}">
                             ${valueDisplay}
-                        </td>
+                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${deal.stage === 'win' ? 'bg-green-100 text-green-800' : 
                                 deal.stage === 'lost' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">
@@ -941,9 +970,7 @@ function closePriorityModal() {
 }
 
 function showAllEntriesForProject(dealName, priority) {
-    // Gunakan filtered deals untuk memastikan sales hanya melihat entry miliknya
-    const filteredDeals = getFilteredDeals();
-    const allEntries = filteredDeals.filter(deal => 
+    const allEntries = deals.filter(deal => 
         deal.dealName?.trim() === dealName && 
         deal.priority === priority
     );
@@ -1331,10 +1358,7 @@ function getCardDisplayValue(deal, allDealsWithSameName) {
     return Math.max(...activeProjects.map(d => d.value || 0));
 }
 
-/**
- * RENDER MERGED DEAL CARD - HANYA MENGGUNAKAN DATA YANG SUDAH DIFILTER
- */
-function renderMergedDealCard(dealGroup, filteredDealsList) {
+function renderMergedDealCard(dealGroup) {
     const firstDeal = dealGroup[0];
     const dealName = firstDeal.dealName;
     const dealNameLower = dealName.toLowerCase();
@@ -1350,8 +1374,8 @@ function renderMergedDealCard(dealGroup, filteredDealsList) {
         activeSalesPerProject[key] = activeSales;
     }
     
-    // Dapatkan semua project dengan nama yang sama dari filteredDealsList (bukan dari deals global!)
-    const allProjectDeals = filteredDealsList.filter(deal => 
+    // Dapatkan semua project dengan nama yang sama (semua priority)
+    const allProjectDeals = deals.filter(deal => 
         deal.dealName?.trim().toLowerCase() === dealNameLower
     );
     
@@ -1376,7 +1400,7 @@ function renderMergedDealCard(dealGroup, filteredDealsList) {
     const hasMultipleSales = dealGroup.length > 1;
     const salesNames = [...new Set(dealGroup.map(deal => deal.salesName))];
     
-    const mergedProjectsInfo = identifyMergedProjects(filteredDealsList);
+    const mergedProjectsInfo = identifyMergedProjects(deals);
     const hasDifferentPriorities = mergedProjectsInfo[dealNameLower] && mergedProjectsInfo[dealNameLower].count > 1;
     const otherPriorities = hasDifferentPriorities ? 
         mergedProjectsInfo[dealNameLower].priorities.filter(p => p !== priority) : [];
@@ -1540,16 +1564,13 @@ function setupMergeDealCardEvents(dealCard, dealGroup) {
                     
                     const allDealCards = document.querySelectorAll(`.deal-card[data-deal-name="${dealName}"][data-priority="${priority}"]`);
                     
-                    // Gunakan filtered deals list
-                    const filteredDealsList = getFilteredDeals();
-                    
                     allDealCards.forEach(card => {
                         const allDealsData = JSON.parse(card.dataset.allDeals || '[]');
                         const selectedDeal = dealGroup.find(deal => deal.salesName === selectedSales);
                         
                         if (selectedDeal) {
-                            // Dapatkan semua project dengan nama yang sama dari filteredDealsList
-                            const allProjectDeals = filteredDealsList.filter(d => 
+                            // Dapatkan semua project dengan nama yang sama untuk menghitung nilai yang ditampilkan
+                            const allProjectDeals = deals.filter(d => 
                                 d.dealName?.trim().toLowerCase() === dealName
                             );
                             const activeProjects = allProjectDeals.filter(d => d.stage !== 'lost');
@@ -1668,18 +1689,15 @@ function setupMergeDealCardEvents(dealCard, dealGroup) {
     });
 }
 
-/**
- * RENDER INDIVIDUAL DEAL CARD - HANYA MENGGUNAKAN DATA YANG SUDAH DIFILTER
- */
-function renderIndividualDealCard(deal, filteredDealsList) {
+function renderIndividualDealCard(deal) {
     const dealCard = document.createElement('div');
     dealCard.className = 'deal-card';
     dealCard.dataset.id = deal.id;
     dealCard.dataset.dealName = deal.dealName?.toLowerCase();
     dealCard.dataset.priority = deal.priority || 'Priority';
     
-    // Dapatkan semua project dengan nama yang sama dari filteredDealsList (bukan dari deals global!)
-    const allProjectDeals = filteredDealsList.filter(d => 
+    // Dapatkan semua project dengan nama yang sama
+    const allProjectDeals = deals.filter(d => 
         d.dealName?.trim().toLowerCase() === deal.dealName?.trim().toLowerCase()
     );
     
@@ -1699,7 +1717,7 @@ function renderIndividualDealCard(deal, filteredDealsList) {
         displayValue = highestValueOverall;
     }
     
-    const mergedProjectsInfo = identifyMergedProjects(filteredDealsList);
+    const mergedProjectsInfo = identifyMergedProjects(deals);
     const dealNameLower = deal.dealName?.toLowerCase().trim();
     const hasDifferentPriorities = mergedProjectsInfo[dealNameLower] && mergedProjectsInfo[dealNameLower].count > 1;
     const otherPriorities = hasDifferentPriorities ? 
@@ -1810,9 +1828,8 @@ function renderDealList(deal, index) {
     const priorityBadgeClass = getPriorityBadgeClass(deal.priority);
     const winDate = getWinDate(deal);
     
-    // Dapatkan semua project dengan nama yang sama dari filtered deals
-    const filteredDealsList = getFilteredDeals();
-    const allProjectDeals = filteredDealsList.filter(d => 
+    // Dapatkan semua project dengan nama yang sama
+    const allProjectDeals = deals.filter(d => 
         d.dealName?.trim().toLowerCase() === deal.dealName?.trim().toLowerCase()
     );
     
@@ -1925,9 +1942,7 @@ function renderDealList(deal, index) {
 }
 
 function showAllPrioritiesForProject(dealName) {
-    // Gunakan filtered deals
-    const filteredDealsList = getFilteredDeals();
-    const allEntries = filteredDealsList.filter(deal => deal.dealName?.trim() === dealName);
+    const allEntries = deals.filter(deal => deal.dealName?.trim() === dealName);
     
     if (allEntries.length === 0) {
         showToast("Tidak ada entries ditemukan", 3000);
@@ -4825,7 +4840,7 @@ function applyActiveFilters() {
         // dan filter-filter lainnya (search, priority, stage, dll)
         const filteredDeals = getFilteredDeals();
         
-        console.log(`Applying filters: ${filteredDeals.length} deals to display for user ${currentSalesName || currentUserEmail}`);
+        console.log(`[applyActiveFilters] Applying filters: ${filteredDeals.length} deals to display for user ${currentSalesName || currentUserEmail}`);
         renderFilteredDeals(filteredDeals);
     } catch (error) {
         console.error("Error applying active filters:", error);
@@ -4863,16 +4878,14 @@ function filterDeals() {
 /**
  * RENDER FILTERED DEALS KE PIPELINES STAGE
  * Data yang masuk ke fungsi ini sudah terfilter berdasarkan user
- * PERBAIKAN PENTING: Menggunakan filteredDealsList yang diterima sebagai parameter
- * bukan menggunakan variabel global 'deals' yang berisi semua data
  */
-function renderFilteredDeals(filteredDealsList) {
+function renderFilteredDeals(filteredDeals) {
     const pipelineStage = document.getElementById('pipelines-stage');
     if (!pipelineStage) return;
     
     pipelineStage.innerHTML = '';
     
-    if (filteredDealsList.length === 0) {
+    if (filteredDeals.length === 0) {
         const message = (currentUserRole === 'admin' || currentUserRole === 'manager') 
             ? 'Tidak ada deals yang sesuai dengan filter.'
             : `Tidak ada pipeline untuk sales ${currentSalesName || currentUserEmail}. Silakan tambahkan deal baru.`;
@@ -4889,7 +4902,7 @@ function renderFilteredDeals(filteredDealsList) {
     if (currentView === 'card') {
         // Kelompokkan deals berdasarkan nama project dan priority
         const dealsByNameAndPriority = {};
-        filteredDealsList.forEach(deal => {
+        filteredDeals.forEach(deal => {
             const dealName = deal.dealName?.toLowerCase().trim();
             const priority = deal.priority || 'Priority';
             if (!dealName) return;
@@ -4905,11 +4918,11 @@ function renderFilteredDeals(filteredDealsList) {
         Object.values(dealsByNameAndPriority).forEach(dealGroup => {
             if (dealGroup.length > 0) {
                 if (dealGroup.length > 1) {
-                    const mergedCard = renderMergedDealCard(dealGroup, filteredDealsList);
+                    const mergedCard = renderMergedDealCard(dealGroup);
                     pipelineStage.appendChild(mergedCard);
                     setupMergeDealCardEvents(mergedCard, dealGroup);
                 } else {
-                    const dealCard = renderIndividualDealCard(dealGroup[0], filteredDealsList);
+                    const dealCard = renderIndividualDealCard(dealGroup[0]);
                     pipelineStage.appendChild(dealCard);
                 }
             }
@@ -4940,7 +4953,7 @@ function renderFilteredDeals(filteredDealsList) {
         table.appendChild(thead);
         
         const tbody = document.createElement('tbody');
-        filteredDealsList.forEach((deal, index) => {
+        filteredDeals.forEach((deal, index) => {
             const row = renderDealList(deal, index);
             tbody.appendChild(row);
         });
@@ -6079,18 +6092,8 @@ async function openDealDetailModal(dealId) {
             return;
         }
         
-        // Cek apakah user sales hanya bisa melihat deal miliknya
-        if (currentUserRole !== 'admin' && currentUserRole !== 'manager') {
-            const currentSales = getCurrentSalesName();
-            if (currentSales && deal.salesName !== currentSales) {
-                showToast("Anda tidak memiliki akses ke deal ini", 3000);
-                return;
-            }
-        }
-        
-        // Dapatkan semua project dengan nama yang sama dari filtered deals
-        const filteredDealsList = getFilteredDeals();
-        const allProjectDeals = filteredDealsList.filter(d => 
+        // Dapatkan semua project dengan nama yang sama
+        const allProjectDeals = deals.filter(d => 
             d.dealName?.trim().toLowerCase() === deal.dealName?.trim().toLowerCase()
         );
         
@@ -6106,7 +6109,7 @@ async function openDealDetailModal(dealId) {
             displayValue = Math.max(...activeProjects.map(d => d.value || 0));
         }
         
-        const mergedProjectsInfo = identifyMergedProjects(filteredDealsList);
+        const mergedProjectsInfo = identifyMergedProjects(deals);
         const dealNameLower = deal.dealName?.toLowerCase().trim();
         const hasDifferentPriorities = mergedProjectsInfo[dealNameLower] && mergedProjectsInfo[dealNameLower].count > 1;
         const allPriorities = hasDifferentPriorities ? mergedProjectsInfo[dealNameLower].priorities : [deal.priority];
