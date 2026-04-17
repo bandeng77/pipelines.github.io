@@ -687,7 +687,7 @@
             border-collapse: collapse;
             font-size: 0.875rem;
             display: table;
-            table-layout: fixed;
+            table-layout: fixed; /* Penting: Membuat kolom dengan lebar tetap */
         }
 
         .list-view th {
@@ -699,7 +699,7 @@
             border-bottom: 1px solid #e5e7eb;
             position: sticky;
             top: 0;
-            white-space: normal;
+            white-space: normal; /* Membolehkan wrap pada header */
             word-wrap: break-word;
             font-size: 0.75rem;
         }
@@ -707,22 +707,22 @@
         .list-view td {
             padding: 0.75rem 0.5rem;
             border-bottom: 1px solid #e5e7eb;
-            vertical-align: top;
+            vertical-align: top; /* Ubah ke top agar konten panjang bisa wrap */
             word-wrap: break-word;
-            white-space: normal;
+            white-space: normal; /* Membolehkan wrap */
             line-height: 1.4;
         }
 
         /* Lebar kolom yang proporsional */
-        .list-view th:nth-child(1), .list-view td:nth-child(1) { width: 5%; }
-        .list-view th:nth-child(2), .list-view td:nth-child(2) { width: 8%; }
-        .list-view th:nth-child(3), .list-view td:nth-child(3) { width: 15%; }
-        .list-view th:nth-child(4), .list-view td:nth-child(4) { width: 10%; }
-        .list-view th:nth-child(5), .list-view td:nth-child(5) { width: 12%; }
-        .list-view th:nth-child(6), .list-view td:nth-child(6) { width: 12%; }
-        .list-view th:nth-child(7), .list-view td:nth-child(7) { width: 10%; }
-        .list-view th:nth-child(8), .list-view td:nth-child(8) { width: 8%; }
-        .list-view th:nth-child(9), .list-view td:nth-child(9) { width: 10%; }
+        .list-view th:nth-child(1), .list-view td:nth-child(1) { width: 5%; }  /* No */
+        .list-view th:nth-child(2), .list-view td:nth-child(2) { width: 8%; }  /* Sales */
+        .list-view th:nth-child(3), .list-view td:nth-child(3) { width: 15%; } /* Project Name */
+        .list-view th:nth-child(4), .list-view td:nth-child(4) { width: 10%; } /* Stage */
+        .list-view th:nth-child(5), .list-view td:nth-child(5) { width: 12%; } /* Consultant */
+        .list-view th:nth-child(6), .list-view td:nth-child(6) { width: 12%; } /* Contractor */
+        .list-view th:nth-child(7), .list-view td:nth-child(7) { width: 10%; } /* Value */
+        .list-view th:nth-child(8), .list-view td:nth-child(8) { width: 8%; }  /* Priority */
+        .list-view th:nth-child(9), .list-view td:nth-child(9) { width: 10%; } /* Actions */
 
         .list-view tr {
             cursor: pointer;
@@ -779,11 +779,11 @@
 
         @media (max-width: 768px) {
             .list-view-container {
-                overflow-x: auto;
+                overflow-x: auto; /* Kembali ke scroll horizontal hanya pada layar sangat kecil */
             }
             
             .list-view {
-                width: 1200px;
+                width: 1200px; /* Lebar tetap untuk memastikan semua kolom terlihat */
             }
             
             #dealDetailModalContent .detail-container {
@@ -1073,32 +1073,51 @@
             z-index: -1;
         }
 
-        /* ========== STYLE KOMMENTAR DENGAN SALES NAME ========== */
+        /* Comments Section Styles - Tambah tombol hapus */
+        .comments-section {
+            margin-top: 1.5rem;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 1rem;
+        }
+
+        .comments-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .comments-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+            padding-right: 0.5rem;
+        }
+
         .comment-item {
-            position: relative;
-            padding: 0.75rem;
+            background: #f9fafb;
             border-radius: 0.5rem;
+            padding: 0.75rem;
             margin-bottom: 0.75rem;
-            transition: background-color 0.2s;
+            border-left: 3px solid #3b82f6;
+            position: relative;
         }
 
         .comment-item.manager {
-            border-left: 3px solid #10b981;
+            border-left-color: #10b981;
             background: #f0fdf4;
         }
 
         .comment-item.sales {
-            border-left: 3px solid #3b82f6;
+            border-left-color: #3b82f6;
             background: #eff6ff;
         }
 
         .comment-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
             margin-bottom: 0.5rem;
-            flex-wrap: wrap;
-            gap: 0.5rem;
             padding-right: 2rem;
         }
 
@@ -1108,40 +1127,29 @@
             color: #1f2937;
         }
 
-        .comment-sales {
-            font-size: 0.7rem;
-            color: #6b7280;
-            background-color: #f3f4f6;
-            padding: 0.125rem 0.375rem;
-            border-radius: 0.75rem;
-        }
-
         .comment-role {
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             padding: 0.125rem 0.5rem;
             border-radius: 0.25rem;
+            background: #dbeafe;
+            color: #1e40af;
+            font-weight: 500;
         }
 
         .comment-role.manager {
-            background-color: #d1fae5;
+            background: #d1fae5;
             color: #065f46;
         }
 
-        .comment-role.sales {
-            background-color: #dbeafe;
-            color: #1e40af;
-        }
-
         .comment-time {
-            font-size: 0.7rem;
-            color: #9ca3af;
+            font-size: 0.75rem;
+            color: #6b7280;
         }
 
         .comment-content {
             font-size: 0.875rem;
             color: #374151;
             line-height: 1.5;
-            word-break: break-word;
         }
 
         .comment-delete-btn {
@@ -1161,26 +1169,6 @@
         .comment-delete-btn:hover {
             opacity: 1;
             background-color: #fee2e2;
-        }
-
-        .comments-section {
-            margin-top: 1.5rem;
-            border-top: 1px solid #e5e7eb;
-            padding-top: 1rem;
-        }
-
-        .comments-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .comments-list {
-            max-height: 300px;
-            overflow-y: auto;
-            margin-bottom: 1rem;
-            padding-right: 0.5rem;
         }
 
         .comment-input-container {
@@ -1347,10 +1335,10 @@
         }
 
         #dealDetailModal {
-            z-index: 200;
+            z-index: 200; /* Lebih tinggi dari activity modal */
         }
 
-        /* Priority modal table style */
+        /* PERBAIKAN: Style untuk kolom Terakhir Update di priority modal */
         .priority-modal-content table th,
         .priority-modal-content table td {
             white-space: nowrap;
@@ -1358,14 +1346,6 @@
         
         .priority-modal-content table td:last-child {
             white-space: normal;
-        }
-
-        /* Info project merged */
-        .project-info-icon {
-            display: inline-flex;
-            align-items: center;
-            margin-left: 0.25rem;
-            cursor: pointer;
         }
     </style>
 </head>
@@ -1461,6 +1441,7 @@
                 </div>
                 <div id="priorityModalContent">
                     <!-- Daftar proyek akan dimuat di sini oleh JavaScript -->
+                    <!-- PERBAIKAN: Kolom Terakhir Update akan ditambahkan oleh JavaScript -->
                 </div>
             </div>
         </div>
@@ -1521,6 +1502,7 @@
                             <label class="block text-gray-700 text-sm font-semibold mb-2" for="salesFilter">Pilih Sales:</label>
                             <select id="salesFilter" class="w-full md:w-64 p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                                 <option value="all">Semua Sales</option>
+                                <!-- Opsi akan diisi secara dinamis -->
                             </select>
                         </div>
                         
@@ -2135,6 +2117,7 @@
                     </button>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Kolom 1 -->
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterPriority">Prioritas</label>
                         <select id="filterPriority" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
@@ -2165,30 +2148,36 @@
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterSales">Sales</label>
                         <select id="filterSales" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Sales</option>
+                            <!-- Opsi akan diisi secara dinamis oleh JavaScript -->
                         </select>
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterConsultant">Konsultan</label>
                         <select id="filterConsultant" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Konsultan</option>
+                            <!-- Opsi akan diisi secara dinamis oleh JavaScript -->
                         </select>
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterContractor">Kontraktor</label>
                         <select id="filterContractor" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Kontraktor</option>
+                            <!-- Opsi akan diisi secara dinamis oleh JavaScript -->
                         </select>
                     </div>
+                    <!-- Kolom 2 -->
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterProduct">Produk</label>
                         <select id="filterProduct" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Produk</option>
+                            <!-- Opsi akan diisi secara dinamis oleh JavaScript -->
                         </select>
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterFacility">Fasilitas</label>
                         <select id="filterFacility" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Fasilitas</option>
+                            <!-- Opsi akan diisi secara dinamis oleh JavaScript -->
                         </select>
                     </div>
                     <div>
@@ -2205,6 +2194,7 @@
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterYear">Tahun</label>
                         <select id="filterYear" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Tahun</option>
+                            <!-- Tahun akan diisi secara dinamis oleh JavaScript -->
                         </select>
                     </div>
                 </div>
@@ -2226,7 +2216,7 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="exportDateRange">Rentang Tanggal</label>
-                        <select id="exportDateRange" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                            <select id="exportDateRange" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Data</option>
                             <option value="this_month">Bulan Ini</option>
                             <option value="last_month">Bulan Lalu</option>
