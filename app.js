@@ -164,34 +164,6 @@ function getCurrentSalesName() {
 }
 
 /**
- * Mendapatkan semua deal ID untuk project dengan nama yang sama
- */
-function getAllDealIdsByProjectName(dealId) {
-    const originalDeal = getDealById(dealId);
-    if (!originalDeal || !originalDeal.dealName) return [dealId];
-    
-    const projectName = originalDeal.dealName.trim().toLowerCase();
-    
-    const sameNameDeals = deals.filter(deal => 
-        deal.dealName && deal.dealName.trim().toLowerCase() === projectName
-    );
-    
-    const allDealIds = sameNameDeals.map(deal => deal.id);
-    
-    if (allDealIds.length === 0) return [dealId];
-    
-    return allDealIds;
-}
-
-/**
- * Mendapatkan nama project dari deal ID
- */
-function getProjectNameByDealId(dealId) {
-    const deal = getDealById(dealId);
-    return deal ? deal.dealName : null;
-}
-
-/**
  * Escape HTML untuk keamanan
  */
 function escapeHtml(text) {
@@ -462,14 +434,31 @@ function getDealsByYear(year, baseDeals = null) {
     return filtered;
 }
 
-// ==================== FUNGSI COMMENTS YANG DIMODIFIKASI ====================
+// ==================== FUNGSI COMMENTS YANG DIPERBAIKI ====================
 
 /**
- * Load komentar untuk project (berdasarkan nama project, bukan per deal)
+ * Load komentar untuk project (berdasarkan nama project)
  */
 async function loadComments(dealId) {
     try {
-        const deal = getDealById(dealId);
+        // Dapatkan deal dari ID
+        let deal = getDealById(dealId);
+        
+        // Jika tidak ditemukan di cache, coba cari di deals array
+        if (!deal) {
+            deal = deals.find(d => d.id === dealId);
+        }
+        
+        // Jika masih tidak ditemukan, coba ambil dari Firestore
+        if (!deal) {
+            const dealDoc = await dealsCollection.doc(dealId).get();
+            if (dealDoc.exists) {
+                deal = { id: dealDoc.id, ...dealDoc.data() };
+                deals.push(deal);
+                dealsByIdCache.set(dealId, deal);
+            }
+        }
+        
         if (!deal || !deal.dealName) {
             console.log("Deal or deal name not found for ID:", dealId);
             return [];
@@ -478,6 +467,10 @@ async function loadComments(dealId) {
         const projectName = deal.dealName.trim();
         console.log(`Loading comments for project: "${projectName}" (from deal: ${dealId})`);
         
+        // Simpan project name untuk referensi
+        currentProjectNameForComments = projectName;
+        
+        // Load komentar berdasarkan projectName
         const querySnapshot = await commentsCollection
             .where('projectName', '==', projectName)
             .orderBy('timestamp', 'asc')
@@ -485,7 +478,12 @@ async function loadComments(dealId) {
         
         const comments = [];
         querySnapshot.forEach((doc) => {
-            comments.push({ id: doc.id, ...doc.data() });
+            const commentData = doc.data();
+            comments.push({ 
+                id: doc.id, 
+                ...commentData,
+                timestamp: commentData.timestamp 
+            });
         });
         
         console.log(`Found ${comments.length} comments for project "${projectName}"`);
@@ -501,17 +499,26 @@ async function loadComments(dealId) {
  */
 function renderComments(comments, containerId) {
     const container = document.getElementById(containerId);
-    if (!container) return;
+    if (!container) {
+        console.log(`Container ${containerId} not found`);
+        return;
+    }
     
     container.innerHTML = '';
     
-    if (comments.length === 0) {
+    if (!comments || comments.length === 0) {
         container.innerHTML = `
             <div class="text-center text-gray-500 py-4">
                 <i class="fas fa-comments text-2xl mb-2"></i>
                 <p>Belum ada komentar</p>
             </div>
         `;
+        
+        // Update counter
+        const commentsCountElement = document.getElementById(containerId === 'commentsList' ? 'commentsCount' : 'detailCommentsCount');
+        if (commentsCountElement) {
+            commentsCountElement.textContent = '0 komentar';
+        }
         return;
     }
     
@@ -524,7 +531,24 @@ function renderComments(comments, containerId) {
         
         const canDelete = currentUserRole === 'admin' || currentUserRole === 'manager' || isCurrentUser;
         
-        const salesInfo = comment.salesName ? `<span class="comment-sales ml-2 text-xs text-gray-500">(Sales: ${comment.salesName})</span>` : '';
+        // Tampilkan sales name jika ada
+        const salesInfo = comment.salesName ? `<span class="comment-sales ml-2">(Sales: ${escapeHtml(comment.salesName)})</span>` : '';
+        
+        // Format timestamp dengan aman
+        let timeStr = '-';
+        if (comment.timestamp) {
+            try {
+                if (comment.timestamp.toDate) {
+                    timeStr = formatDateTime(comment.timestamp);
+                } else if (comment.timestamp.seconds) {
+                    timeStr = formatDateTime(new Date(comment.timestamp.seconds * 1000));
+                } else {
+                    timeStr = formatDateTime(comment.timestamp);
+                }
+            } catch(e) {
+                timeStr = '-';
+            }
+        }
         
         commentItem.innerHTML = `
             <div class="comment-header">
@@ -535,11 +559,11 @@ function renderComments(comments, containerId) {
                         ${isManager ? 'Manager' : 'Sales'}
                     </span>
                 </div>
-                <div class="comment-time">${formatDateTime(comment.timestamp)}</div>
+                <div class="comment-time">${timeStr}</div>
             </div>
             <div class="comment-content">${escapeHtml(comment.content)}</div>
             ${canDelete ? `
-                <button class="comment-delete-btn" data-comment-id="${comment.id}" data-project-name="${comment.projectName}">
+                <button class="comment-delete-btn" data-comment-id="${comment.id}" data-project-name="${escapeHtml(comment.projectName)}">
                     <i class="fas fa-trash"></i>
                 </button>
             ` : ''}
@@ -548,6 +572,7 @@ function renderComments(comments, containerId) {
         container.appendChild(commentItem);
     });
     
+    // Event listener untuk delete button
     container.querySelectorAll('.comment-delete-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             e.stopPropagation();
@@ -557,6 +582,7 @@ function renderComments(comments, containerId) {
         });
     });
     
+    // Update counter komentar
     const commentsCountElement = document.getElementById(containerId === 'commentsList' ? 'commentsCount' : 'detailCommentsCount');
     if (commentsCountElement) {
         commentsCountElement.textContent = `${comments.length} komentar`;
@@ -577,6 +603,7 @@ async function deleteComment(commentId, projectName) {
         
         showToast("Komentar berhasil dihapus", 2000);
         
+        // Refresh komentar untuk project yang sedang aktif
         if (currentDealIdForComments) {
             const comments = await loadComments(currentDealIdForComments);
             renderComments(comments, 'detailCommentsList');
@@ -595,13 +622,26 @@ async function deleteComment(commentId, projectName) {
  * Tambah komentar untuk project (berdasarkan nama project)
  */
 async function addComment(dealId, content) {
-    if (!content.trim()) {
+    if (!content || !content.trim()) {
         showToast("Komentar tidak boleh kosong", 3000);
         return;
     }
     
     try {
-        const deal = getDealById(dealId);
+        // Dapatkan deal untuk mengetahui nama project
+        let deal = getDealById(dealId);
+        
+        if (!deal) {
+            deal = deals.find(d => d.id === dealId);
+        }
+        
+        if (!deal) {
+            const dealDoc = await dealsCollection.doc(dealId).get();
+            if (dealDoc.exists) {
+                deal = { id: dealDoc.id, ...dealDoc.data() };
+            }
+        }
+        
         if (!deal || !deal.dealName) {
             showToast("Project tidak ditemukan", 3000);
             return;
@@ -609,29 +649,35 @@ async function addComment(dealId, content) {
         
         const projectName = deal.dealName.trim();
         const currentSalesNameValue = getCurrentSalesName();
+        const currentUser = auth.currentUser;
         
-        console.log(`Adding comment to project: "${projectName}" from sales: ${currentSalesNameValue}`);
+        if (!currentUser) {
+            showToast("Anda harus login untuk berkomentar", 3000);
+            return;
+        }
+        
+        console.log(`Adding comment to project: "${projectName}" from user: ${currentUser.email}, sales: ${currentSalesNameValue}`);
         
         const commentData = {
             projectName: projectName,
             dealId: dealId,
             content: content.trim(),
-            userEmail: auth.currentUser.email,
+            userEmail: currentUser.email,
             salesName: currentSalesNameValue,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         };
         
         await commentsCollection.add(commentData);
         
-        if (currentDealIdForComments) {
-            const comments = await loadComments(currentDealIdForComments);
-            renderComments(comments, 'detailCommentsList');
-            
-            if (document.getElementById('commentsList')) {
-                renderComments(comments, 'commentsList');
-            }
+        // Refresh komentar
+        const comments = await loadComments(dealId);
+        renderComments(comments, 'detailCommentsList');
+        
+        if (document.getElementById('commentsList')) {
+            renderComments(comments, 'commentsList');
         }
         
+        // Clear input
         const detailCommentInput = document.getElementById('detailCommentInput');
         if (detailCommentInput) detailCommentInput.value = '';
         
@@ -642,7 +688,7 @@ async function addComment(dealId, content) {
         
     } catch (error) {
         console.error("Error adding comment:", error);
-        showToast("Gagal menambahkan komentar", 3000);
+        showToast("Gagal menambahkan komentar: " + error.message, 3000);
     }
 }
 
@@ -905,7 +951,7 @@ function openPriorityModal(priority, deals) {
                     <tr class="hover:bg-gray-50 cursor-pointer view-detail-row" data-id="${deal.id}">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            ${deal.dealName || 'No Name'}
+                            ${escapeHtml(deal.dealName || 'No Name')}
                             ${hasHigherValue && !isLastProject ? `
                                 <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="Project ini memiliki nilai lebih tinggi di priority lain">
                                     <i class="fas fa-arrow-up mr-1"></i>Nilai Tertinggi
@@ -922,7 +968,7 @@ function openPriorityModal(priority, deals) {
                                 </span>
                             ` : ''}
                           </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${deal.salesName || '-'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${escapeHtml(deal.salesName || '-')}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold" title="${valueTooltip}">
                             ${valueDisplay}
                           </td>
@@ -940,7 +986,7 @@ function openPriorityModal(priority, deals) {
                                 <i class="fas fa-eye"></i>
                             </button>
                             ${deal.hasMultipleEntries ? `
-                                <button class="text-purple-600 hover:text-purple-900 view-all-entries-btn" data-deal-name="${deal.dealName}" data-priority="${deal.priority}" title="Lihat semua entries untuk priority ini">
+                                <button class="text-purple-600 hover:text-purple-900 view-all-entries-btn" data-deal-name="${escapeHtml(deal.dealName)}" data-priority="${deal.priority}" title="Lihat semua entries untuk priority ini">
                                     <i class="fas fa-list"></i>
                                 </button>
                             ` : ''}
@@ -1006,7 +1052,7 @@ function showAllEntriesForProject(dealName, priority) {
     modal.innerHTML = `
         <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
             <div class="flex justify-between items-center p-4 border-b">
-                <h2 class="text-xl font-semibold text-gray-800">Semua Entries untuk Project: ${dealName} (Priority: ${priority})</h2>
+                <h2 class="text-xl font-semibold text-gray-800">Semua Entries untuk Project: ${escapeHtml(dealName)} (Priority: ${priority})</h2>
                 <button class="close-all-entries text-gray-500 hover:text-gray-700">
                     <i class="fas fa-times text-2xl"></i>
                 </button>
@@ -1028,7 +1074,7 @@ function showAllEntriesForProject(dealName, priority) {
                         ${sortedEntries.map((entry, index) => `
                             <tr class="hover:bg-gray-50">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${entry.salesName || '-'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${escapeHtml(entry.salesName || '-')}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">Rp ${formatNumber(entry.value) || '0'}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${entry.stage === 'win' ? 'bg-green-100 text-green-800' : 
@@ -1336,14 +1382,14 @@ function renderMergedDealCard(dealGroup) {
 
     dealCard.innerHTML = `
         <div class="flex justify-between items-start">
-            <h3 class="font-bold text-gray-800">${dealName || 'No Name'}</h3>
+            <h3 class="font-bold text-gray-800">${escapeHtml(dealName || 'No Name')}</h3>
             <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
                 ${priority}
             </span>
         </div>
         ${salesSelectorHTML}
         <div class="mt-1 text-sm text-gray-600 deal-details">
-            <p><i class="fas fa-user-tie mr-1"></i> ${activeSales}</p>
+            <p><i class="fas fa-user-tie mr-1"></i> ${escapeHtml(activeSales)}</p>
             <p class="font-semibold text-blue-600" title="${valueTooltip}">
                 ${valueDisplay}
             </p>
@@ -1445,7 +1491,7 @@ function setupMergeDealCardEvents(dealCard, dealGroup) {
                             const dateElement = card.querySelector('.text-xs');
                             
                             if (salesNameElement) {
-                                salesNameElement.innerHTML = `<i class="fas fa-user-tie mr-1"></i> ${selectedSales}`;
+                                salesNameElement.innerHTML = `<i class="fas fa-user-tie mr-1"></i> ${escapeHtml(selectedSales)}`;
                             }
                             
                             if (valueElement) {
@@ -1622,13 +1668,13 @@ function renderIndividualDealCard(deal) {
 
     dealCard.innerHTML = `
         <div class="flex justify-between items-start">
-            <h3 class="font-bold text-gray-800">${deal.dealName || 'No Name'}</h3>
+            <h3 class="font-bold text-gray-800">${escapeHtml(deal.dealName || 'No Name')}</h3>
             <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
                 ${deal.priority || 'Priority'}
             </span>
         </div>
         <div class="mt-1 text-sm text-gray-600 deal-details">
-            <p><i class="fas fa-user-tie mr-1"></i> ${deal.salesName || '-'}</p>
+            <p><i class="fas fa-user-tie mr-1"></i> ${escapeHtml(deal.salesName || '-')}</p>
             <p class="font-semibold text-blue-600" title="${valueTooltip}">
                 ${valueDisplay}
             </p>
@@ -1733,9 +1779,9 @@ function renderDealList(deal, index) {
     
     row.innerHTML = `
         <td class="px-4 py-3 align-top text-sm">${index + 1}</td>
-        <td class="px-4 py-3 align-top text-sm font-medium">${deal.salesName || '-'}</td>
+        <td class="px-4 py-3 align-top text-sm font-medium">${escapeHtml(deal.salesName || '-')}</td>
         <td class="px-4 py-3 align-top text-sm">
-            ${dealNameDisplay}
+            ${escapeHtml(dealNameDisplay)}
             ${allProjectDeals.length > 1 ? `
                 <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800" title="Project ini memiliki ${allProjectDeals.length} entries dengan berbagai priority">
                     <i class="fas fa-tags mr-1"></i>${allProjectDeals.length}
@@ -1746,7 +1792,7 @@ function renderDealList(deal, index) {
                     <i class="fas fa-star mr-1"></i>Last
                 </span>
             ` : ''}
-         </td>
+          </td>
         <td class="px-4 py-3 align-top text-sm">
             ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}
             ${winDate ? `
@@ -1754,17 +1800,17 @@ function renderDealList(deal, index) {
                 <i class="fas fa-calendar-check mr-1"></i>${formatDate(winDate)}
             </div>
             ` : ''}
-         </td>
-        <td class="px-4 py-3 align-top text-sm">${consultantDisplay}</td>
-        <td class="px-4 py-3 align-top text-sm">${contractorDisplay}</td>
+          </td>
+        <td class="px-4 py-3 align-top text-sm">${escapeHtml(consultantDisplay)}</td>
+        <td class="px-4 py-3 align-top text-sm">${escapeHtml(contractorDisplay)}</td>
         <td class="px-4 py-3 align-top text-sm font-semibold" title="${valueTooltip}">
             ${valueDisplay}
-         </td>
+          </td>
         <td class="px-4 py-3 align-top">
             <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
                 ${deal.priority || 'Priority'}
             </span>
-         </td>
+          </td>
         <td class="px-4 py-3 align-top text-sm deal-actions">
             <div class="flex space-x-2">
                 <button class="view-detail-btn text-blue-600 hover:text-blue-800">
@@ -1779,12 +1825,12 @@ function renderDealList(deal, index) {
                 </button>
                 ` : ''}
                 ${allProjectDeals.length > 1 ? `
-                <button class="text-purple-600 hover:text-purple-900 view-all-priorities-btn" data-deal-name="${deal.dealName}" title="Lihat semua priority untuk project ini">
+                <button class="text-purple-600 hover:text-purple-900 view-all-priorities-btn" data-deal-name="${escapeHtml(deal.dealName)}" title="Lihat semua priority untuk project ini">
                     <i class="fas fa-list"></i>
                 </button>
                 ` : ''}
             </div>
-         </td>
+          </td>
     `;
     
     return row;
@@ -1829,7 +1875,7 @@ function showAllPrioritiesForProject(dealName) {
     modal.innerHTML = `
         <div class="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] overflow-hidden">
             <div class="flex justify-between items-center p-4 border-b">
-                <h2 class="text-xl font-semibold text-gray-800">Semua Priority untuk Project: ${dealName}</h2>
+                <h2 class="text-xl font-semibold text-gray-800">Semua Priority untuk Project: ${escapeHtml(dealName)}</h2>
                 <button class="close-all-priorities text-gray-500 hover:text-gray-700">
                     <i class="fas fa-times text-2xl"></i>
                 </button>
@@ -1871,7 +1917,7 @@ function showAllPrioritiesForProject(dealName) {
                                     return `
                                     <tr class="${rowClass}">
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${entry.salesName || '-'}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${escapeHtml(entry.salesName || '-')}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
                                             Rp ${formatNumber(entry.value) || '0'}
                                             ${!isActive ? '<span class="ml-1 text-xs text-red-500">(Lost)</span>' : ''}
@@ -2013,17 +2059,17 @@ function renderRecycleBinContent() {
         row.className = 'border-b hover:bg-gray-50';
         
         row.innerHTML = `
-            <td class="p-3 text-sm">${deal.dealName || 'No Name'}</td>
-            <td class="p-3 text-sm">${deal.salesName || '-'}</td>
+            <td class="p-3 text-sm">${escapeHtml(deal.dealName || 'No Name')}</td>
+            <td class="p-3 text-sm">${escapeHtml(deal.salesName || '-')}</td>
             <td class="p-3 text-sm">Rp ${formatNumber(deal.value) || '0'}</td>
             <td class="p-3 text-sm">${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}</td>
             <td class="p-3 text-sm">${formatDateTime(deal.deletedAt)}</td>
-            <td class="p-3 text-sm">${deal.deletedByEmail || '-'}</td>
+            <td class="p-3 text-sm">${escapeHtml(deal.deletedByEmail || '-')}</td>
             <td class="p-3 text-sm">
                 <button class="restore-deal-btn text-green-600 hover:text-green-800 mr-3" data-id="${deal.id}">
                     <i class="fas fa-undo mr-1"></i> Restore
                 </button>
-                <button class="permanent-delete-btn text-red-600 hover:text-red-800" data-id="${deal.id}" data-name="${deal.dealName || 'No Name'}">
+                <button class="permanent-delete-btn text-red-600 hover:text-red-800" data-id="${deal.id}" data-name="${escapeHtml(deal.dealName || 'No Name')}">
                     <i class="fas fa-trash mr-1"></i> Hapus Permanen
                 </button>
             </td>
@@ -2445,7 +2491,7 @@ async function openActivityModal() {
                 activityItem.innerHTML = `
                     <div class="flex items-start">
                         <div class="flex-1">
-                            <p class="text-sm ${isUnread ? 'font-semibold' : ''}">${activity.message || 'Aktivitas tidak tersedia'}</p>
+                            <p class="text-sm ${isUnread ? 'font-semibold' : ''}">${escapeHtml(activity.message || 'Aktivitas tidak tersedia')}</p>
                             <div class="flex items-center mt-1 text-xs text-gray-500">
                                 <i class="fas fa-clock mr-1"></i>
                                 <span>${timeStr}</span>
@@ -2457,7 +2503,7 @@ async function openActivityModal() {
                             <div class="ml-2">
                                 <button class="view-activity-deal text-blue-600 hover:text-blue-800 p-1" 
                                         data-deal-id="${activity.deal.id}" 
-                                        data-deal-name="${activity.deal.dealName}"
+                                        data-deal-name="${escapeHtml(activity.deal.dealName)}"
                                         title="Lihat detail deal">
                                     <i class="fas fa-eye"></i>
                                 </button>
@@ -4065,8 +4111,8 @@ function showDealsByPriority(salesFilter, priority) {
                 return `
                 <tr class="hover:bg-gray-50 cursor-pointer view-detail-row" data-id="${deal.id}">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${deal.dealName || 'No Name'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${deal.salesName || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${escapeHtml(deal.dealName || 'No Name')}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${escapeHtml(deal.salesName || '-')}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">${valueDisplay}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${deal.stage === 'win' ? 'bg-green-100 text-green-800' : 
@@ -4151,8 +4197,8 @@ function showDealsByStage(priorityFilter, stage) {
                 return `
                 <tr class="hover:bg-gray-50 cursor-pointer view-detail-row" data-id="${deal.id}">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${deal.dealName || 'No Name'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${deal.salesName || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${escapeHtml(deal.dealName || 'No Name')}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${escapeHtml(deal.salesName || '-')}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">${valueDisplay}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
