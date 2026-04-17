@@ -676,6 +676,7 @@
         }
 
         /* ========== LIST VIEW STYLE YANG DIPERBAIKI ========== */
+        /* Menghilangkan scroll horizontal dan membuat teks wrap */
         .list-view-container {
             width: 100%;
             overflow-x: hidden;
@@ -686,7 +687,7 @@
             border-collapse: collapse;
             font-size: 0.875rem;
             display: table;
-            table-layout: fixed;
+            table-layout: fixed; /* Penting: Membuat kolom dengan lebar tetap */
         }
 
         .list-view th {
@@ -698,7 +699,7 @@
             border-bottom: 1px solid #e5e7eb;
             position: sticky;
             top: 0;
-            white-space: normal;
+            white-space: normal; /* Membolehkan wrap pada header */
             word-wrap: break-word;
             font-size: 0.75rem;
         }
@@ -706,21 +707,22 @@
         .list-view td {
             padding: 0.75rem 0.5rem;
             border-bottom: 1px solid #e5e7eb;
-            vertical-align: top;
+            vertical-align: top; /* Ubah ke top agar konten panjang bisa wrap */
             word-wrap: break-word;
-            white-space: normal;
+            white-space: normal; /* Membolehkan wrap */
             line-height: 1.4;
         }
 
-        .list-view th:nth-child(1), .list-view td:nth-child(1) { width: 5%; }
-        .list-view th:nth-child(2), .list-view td:nth-child(2) { width: 8%; }
-        .list-view th:nth-child(3), .list-view td:nth-child(3) { width: 15%; }
-        .list-view th:nth-child(4), .list-view td:nth-child(4) { width: 10%; }
-        .list-view th:nth-child(5), .list-view td:nth-child(5) { width: 12%; }
-        .list-view th:nth-child(6), .list-view td:nth-child(6) { width: 12%; }
-        .list-view th:nth-child(7), .list-view td:nth-child(7) { width: 10%; }
-        .list-view th:nth-child(8), .list-view td:nth-child(8) { width: 8%; }
-        .list-view th:nth-child(9), .list-view td:nth-child(9) { width: 10%; }
+        /* Lebar kolom yang proporsional */
+        .list-view th:nth-child(1), .list-view td:nth-child(1) { width: 5%; }  /* No */
+        .list-view th:nth-child(2), .list-view td:nth-child(2) { width: 8%; }  /* Sales */
+        .list-view th:nth-child(3), .list-view td:nth-child(3) { width: 15%; } /* Project Name */
+        .list-view th:nth-child(4), .list-view td:nth-child(4) { width: 10%; } /* Stage */
+        .list-view th:nth-child(5), .list-view td:nth-child(5) { width: 12%; } /* Consultant */
+        .list-view th:nth-child(6), .list-view td:nth-child(6) { width: 12%; } /* Contractor */
+        .list-view th:nth-child(7), .list-view td:nth-child(7) { width: 10%; } /* Value */
+        .list-view th:nth-child(8), .list-view td:nth-child(8) { width: 8%; }  /* Priority */
+        .list-view th:nth-child(9), .list-view td:nth-child(9) { width: 10%; } /* Actions */
 
         .list-view tr {
             cursor: pointer;
@@ -751,6 +753,7 @@
             border-radius: 0.25rem;
         }
 
+        /* Win date positioning for list view */
         .win-date-container {
             display: block;
             margin-top: 0.25rem;
@@ -759,12 +762,14 @@
             white-space: normal;
         }
 
+        /* Container untuk teks panjang */
         .wrap-text {
             white-space: normal;
             word-wrap: break-word;
             overflow-wrap: break-word;
         }
 
+        /* Responsivitas untuk tampilan list pada layar kecil */
         @media (max-width: 1024px) {
             .list-view th, .list-view td {
                 font-size: 0.7rem;
@@ -774,11 +779,11 @@
 
         @media (max-width: 768px) {
             .list-view-container {
-                overflow-x: auto;
+                overflow-x: auto; /* Kembali ke scroll horizontal hanya pada layar sangat kecil */
             }
             
             .list-view {
-                width: 1200px;
+                width: 1200px; /* Lebar tetap untuk memastikan semua kolom terlihat */
             }
             
             #dealDetailModalContent .detail-container {
@@ -1068,7 +1073,7 @@
             z-index: -1;
         }
 
-        /* Comments Section Styles - 1 thread komentar untuk semua sales */
+        /* Comments Section Styles - Tambah tombol hapus */
         .comments-section {
             margin-top: 1.5rem;
             border-top: 1px solid #e5e7eb;
@@ -1203,16 +1208,6 @@
             background: #2563eb;
         }
 
-        /* Info note untuk shared comments */
-        .shared-comments-note {
-            font-size: 0.7rem;
-            color: #6b7280;
-            margin-top: 0.25rem;
-            text-align: center;
-            border-top: 1px solid #e5e7eb;
-            padding-top: 0.5rem;
-        }
-
         /* Merge Project Styles dalam Deal Card */
         .multiple-sales-indicator {
             top: 8px;
@@ -1275,6 +1270,7 @@
             color: white;
         }
 
+        /* Tombol Tutup Modal yang Selalu Terlihat */
         .modal-actions {
             position: sticky;
             bottom: 0;
@@ -1285,6 +1281,7 @@
             z-index: 10;
         }
 
+        /* Animasi untuk dropdown */
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -1296,16 +1293,19 @@
             }
         }
 
+        /* Container utama untuk mencegah scroll horizontal */
         .main-container {
             width: 100%;
             overflow-x: hidden;
             position: relative;
         }
 
+        /* Hide horizontal scrollbar */
         .hide-horizontal-scroll {
             overflow-x: hidden;
         }
 
+        /* CSS untuk view-detail-row */
         .view-detail-row {
             cursor: pointer;
         }
@@ -1314,6 +1314,7 @@
             background-color: #f9fafb;
         }
 
+        /* CSS untuk tombol detail di aktivitas */
         .view-activity-detail {
             background: none;
             border: none;
@@ -1328,14 +1329,16 @@
             background-color: #e5e7eb;
         }
 
+        /* Z-index management untuk modal */
         #activityModal {
             z-index: 150;
         }
 
         #dealDetailModal {
-            z-index: 200;
+            z-index: 200; /* Lebih tinggi dari activity modal */
         }
 
+        /* PERBAIKAN: Style untuk kolom Terakhir Update di priority modal */
         .priority-modal-content table th,
         .priority-modal-content table td {
             white-space: nowrap;
@@ -1354,7 +1357,6 @@
                 <div>
                     <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900">Sales Pipeline Manager <i class="fas fa-chart-line text-blue-600 ml-2"></i></h1>
                     <p class="text-gray-600 mt-2">Selamat datang, <span id="userWelcome" class="font-semibold"></span></p>
-                    <p class="text-xs text-gray-500 mt-1"><i class="fas fa-comments mr-1"></i> Komentar dalam 1 project dapat dilihat oleh semua sales yang mengerjakan project yang sama</p>
                 </div>
                 <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mt-4 sm:mt-0">
                     <button id="authButton" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm">
@@ -1374,6 +1376,7 @@
                         <span id="activity-badge" class="ml-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full hidden">0</span>
                     </button>
                     
+                    <!-- Tombol Export Excel (hanya untuk admin) -->
                     <button id="exportExcelBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow-md transition duration-200 ease-in-out transform hover:scale-105 flex items-center text-sm hidden">
                         <i class="fas fa-file-excel mr-2"></i> Export Excel
                     </button>
@@ -1438,11 +1441,12 @@
                 </div>
                 <div id="priorityModalContent">
                     <!-- Daftar proyek akan dimuat di sini oleh JavaScript -->
+                    <!-- PERBAIKAN: Kolom Terakhir Update akan ditambahkan oleh JavaScript -->
                 </div>
             </div>
         </div>
 
-        <!-- Stats Modal -->
+        <!-- Stats Modal (full screen) -->
         <div id="statsModal" class="fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center p-4 z-50 hidden">
             <div class="bg-white rounded-xl p-6 w-full h-full max-w-7xl shadow-2xl modal-content-enter overflow-hidden flex flex-col">
                 <div class="flex justify-between items-center mb-6">
@@ -1454,6 +1458,7 @@
                     </button>
                 </div>
                 
+                <!-- Tab Navigation -->
                 <div class="mb-6 border-b border-gray-200">
                     <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="statsTabs">
                         <li class="mr-2">
@@ -1468,7 +1473,9 @@
                     </ul>
                 </div>
                 
+                <!-- Tab Content -->
                 <div class="flex-1 overflow-y-auto">
+                    <!-- Tab 1: Overview -->
                     <div id="overviewTab" class="stats-tab-content space-y-6">
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <div class="bg-gray-50 p-4 rounded-lg shadow-inner chart-container">
@@ -1489,11 +1496,13 @@
                         </div>
                     </div>
                     
+                    <!-- Tab 2: Statistik per Sales -->
                     <div id="salesTab" class="stats-tab-content hidden">
                         <div class="mb-6">
                             <label class="block text-gray-700 text-sm font-semibold mb-2" for="salesFilter">Pilih Sales:</label>
                             <select id="salesFilter" class="w-full md:w-64 p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                                 <option value="all">Semua Sales</option>
+                                <!-- Opsi akan diisi secara dinamis -->
                             </select>
                         </div>
                         
@@ -1537,6 +1546,7 @@
                         </div>
                     </div>
                     
+                    <!-- Tab 3: Analisis Priority -->
                     <div id="priorityTab" class="stats-tab-content hidden">
                         <div class="mb-6">
                             <label class="block text-gray-700 text-sm font-semibold mb-2" for="priorityFilter">Pilih Priority:</label>
@@ -1598,7 +1608,7 @@
             </div>
         </div>
 
-        <!-- Modal untuk daftar detail project -->
+        <!-- Modal untuk daftar detail project (untuk clickable chart) -->
         <div id="clickableChartModal" class="clickable-modal hidden">
             <div class="clickable-modal-content">
                 <div class="clickable-modal-header">
@@ -1607,7 +1617,9 @@
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
-                <div id="clickableChartModalContent"></div>
+                <div id="clickableChartModalContent">
+                    <!-- Daftar project akan dimuat di sini -->
+                </div>
             </div>
         </div>
 
@@ -1624,6 +1636,7 @@
                 <form id="dealForm">
                     <input type="hidden" id="dealId">
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <!-- Kolom 1 -->
                         <div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="dealName">Nama Proyek <span class="text-red-500">*</span></label>
@@ -1678,6 +1691,7 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- Kolom 2 -->
                         <div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="package">Paket</label>
@@ -1694,7 +1708,9 @@
                             </div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="product">Produk</label>
-                                <div id="productList" class="space-y-2 mb-2"></div>
+                                <div id="productList" class="space-y-2 mb-2">
+                                    <!-- Produk yang dipilih akan ditambahkan di sini secara dinamis oleh JS -->
+                                </div>
                                 <button type="button" id="addProductBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded-lg text-xs flex items-center">
                                     <i class="fas fa-plus mr-1"></i> Tambah Produk
                                 </button>
@@ -1716,6 +1732,7 @@
                                 <input type="text" id="newFacility" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama fasilitas baru">
                             </div>
                         </div>
+                        <!-- Kolom 3 -->
                         <div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="owner">Owner</label>
@@ -1737,7 +1754,9 @@
                             </div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="contractor">Kontraktor</label>
-                                <div id="contractorList" class="space-y-2 mb-2"></div>
+                                <div id="contractorList" class="space-y-2 mb-2">
+                                    <!-- Kontraktor yang dipilih akan ditambahkan di sini secara dinamis oleh JS -->
+                                </div>
                                 <button type="button" id="addContractorBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded-lg text-xs flex items-center">
                                     <i class="fas fa-plus mr-1"></i> Tambah Kontraktor
                                 </button>
@@ -1755,6 +1774,7 @@
                                 <input type="text" id="newPic" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm mt-2" placeholder="Atau ketik nama PIC baru">
                             </div>
                         </div>
+                        <!-- Kolom 4 -->
                         <div>
                             <div class="mb-3">
                                 <label class="block text-gray-700 text-sm font-semibold mb-2" for="beforeDiscount">Sebelum Diskon (IDR) <span class="text-red-500">*</span></label>
@@ -1791,15 +1811,19 @@
                         </div>
                     </div>
                     
-                    <!-- Progress Bar Section -->
+                    <!-- Progress Bar Section dengan input manual -->
                     <div class="progress-container">
                         <div class="progress-header">
                             <div class="progress-title">Progress Pipeline</div>
                             <div class="progress-percentage" id="progressPercentage">0%</div>
                         </div>
+                        
+                        <!-- Progress Bar Visual -->
                         <div class="progress-bar">
                             <div class="progress-fill" id="progressFill" style="width: 0%"></div>
                         </div>
+                        
+                        <!-- Checkpoints 0% 20% 40% 60% 80% 100% -->
                         <div class="progress-checkpoints">
                             <div class="checkpoint" data-percentage="0">
                                 <div class="step-dot"></div>
@@ -1829,21 +1853,18 @@
                         </div>
                     </div>
                     
-                    <!-- Comments Section - Shared Comments (1 thread per project) -->
+                    <!-- Comments Section -->
                     <div class="comments-section" id="commentsSection" style="display: none;">
                         <div class="comments-header">
-                            <h3 class="text-lg font-semibold text-gray-900">
-                                <i class="fas fa-users text-blue-500 mr-2"></i>Komtim (Semua Sales)
-                            </h3>
+                            <h3 class="text-lg font-semibold text-gray-900">Komentar</h3>
                             <span class="text-sm text-gray-500" id="commentsCount">0 komentar</span>
                         </div>
-                        <div class="comments-list" id="commentsList"></div>
-                        <div class="comment-input-container">
-                            <textarea id="commentInput" class="comment-input" placeholder="Tulis komentar - akan dilihat oleh semua sales yang mengerjakan project ini..."></textarea>
-                            <button type="button" id="commentSubmitBtn" class="comment-submit-btn">Kirim</button>
+                        <div class="comments-list" id="commentsList">
+                            <!-- Komentar akan ditampilkan di sini -->
                         </div>
-                        <div class="shared-comments-note">
-                            <i class="fas fa-info-circle mr-1"></i> Komentar ini akan dilihat oleh semua sales yang mengerjakan project yang sama
+                        <div class="comment-input-container">
+                            <textarea id="commentInput" class="comment-input" placeholder="Tulis komentar..."></textarea>
+                            <button type="button" id="commentSubmitBtn" class="comment-submit-btn">Kirim</button>
                         </div>
                     </div>
                     
@@ -1865,7 +1886,7 @@
             </div>
         </div>
 
-        <!-- Deal Detail Modal dengan Comments - 1 thread komentar shared -->
+        <!-- Deal Detail Modal dengan Comments - Layout 2 kolom + tombol hapus komentar -->
         <div id="dealDetailModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-[200] hidden">
             <div class="bg-white rounded-xl p-8 w-full max-w-6xl shadow-2xl modal-content-enter max-h-[90vh] overflow-y-auto" id="dealDetailModalContent">
                 <h2 class="text-xl sm:text-2xl font-bold mb-6 text-gray-900" id="dealDetailTitle">Detail Deal</h2>
@@ -1943,21 +1964,18 @@
                         </div>
                     </div>
                     
-                    <!-- Kolom kanan: Comments Section Shared (1 thread per project) -->
+                    <!-- Kolom kanan: Comments Section dengan tombol hapus -->
                     <div class="comments-section">
                         <div class="comments-header">
-                            <h3 class="text-lg font-semibold text-gray-900">
-                                <i class="fas fa-users text-blue-500 mr-2"></i>Komtim (Semua Sales)
-                            </h3>
+                            <h3 class="text-lg font-semibold text-gray-900">Komentar</h3>
                             <span class="text-sm text-gray-500" id="detailCommentsCount">0 komentar</span>
                         </div>
-                        <div class="comments-list" id="detailCommentsList"></div>
-                        <div class="comment-input-container">
-                            <textarea id="detailCommentInput" class="comment-input" placeholder="Tulis komentar - akan dilihat oleh semua sales yang mengerjakan project ini..."></textarea>
-                            <button type="button" id="detailCommentSubmitBtn" class="comment-submit-btn">Kirim</button>
+                        <div class="comments-list" id="detailCommentsList">
+                            <!-- Komentar akan ditampilkan di sini dengan tombol hapus -->
                         </div>
-                        <div class="shared-comments-note">
-                            <i class="fas fa-info-circle mr-1"></i> Komentar ini akan dilihat oleh semua sales yang mengerjakan project yang sama
+                        <div class="comment-input-container">
+                            <textarea id="detailCommentInput" class="comment-input" placeholder="Tulis komentar..."></textarea>
+                            <button type="button" id="detailCommentSubmitBtn" class="comment-submit-btn">Kirim</button>
                         </div>
                     </div>
                 </div>
@@ -1979,7 +1997,9 @@
                         <i class="fas fa-times text-xl"></i>
                     </button>
                 </div>
-                <div id="activity-feed-modal" class="space-y-3"></div>
+                <div id="activity-feed-modal" class="space-y-3">
+                    <!-- Aktivitas akan dimuat di sini - Clickable untuk melihat detail -->
+                </div>
                 <div class="flex justify-end mt-6 modal-actions">
                     <button id="closeActivityFooterBtn" class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium rounded-lg transition duration-200 text-sm">
                         Tutup
@@ -2026,10 +2046,21 @@
                 <div class="bg-gray-50 rounded-lg p-4 h-5/6 overflow-y-auto">
                     <table class="recycle-bin-table">
                         <thead>
-                            <tr><th>Nama Deal</th><th>Sales</th><th>Nilai</th><th>Tahap</th><th>Dihapus Pada</th><th>Dihapus Oleh</th><th>Aksi</th></tr>
+                            <tr>
+                                <th>Nama Deal</th>
+                                <th>Sales</th>
+                                <th>Nilai</th>
+                                <th>Tahap</th>
+                                <th>Dihapus Pada</th>
+                                <th>Dihapus Oleh</th>
+                                <th>Aksi</th>
+                            </tr>
                         </thead>
-                        <tbody id="recycleBinContent"></tbody>
+                        <tbody id="recycleBinContent">
+                            <!-- Konten recycle bin akan diisi oleh JavaScript -->
+                        </tbody>
                     </table>
+                    
                     <div id="emptyRecycleBinMessage" class="text-center py-8 hidden">
                         <i class="fas fa-trash text-4xl text-gray-300 mb-4"></i>
                         <p class="text-gray-500">Recycle Bin kosong</p>
@@ -2086,6 +2117,7 @@
                     </button>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Kolom 1 -->
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterPriority">Prioritas</label>
                         <select id="filterPriority" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
@@ -2116,30 +2148,36 @@
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterSales">Sales</label>
                         <select id="filterSales" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Sales</option>
+                            <!-- Opsi akan diisi secara dinamis oleh JavaScript -->
                         </select>
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterConsultant">Konsultan</label>
                         <select id="filterConsultant" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Konsultan</option>
+                            <!-- Opsi akan diisi secara dinamis oleh JavaScript -->
                         </select>
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterContractor">Kontraktor</label>
                         <select id="filterContractor" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Kontraktor</option>
+                            <!-- Opsi akan diisi secara dinamis oleh JavaScript -->
                         </select>
                     </div>
+                    <!-- Kolom 2 -->
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterProduct">Produk</label>
                         <select id="filterProduct" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Produk</option>
+                            <!-- Opsi akan diisi secara dinamis oleh JavaScript -->
                         </select>
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterFacility">Fasilitas</label>
                         <select id="filterFacility" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Fasilitas</option>
+                            <!-- Opsi akan diisi secara dinamis oleh JavaScript -->
                         </select>
                     </div>
                     <div>
@@ -2156,6 +2194,7 @@
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="filterYear">Tahun</label>
                         <select id="filterYear" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Tahun</option>
+                            <!-- Tahun akan diisi secara dinamis oleh JavaScript -->
                         </select>
                     </div>
                 </div>
@@ -2177,7 +2216,7 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-gray-700 text-sm font-semibold mb-2" for="exportDateRange">Rentang Tanggal</label>
-                        <select id="exportDateRange" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
+                            <select id="exportDateRange" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm">
                             <option value="all">Semua Data</option>
                             <option value="this_month">Bulan Ini</option>
                             <option value="last_month">Bulan Lalu</option>
@@ -2219,6 +2258,7 @@
         <div id="toast-container"></div>
     </div>
     
+    <!-- Link ke file JavaScript eksternal -->
     <script src="app.js"></script>
 </body>
 </html>
