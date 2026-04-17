@@ -1,3 +1,8 @@
+// ==================== FULL SCRIPT PERBAIKAN KOMENTAR ====================
+// File: app.js
+// Sistem Komentar: 1 Project Name = 1 Thread Komentar Bersama untuk Semua Sales
+// DENGAN MIGRASI DATA KOMENTAR LAMA
+
 // Konfigurasi Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyA630jQdTLNt1XHjVAXX10IjIeMVJ_vNn8",
@@ -63,6 +68,9 @@ let activitiesCache = {
     data: [],
     lastFetch: null
 };
+
+// Flag untuk migrasi komentar
+let commentsMigrationCompleted = false;
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 menit
 
@@ -130,6 +138,7 @@ let salesCharts = {
 
 // Variabel untuk menyimpan deal yang sedang dilihat komentarnya
 let currentDealIdForComments = null;
+let currentProjectNameForComments = null;
 
 // Variabel untuk menyimpan pilihan sales aktif per project name
 let activeSalesPerProject = {};
@@ -150,479 +159,461 @@ let dealToDeleteName = '';
 // Flag untuk mencegah multiple click
 let isActivityModalOpening = false;
 
-// ==================== FUNGSI UTAMA ====================
+// ==================== FUNGSI MIGRASI KOMENTAR LAMA ====================
 
 /**
- * Mendapatkan nama sales dari email yang login
+ * Mendapatkan project key yang unik untuk komentar (berdasarkan nama project)
+ * Semua sales yang mengerjakan project yang sama akan menggunakan key yang sama
  */
-function getCurrentSalesName() {
-    if (currentUserEmail && emailToSalesNameMap[currentUserEmail]) {
-        return emailToSalesNameMap[currentUserEmail];
-    }
-    return null;
+function getProjectKey(dealName) {
+    if (!dealName) return null;
+    // Normalisasi: lowercase, trim, dan hapus spasi berlebih
+    return dealName.trim().toLowerCase();
 }
 
 /**
- * Filter deals berdasarkan user yang login
- * - Admin/Manager: melihat semua deals
- * - Sales: hanya melihat deals miliknya sendiri
- * 
- * INI ADALAH FUNGSI PALING PENTING UNTUK FILTER BERDASARKAN SALES
+ * MIGRASI DATA KOMENTAR LAMA
+ * Fungsi ini akan membaca semua komentar lama (tanpa projectKey) dan menambahkan projectKey
+ * berdasarkan dealId yang tersimpan
  */
-function filterDealsByUser(dealsList) {
-    // Jika admin atau manager, tampilkan semua
-    if (currentUserRole === 'admin' || currentUserRole === 'manager') {
-        console.log("Admin/Manager: menampilkan semua deals");
-        return dealsList;
+async function migrateOldComments() {
+    if (commentsMigrationCompleted) {
+        console.log("Migrasi komentar sudah pernah dilakukan, skip...");
+        return;
     }
     
-    const currentSales = getCurrentSalesName();
-    if (!currentSales) {
-        console.log("No sales name found for current user");
+    console.log("Memulai migrasi data komentar lama...");
+    
+    try {
+        // Ambil semua komentar
+        const allCommentsSnapshot = await commentsCollection.get();
+        const commentsToMigrate = [];
+        
+        // Buat peta dealName ke projectKey
+        const dealNameToProjectKey = new Map();
+        
+        for (const doc of allCommentsSnapshot.docs) {
+            const commentData = doc.data();
+            
+            // Jika komentar sudah memiliki projectKey, skip
+            if (commentData.projectKey) {
+                continue;
+            }
+            
+            // Jika komentar memiliki projectName, gunakan langsung
+            if (commentData.projectName) {
+                const projectKey = getProjectKey(commentData.projectName);
+                commentsToMigrate.push({
+                    id: doc.id,
+                    projectKey: projectKey,
+                    projectName: commentData.projectName
+                });
+                continue;
+            }
+            
+            // Jika komentar memiliki dealId, cari dealName dari dealId
+            if (commentData.dealId) {
+                // Cek cache terlebih dahulu
+                let dealName = dealNameToProjectKey.get(commentData.dealId);
+                
+                if (!dealName) {
+                    // Cari di deals array
+                    let deal = deals.find(d => d.id === commentData.dealId);
+                    
+                    // Jika tidak ditemukan, coba ambil dari Firestore
+                    if (!deal) {
+                        try {
+                            const dealDoc = await dealsCollection.doc(commentData.dealId).get();
+                            if (dealDoc.exists) {
+                                deal = { id: dealDoc.id, ...dealDoc.data() };
+                                deals.push(deal);
+                                dealsByIdCache.set(deal.id, deal);
+                            }
+                        } catch (e) {
+                            console.warn(`Tidak dapat mengambil deal dengan ID: ${commentData.dealId}`, e);
+                        }
+                    }
+                    
+                    if (deal && deal.dealName) {
+                        dealName = deal.dealName;
+                        dealNameToProjectKey.set(commentData.dealId, dealName);
+                    }
+                } else {
+                    dealName = dealNameToProjectKey.get(commentData.dealId);
+                }
+                
+                if (dealName) {
+                    const projectKey = getProjectKey(dealName);
+                    commentsToMigrate.push({
+                        id: doc.id,
+                        projectKey: projectKey,
+                        projectName: dealName
+                    });
+                } else {
+                    console.warn(`Tidak dapat menemukan dealName untuk dealId: ${commentData.dealId}`);
+                }
+            }
+        }
+        
+        // Lakukan migrasi batch
+        if (commentsToMigrate.length > 0) {
+            console.log(`Menemukan ${commentsToMigrate.length} komentar yang perlu dimigrasi`);
+            
+            const batch = db.batch();
+            let batchCount = 0;
+            
+            for (const comment of commentsToMigrate) {
+                const commentRef = commentsCollection.doc(comment.id);
+                batch.update(commentRef, {
+                    projectKey: comment.projectKey,
+                    projectName: comment.projectName
+                });
+                batchCount++;
+                
+                // Batch maksimal 500 operasi
+                if (batchCount >= 450) {
+                    await batch.commit();
+                    console.log(`Batch migrasi ${batchCount} komentar berhasil`);
+                    batchCount = 0;
+                }
+            }
+            
+            // Commit sisa batch
+            if (batchCount > 0) {
+                await batch.commit();
+                console.log(`Batch migrasi terakhir ${batchCount} komentar berhasil`);
+            }
+            
+            console.log(`Migrasi ${commentsToMigrate.length} komentar selesai!`);
+        } else {
+            console.log("Tidak ada komentar yang perlu dimigrasi");
+        }
+        
+        commentsMigrationCompleted = true;
+        
+        // Simpan flag migrasi ke localStorage agar tidak migrasi ulang
+        localStorage.setItem('comments_migration_completed', 'true');
+        
+    } catch (error) {
+        console.error("Error saat migrasi komentar:", error);
+    }
+}
+
+/**
+ * Load komentar berdasarkan PROJECT NAME (semua sales dalam 1 project bisa lihat komentar yang sama)
+ * Versi yang kompatibel dengan komentar lama dan baru
+ */
+async function loadCommentsByProjectName(dealId) {
+    try {
+        console.log(`Loading comments for deal ID: ${dealId}`);
+        
+        // Dapatkan deal dari ID
+        let deal = getDealById(dealId);
+        
+        // Jika tidak ditemukan di cache, coba cari di deals array
+        if (!deal) {
+            deal = deals.find(d => d.id === dealId);
+        }
+        
+        // Jika masih tidak ditemukan, coba ambil dari Firestore
+        if (!deal) {
+            const dealDoc = await dealsCollection.doc(dealId).get();
+            if (dealDoc.exists) {
+                deal = { id: dealDoc.id, ...dealDoc.data() };
+                deals.push(deal);
+                dealsByIdCache.set(dealId, deal);
+            }
+        }
+        
+        if (!deal || !deal.dealName) {
+            console.log("Deal or deal name not found for ID:", dealId);
+            return [];
+        }
+        
+        const projectKey = getProjectKey(deal.dealName);
+        console.log(`Loading comments for project key: "${projectKey}"`);
+        
+        // Load komentar berdasarkan projectKey (semua komentar untuk project ini)
+        const querySnapshot = await commentsCollection
+            .where('projectKey', '==', projectKey)
+            .orderBy('timestamp', 'asc')
+            .get();
+        
+        const comments = [];
+        querySnapshot.forEach((doc) => {
+            const commentData = doc.data();
+            comments.push({ 
+                id: doc.id, 
+                ...commentData,
+                timestamp: commentData.timestamp 
+            });
+        });
+        
+        console.log(`Found ${comments.length} comments for project "${projectKey}"`);
+        
+        // Jika tidak ada komentar dengan projectKey, coba cari komentar lama berdasarkan dealId
+        if (comments.length === 0) {
+            console.log(`Tidak ada komentar dengan projectKey, mencoba mencari komentar lama berdasarkan dealId: ${dealId}`);
+            
+            const oldCommentsSnapshot = await commentsCollection
+                .where('dealId', '==', dealId)
+                .orderBy('timestamp', 'asc')
+                .get();
+            
+            const oldComments = [];
+            oldCommentsSnapshot.forEach((doc) => {
+                const commentData = doc.data();
+                oldComments.push({ 
+                    id: doc.id, 
+                    ...commentData,
+                    timestamp: commentData.timestamp 
+                });
+            });
+            
+            if (oldComments.length > 0) {
+                console.log(`Found ${oldComments.length} old comments for dealId: ${dealId}`);
+                
+                // Migrasi komentar lama ini secara realtime
+                const batch = db.batch();
+                for (const comment of oldComments) {
+                    const commentRef = commentsCollection.doc(comment.id);
+                    batch.update(commentRef, {
+                        projectKey: projectKey,
+                        projectName: deal.dealName
+                    });
+                }
+                await batch.commit();
+                console.log(`Migrated ${oldComments.length} old comments to projectKey: ${projectKey}`);
+                
+                return oldComments;
+            }
+        }
+        
+        return comments;
+    } catch (error) {
+        console.error("Error loading comments:", error);
         return [];
     }
-    
-    console.log(`Sales mode: filtering deals for sales: ${currentSales}`);
-    
-    // Filter hanya deal yang salesName-nya sama dengan currentSales
-    const filtered = dealsList.filter(deal => {
-        const dealSales = deal.salesName;
-        const match = dealSales === currentSales;
-        if (!match) {
-            console.log(`Excluding deal: ${deal.dealName} (sales: ${dealSales}) - not matching ${currentSales}`);
-        } else {
-            console.log(`Including deal: ${deal.dealName} (sales: ${dealSales})`);
-        }
-        return match;
-    });
-    
-    console.log(`Filtered ${filtered.length} deals out of ${dealsList.length} for sales ${currentSales}`);
-    return filtered;
 }
 
 /**
- * MENDAPATKAN DEALS YANG SUDAH DIFILTER BERDASARKAN USER
- * INI ADALAH FUNGSI UTAMA YANG DIGUNAKAN UNTUK MENDAPATKAN DATA YANG AKAN DITAMPILKAN
- * 
- * URUTAN FILTER YANG BENAR:
- * 1. Filter berdasarkan role user (sales hanya lihat project sendiri)
- * 2. Filter berdasarkan tahun aktif
- * 3. Filter berdasarkan filter yang dipilih user di UI
+ * Render komentar ke container (1 thread komentar untuk semua sales)
  */
-function getFilteredDeals() {
-    // Langkah 1: Mulai dengan semua deals
-    let baseDeals = deals;
-    
-    // Langkah 2: PENTING! Filter berdasarkan role user TERLEBIH DAHULU
-    // Ini memastikan sales hanya melihat project miliknya
-    baseDeals = filterDealsByUser(baseDeals);
-    
-    // Langkah 3: Kemudian filter berdasarkan tahun aktif
-    baseDeals = getDealsByYear(activeYear, baseDeals);
-    
-    // Langkah 4: Terakhir filter berdasarkan filter yang dipilih user di UI
-    const filteredDeals = baseDeals.filter(deal => {
-        const matchesSearch = 
-            activeFilters.searchTerm === '' ||
-            (deal.dealName && deal.dealName.toLowerCase().includes(activeFilters.searchTerm)) ||
-            (deal.salesName && deal.salesName.toLowerCase().includes(activeFilters.searchTerm));
-        
-        const matchesPriority = 
-            activeFilters.priority === 'all' || 
-            (deal.priority && deal.priority === activeFilters.priority);
-        
-        const matchesStage = activeFilters.stage === 'all' || 
-                            (deal.stage && deal.stage === activeFilters.stage);
-
-        const matchesSales = activeFilters.sales === 'all' || 
-                            (deal.salesName && deal.salesName === activeFilters.sales);
-
-        const matchesConsultant = activeFilters.consultant === 'all' || 
-                                (deal.consultant && deal.consultant === activeFilters.consultant);
-        
-        const matchesContractor = activeFilters.contractor === 'all' || 
-                                (deal.contractor && 
-                                (Array.isArray(deal.contractor) ? 
-                                deal.contractor.includes(activeFilters.contractor) : 
-                                deal.contractor === activeFilters.contractor));
-
-        const matchesProduct = activeFilters.product === 'all' || 
-                            (deal.product && 
-                            (Array.isArray(deal.product) ? 
-                            deal.product.includes(activeFilters.product) : 
-                            deal.product === activeFilters.product));
-
-        const matchesFacility = activeFilters.facility === 'all' || 
-                                (deal.facility && deal.facility === activeFilters.facility);
-
-        const matchesPackage = activeFilters.package === 'all' || 
-                            (deal.package && deal.package === activeFilters.package);
-        
-        return matchesSearch && matchesPriority && matchesStage && matchesSales &&
-            matchesConsultant && matchesContractor && matchesFacility && matchesProduct && matchesPackage;
-    });
-    
-    console.log(`[getFilteredDeals] Final filtered deals for ${currentSalesName || currentUserEmail}: ${filteredDeals.length} deals`);
-    return filteredDeals;
-}
-
-/**
- * Mendapatkan deals yang sudah difilter berdasarkan user UNTUK DASHBOARD (unique projects)
- * Fungsi ini memastikan bahwa hanya project milik sales yang bersangkutan yang ditampilkan
- */
-function getFilteredUniqueProjectsForDashboard() {
-    // Dapatkan deals yang sudah difilter berdasarkan user
-    const userFilteredDeals = getFilteredDeals();
-    
-    // Jika user adalah sales, pastikan hanya project miliknya yang masuk ke unique projects
-    if (currentUserRole !== 'admin' && currentUserRole !== 'manager') {
-        const currentSales = getCurrentSalesName();
-        if (currentSales) {
-            // Filter ulang untuk memastikan tidak ada project sales lain
-            const salesOnlyDeals = userFilteredDeals.filter(deal => deal.salesName === currentSales);
-            console.log(`[getFilteredUniqueProjectsForDashboard] Unique projects untuk sales ${currentSales}: ${salesOnlyDeals.length} deals`);
-            return getUniqueProjectsForDashboard(salesOnlyDeals);
-        }
-    }
-    
-    return getUniqueProjectsForDashboard(userFilteredDeals);
-}
-
-// Fungsi untuk menangani perubahan status autentikasi
-auth.onAuthStateChanged(async (user) => {
-    if (authInitialized) return;
-    authInitialized = true;
-    
-    console.log("Auth state changed:", user ? user.email : "no user");
-    
-    if (!user && window.location.pathname.includes('app.html')) {
-        console.log("No user, redirecting to login");
-        window.location.href = 'login.html';
+function renderComments(comments, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) {
+        console.log(`Container ${containerId} not found`);
         return;
     }
     
-    if (user && window.location.pathname.includes('login.html')) {
-        console.log("User already logged in, redirecting to app");
-        window.location.href = 'app.html';
+    container.innerHTML = '';
+    
+    if (!comments || comments.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-gray-500 py-4">
+                <i class="fas fa-comments text-2xl mb-2"></i>
+                <p>Belum ada komentar</p>
+                <p class="text-xs mt-1">Semua sales yang mengerjakan project ini dapat melihat komentar</p>
+            </div>
+        `;
+        
+        const commentsCountElement = document.getElementById(containerId === 'commentsList' ? 'commentsCount' : 'detailCommentsCount');
+        if (commentsCountElement) {
+            commentsCountElement.textContent = '0 komentar';
+        }
         return;
     }
-
-    if (user && window.location.pathname.includes('app.html')) {
-        try {
-            // Simpan email user yang login
-            currentUserEmail = user.email;
-            
-            // Update welcome message
-            const userWelcome = document.getElementById('userWelcome');
-            if (userWelcome) {
-                userWelcome.textContent = user.email;
-            }
-
-            // Cek role admin/manager
-            if (managerEmails.includes(user.email)) {
-                // Jika email adalah admin atau david, berikan role admin
-                if (user.email === 'admin@genetek.co.id' || user.email === 'david@genetek.co.id') {
-                    currentUserRole = 'admin';
-                } else {
-                    currentUserRole = 'manager';
-                }
-                await usersCollection.doc(user.uid).set({ 
-                    role: currentUserRole,
-                    email: user.email 
-                }, { merge: true });
-            } else {
-                // Untuk user biasa (sales)
-                currentUserRole = 'user';
-                const userDoc = await usersCollection.doc(user.uid).get();
-                if (!userDoc.exists) {
-                    await usersCollection.doc(user.uid).set({ 
-                        role: 'user',
-                        email: user.email 
-                    }, { merge: true });
-                } else {
-                    currentUserRole = userDoc.data().role || 'user';
-                }
-            }
-            
-            // Dapatkan nama sales dari email
-            currentSalesName = getCurrentSalesName();
-            
-            console.log("Current role:", currentUserRole);
-            console.log("Current sales name:", currentSalesName);
-            console.log("Current user email:", currentUserEmail);
-            
-            applyUserPermissions();
-            
-            // Load data dengan urutan yang benar
-            await loadConsultantsFromFirebase();
-            await loadDropdownOptions();
-            await loadDealsFromFirebase();
-            await loadActivitiesFromFirebase();
-            
-            initEventListeners();
-            initViewToggle();
-            initExportElements();
-            initYearFilter();
-            
-            // Load Recycle Bin data untuk admin
-            if (currentUserRole === 'admin') {
-                loadRecycleBin();
-            }
-        } catch (error) {
-            console.error("Error checking user role:", error);
-            showToast("Gagal memuat data pengguna. Silakan refresh halaman.", 5000);
-        }
-    }
-});
-
-// ==================== FUNGSI UTAMA UNTUK MENANGANI NILAI PROJECT ====================
-
-/**
- * Mendapatkan nilai yang akan ditampilkan untuk sebuah project
- * Logika:
- * - Jika hanya 1 project aktif (tidak lost) untuk nama project tersebut, tampilkan nilai asli
- * - Jika multiple project aktif, tampilkan nilai tertinggi
- */
-function getDisplayValueForProject(deal, allDealsWithSameName) {
-    // Filter project yang tidak lost
-    const activeProjects = allDealsWithSameName.filter(d => d.stage !== 'lost');
     
-    // Jika hanya 1 project aktif yang tersisa, tampilkan nilai asli
-    if (activeProjects.length === 1) {
-        return deal.value || 0;
-    }
-    
-    // Jika multiple project aktif, tampilkan nilai tertinggi
-    const maxValue = Math.max(...activeProjects.map(d => d.value || 0));
-    return maxValue;
-}
-
-/**
- * Mengecek apakah sebuah project adalah satu-satunya yang aktif untuk nama project tersebut
- */
-function isLastActiveProject(deal, allDealsWithSameName) {
-    const activeProjects = allDealsWithSameName.filter(d => d.stage !== 'lost');
-    return activeProjects.length === 1;
-}
-
-/**
- * Mendapatkan nilai tertinggi dari semua project dengan nama yang sama (hanya dari yang aktif/tidak lost)
- */
-function getHighestValueForProjectName(projectName, dealsList) {
-    const allDealsWithSameName = dealsList.filter(d => 
-        d.dealName?.trim().toLowerCase() === projectName?.toLowerCase()
-    );
-    const activeProjects = allDealsWithSameName.filter(d => d.stage !== 'lost');
-    
-    if (activeProjects.length === 0) return 0;
-    return Math.max(...activeProjects.map(d => d.value || 0));
-}
-
-/**
- * Menggabungkan project dengan nama yang sama untuk dashboard
- * Logika baru: 
- * - Jika hanya 1 project aktif (tidak lost) untuk nama project tersebut, tampilkan nilai asli
- * - Jika multiple project aktif, tampilkan nilai tertinggi
- */
-function getUniqueProjectsForDashboard(dealsList) {
-    // Buat map dengan key kombinasi nama project + priority
-    const projectMap = new Map();
-    // Map untuk menyimpan daftar semua project per nama project (untuk analisis)
-    const allProjectsByName = new Map();
-    
-    // Kumpulkan semua project per nama project
-    dealsList.forEach(deal => {
-        const projectName = deal.dealName?.trim();
-        if (!projectName) return;
-        
-        if (!allProjectsByName.has(projectName)) {
-            allProjectsByName.set(projectName, []);
-        }
-        allProjectsByName.get(projectName).push(deal);
+    // Urutkan komentar berdasarkan timestamp (terlama ke terbaru)
+    const sortedComments = [...comments].sort((a, b) => {
+        const timeA = a.timestamp ? (a.timestamp.toDate ? a.timestamp.toDate().getTime() : new Date(a.timestamp).getTime()) : 0;
+        const timeB = b.timestamp ? (b.timestamp.toDate ? b.timestamp.toDate().getTime() : new Date(b.timestamp).getTime()) : 0;
+        return timeA - timeB;
     });
     
-    // Hitung nilai tertinggi per nama project (hanya dari project aktif)
-    const maxValueByProjectName = new Map();
-    for (const [projectName, projectDeals] of allProjectsByName) {
-        const activeProjects = projectDeals.filter(d => d.stage !== 'lost');
-        if (activeProjects.length > 0) {
-            const maxValue = Math.max(...activeProjects.map(d => d.value || 0));
-            maxValueByProjectName.set(projectName, maxValue);
-        }
-    }
-    
-    // Kelompokkan berdasarkan nama project + priority
-    dealsList.forEach(deal => {
-        const projectName = deal.dealName?.trim();
-        const priority = deal.priority || 'Priority';
-        if (!projectName) return;
+    sortedComments.forEach(comment => {
+        const commentItem = document.createElement('div');
+        const isManager = managerEmails.includes(comment.userEmail);
+        const isCurrentUser = comment.userEmail === auth.currentUser?.email;
         
-        const key = `${projectName}|${priority}`;
+        commentItem.className = `comment-item ${isManager ? 'manager' : 'sales'}`;
         
-        if (!projectMap.has(key)) {
-            projectMap.set(key, []);
+        const canDelete = currentUserRole === 'admin' || currentUserRole === 'manager' || isCurrentUser;
+        
+        // Tampilkan sales name jika ada
+        const salesInfo = comment.salesName ? `<span class="comment-sales ml-2">(Sales: ${escapeHtml(comment.salesName)})</span>` : '';
+        
+        // Format timestamp dengan aman
+        let timeStr = '-';
+        if (comment.timestamp) {
+            try {
+                if (comment.timestamp.toDate) {
+                    timeStr = formatDateTime(comment.timestamp);
+                } else if (comment.timestamp.seconds) {
+                    timeStr = formatDateTime(new Date(comment.timestamp.seconds * 1000));
+                } else {
+                    timeStr = formatDateTime(comment.timestamp);
+                }
+            } catch(e) {
+                timeStr = '-';
+            }
         }
-        projectMap.get(key).push(deal);
+        
+        commentItem.innerHTML = `
+            <div class="comment-header">
+                <div>
+                    <span class="comment-author">${escapeHtml(comment.userEmail)}</span>
+                    ${salesInfo}
+                    <span class="comment-role ${isManager ? 'manager' : 'sales'} ml-2">
+                        ${isManager ? 'Manager' : 'Sales'}
+                    </span>
+                </div>
+                <div class="comment-time">${timeStr}</div>
+            </div>
+            <div class="comment-content">${escapeHtml(comment.content)}</div>
+            ${canDelete ? `
+                <button class="comment-delete-btn" data-comment-id="${comment.id}" data-project-key="${escapeHtml(comment.projectKey || '')}">
+                    <i class="fas fa-trash"></i>
+                </button>
+            ` : ''}
+        `;
+        
+        container.appendChild(commentItem);
     });
     
-    const uniqueProjects = [];
+    // Event listener untuk delete button
+    container.querySelectorAll('.comment-delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const commentId = btn.dataset.commentId;
+            await deleteComment(commentId);
+        });
+    });
     
-    projectMap.forEach((duplicateDeals, key) => {
-        const [projectName, priority] = key.split('|');
+    // Update counter komentar
+    const commentsCountElement = document.getElementById(containerId === 'commentsList' ? 'commentsCount' : 'detailCommentsCount');
+    if (commentsCountElement) {
+        commentsCountElement.textContent = `${comments.length} komentar`;
+    }
+}
+
+/**
+ * Hapus komentar
+ */
+async function deleteComment(commentId) {
+    if (!commentId) {
+        showToast("Komentar tidak ditemukan", 3000);
+        return;
+    }
+    
+    try {
+        await commentsCollection.doc(commentId).delete();
         
-        // Filter hanya project yang tidak lost untuk ditampilkan
-        const activeDeals = duplicateDeals.filter(deal => deal.stage !== 'lost');
+        showToast("Komentar berhasil dihapus", 2000);
         
-        if (activeDeals.length === 0) {
-            // Jika semua project lost, jangan tampilkan
+        // Refresh komentar untuk project yang sedang aktif
+        if (currentDealIdForComments) {
+            const comments = await loadCommentsByProjectName(currentDealIdForComments);
+            renderComments(comments, 'detailCommentsList');
+            
+            if (document.getElementById('commentsList')) {
+                renderComments(comments, 'commentsList');
+            }
+        }
+    } catch (error) {
+        console.error("Error deleting comment:", error);
+        showToast("Gagal menghapus komentar", 3000);
+    }
+}
+
+/**
+ * Tambah komentar untuk project (berdasarkan PROJECT NAME, bukan per sales)
+ * Semua sales dalam 1 project akan melihat komentar yang sama
+ */
+async function addComment(dealId, content) {
+    if (!content || !content.trim()) {
+        showToast("Komentar tidak boleh kosong", 3000);
+        return;
+    }
+    
+    try {
+        // Dapatkan deal untuk mengetahui nama project
+        let deal = getDealById(dealId);
+        
+        if (!deal) {
+            deal = deals.find(d => d.id === dealId);
+        }
+        
+        if (!deal) {
+            const dealDoc = await dealsCollection.doc(dealId).get();
+            if (dealDoc.exists) {
+                deal = { id: dealDoc.id, ...dealDoc.data() };
+            }
+        }
+        
+        if (!deal || !deal.dealName) {
+            showToast("Project tidak ditemukan", 3000);
             return;
         }
         
-        // Dapatkan semua project dengan nama yang sama
-        const allDealsWithSameName = allProjectsByName.get(projectName) || [];
-        const activeProjectsCount = allDealsWithSameName.filter(d => d.stage !== 'lost').length;
-        const isLastProject = (activeProjectsCount === 1);
+        const projectKey = getProjectKey(deal.dealName);
+        const projectName = deal.dealName.trim();
+        const currentSalesNameValue = getCurrentSalesName();
+        const currentUser = auth.currentUser;
         
-        // Untuk setiap deal dalam group ini, kita perlu menentukan nilai yang ditampilkan
-        activeDeals.forEach(deal => {
-            // Tentukan nilai yang akan ditampilkan
-            let displayValue;
-            let hasHigherValueFromOtherPriority = false;
-            
-            if (isLastProject) {
-                // Jika hanya 1 project aktif untuk nama ini, tampilkan nilai asli
-                displayValue = deal.value || 0;
-                hasHigherValueFromOtherPriority = false;
-            } else {
-                // Jika multiple project aktif, tampilkan nilai tertinggi dari semua project aktif
-                const highestValue = maxValueByProjectName.get(projectName) || 0;
-                displayValue = highestValue;
-                hasHigherValueFromOtherPriority = (deal.value || 0) < highestValue;
-            }
-            
-            const newDeal = { ...deal };
-            newDeal.hasMultipleEntries = duplicateDeals.length > 1;
-            newDeal.totalEntries = duplicateDeals.length;
-            newDeal.allEntries = duplicateDeals;
-            newDeal.displayValue = displayValue;
-            newDeal.hasHigherValueFromOtherPriority = hasHigherValueFromOtherPriority;
-            newDeal.isLastActiveProject = isLastProject;
-            newDeal.activeProjectsCount = activeProjectsCount;
-            
-            uniqueProjects.push(newDeal);
-        });
-    });
-    
-    // Hapus duplikat berdasarkan ID (karena bisa jadi satu deal masuk ke uniqueProjects multiple times)
-    const seenIds = new Set();
-    const finalUniqueProjects = [];
-    for (const project of uniqueProjects) {
-        if (!seenIds.has(project.id)) {
-            seenIds.add(project.id);
-            finalUniqueProjects.push(project);
+        if (!currentUser) {
+            showToast("Anda harus login untuk berkomentar", 3000);
+            return;
         }
+        
+        console.log(`Adding comment to project key: "${projectKey}" from user: ${currentUser.email}, sales: ${currentSalesNameValue}`);
+        
+        const commentData = {
+            projectKey: projectKey,
+            projectName: projectName,
+            dealId: dealId,
+            content: content.trim(),
+            userEmail: currentUser.email,
+            salesName: currentSalesNameValue,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        await commentsCollection.add(commentData);
+        
+        // Refresh komentar
+        const comments = await loadCommentsByProjectName(dealId);
+        renderComments(comments, 'detailCommentsList');
+        
+        if (document.getElementById('commentsList')) {
+            renderComments(comments, 'commentsList');
+        }
+        
+        // Clear input
+        const detailCommentInput = document.getElementById('detailCommentInput');
+        if (detailCommentInput) detailCommentInput.value = '';
+        
+        const commentInput = document.getElementById('commentInput');
+        if (commentInput) commentInput.value = '';
+        
+        showToast("Komentar berhasil ditambahkan", 2000);
+        
+    } catch (error) {
+        console.error("Error adding comment:", error);
+        showToast("Gagal menambahkan komentar: " + error.message, 3000);
     }
-    
-    console.log(`[getUniqueProjectsForDashboard] Unique projects: ${finalUniqueProjects.length} dari ${dealsList.length} total deals`);
-    
-    return finalUniqueProjects;
-}
-
-// ==================== FILTER TAHUN ====================
-
-/**
- * Inisialisasi filter tahun untuk 2025 dan 2026
- */
-function initYearFilter() {
-    const yearFilterContainer = document.querySelector('.year-filter-container');
-    if (!yearFilterContainer) return;
-
-    // Gunakan event delegation
-    yearFilterContainer.addEventListener('click', (e) => {
-        const yearBadge = e.target.closest('.year-badge');
-        if (!yearBadge) return;
-
-        const year = yearBadge.dataset.year;
-        
-        // Update active class
-        document.querySelectorAll('.year-badge').forEach(badge => {
-            badge.classList.remove('active');
-        });
-        yearBadge.classList.add('active');
-        
-        // Set active year
-        activeYear = year;
-        
-        // Reset cache untuk tahun yang dipilih
-        if (!priorityStatsCache[year]) {
-            priorityStatsCache[year] = null;
-        }
-        
-        console.log(`Tahun aktif diubah ke: ${year}`);
-        
-        // Update filter year di activeFilters
-        activeFilters.year = year;
-        
-        // Reload data dengan filter baru
-        applyActiveFilters();
-        
-        // Update priority dashboard
-        createPriorityDashboard();
-        
-        showToast(`Menampilkan data tahun ${year === 'all' ? 'semua tahun' : year}`, 2000);
-    });
 }
 
 /**
- * Filter deals berdasarkan tahun yang dipilih dengan caching
- * Memperhatikan filter user terlebih dahulu
+ * Fungsi untuk memuat ulang komentar untuk deal yang sedang aktif
  */
-function getDealsByYear(year, baseDeals = null) {
-    // Jika baseDeals tidak diberikan, gunakan deals yang sudah difilter user
-    const sourceDeals = baseDeals !== null ? baseDeals : filterDealsByUser(deals);
-    
-    // Cek cache
-    if (dealsByYearCache[year] && baseDeals === null) {
-        console.log(`Mengambil data tahun ${year} dari cache: ${dealsByYearCache[year].length} deals`);
-        return dealsByYearCache[year];
-    }
-    
-    if (year === 'all') {
-        if (baseDeals === null) {
-            dealsByYearCache[year] = sourceDeals;
+async function refreshCommentsForCurrentDeal() {
+    if (currentDealIdForComments) {
+        const comments = await loadCommentsByProjectName(currentDealIdForComments);
+        renderComments(comments, 'detailCommentsList');
+        if (document.getElementById('commentsList')) {
+            renderComments(comments, 'commentsList');
         }
-        console.log(`Semua tahun: ${sourceDeals.length} deals`);
-        return sourceDeals;
     }
-    
-    const filtered = sourceDeals.filter(deal => {
-        if (!deal.createdAt) return false;
-        
-        try {
-            let dealDate;
-            if (deal.createdAt.toDate) {
-                dealDate = deal.createdAt.toDate();
-            } else if (deal.createdAt.seconds) {
-                dealDate = new Date(deal.createdAt.seconds * 1000);
-            } else {
-                dealDate = new Date(deal.createdAt);
-            }
-            
-            if (isNaN(dealDate.getTime())) return false;
-            
-            return dealDate.getFullYear().toString() === year;
-        } catch (e) {
-            console.error("Error parsing date:", e);
-            return false;
-        }
-    });
-    
-    if (baseDeals === null) {
-        dealsByYearCache[year] = filtered;
-    }
-    console.log(`Tahun ${year}: ${filtered.length} deals ditemukan`);
-    
-    return filtered;
 }
 
 // ==================== FUNGSI DROPDOWN OPTIONS ====================
@@ -644,7 +635,6 @@ async function loadDropdownOptions() {
             if (data.pics) {
                 uniquePICs = new Set(data.pics);
             }
-            console.log("Dropdown options loaded from Firebase");
         }
     } catch (error) {
         console.error("Error loading dropdown options:", error);
@@ -660,7 +650,6 @@ async function saveDropdownOptions() {
             pics: Array.from(uniquePICs),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-        console.log("Dropdown options saved to Firebase");
     } catch (error) {
         console.error("Error saving dropdown options:", error);
     }
@@ -698,7 +687,6 @@ async function deleteDropdownOption(field, value) {
 }
 
 function updateDropdownOptions() {
-    // Update facility dropdown
     if (facilitySelect) {
         const currentValue = facilitySelect.value;
         facilitySelect.innerHTML = `
@@ -722,7 +710,6 @@ function updateDropdownOptions() {
         facilitySelect.value = currentValue;
     }
 
-    // Update package dropdown
     if (packageSelect) {
         const currentValue = packageSelect.value;
         packageSelect.innerHTML = `
@@ -750,15 +737,11 @@ function updateDropdownOptions() {
 // ==================== FUNGSI PRIORITY DASHBOARD ====================
 
 function calculatePriorityStats(year) {
-    console.log(`Menghitung priority stats untuk tahun: ${year}`);
-    
     if (priorityStatsCache[year]) {
-        console.log(`Menggunakan cache untuk tahun ${year}`);
         return priorityStatsCache[year];
     }
     
     const yearDeals = getDealsByYear(year);
-    // Filter deals berdasarkan user
     const userYearDeals = filterDealsByUser(yearDeals);
     const uniqueProjects = getUniqueProjectsForDashboard(userYearDeals);
     
@@ -892,7 +875,7 @@ function openPriorityModal(priority, deals) {
                     <tr class="hover:bg-gray-50 cursor-pointer view-detail-row" data-id="${deal.id}">
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            ${deal.dealName || 'No Name'}
+                            ${escapeHtml(deal.dealName || 'No Name')}
                             ${hasHigherValue && !isLastProject ? `
                                 <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="Project ini memiliki nilai lebih tinggi di priority lain">
                                     <i class="fas fa-arrow-up mr-1"></i>Nilai Tertinggi
@@ -908,30 +891,30 @@ function openPriorityModal(priority, deals) {
                                     <i class="fas fa-copy mr-1"></i>${deal.totalEntries}x
                                 </span>
                             ` : ''}
-                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${deal.salesName || '-'}</td>
+                            </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${escapeHtml(deal.salesName || '-')}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold" title="${valueTooltip}">
                             ${valueDisplay}
-                         </td>
+                            </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${deal.stage === 'win' ? 'bg-green-100 text-green-800' : 
                                 deal.stage === 'lost' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">
                                 ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}
                             </span>
-                        </td>
+                          </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             <i class="fas fa-clock text-gray-400 mr-1"></i>${lastUpdateDate}
-                        </td>
+                          </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <button class="text-blue-600 hover:text-blue-900 mr-3 view-detail-btn" data-id="${deal.id}">
                                 <i class="fas fa-eye"></i>
                             </button>
                             ${deal.hasMultipleEntries ? `
-                                <button class="text-purple-600 hover:text-purple-900 view-all-entries-btn" data-deal-name="${deal.dealName}" data-priority="${deal.priority}" title="Lihat semua entries untuk priority ini">
+                                <button class="text-purple-600 hover:text-purple-900 view-all-entries-btn" data-deal-name="${escapeHtml(deal.dealName)}" data-priority="${deal.priority}" title="Lihat semua entries untuk priority ini">
                                     <i class="fas fa-list"></i>
                                 </button>
                             ` : ''}
-                        </td>
+                          </td>
                     </tr>
                 `}).join('')}
             </tbody>
@@ -993,7 +976,7 @@ function showAllEntriesForProject(dealName, priority) {
     modal.innerHTML = `
         <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
             <div class="flex justify-between items-center p-4 border-b">
-                <h2 class="text-xl font-semibold text-gray-800">Semua Entries untuk Project: ${dealName} (Priority: ${priority})</h2>
+                <h2 class="text-xl font-semibold text-gray-800">Semua Entries untuk Project: ${escapeHtml(dealName)} (Priority: ${priority})</h2>
                 <button class="close-all-entries text-gray-500 hover:text-gray-700">
                     <i class="fas fa-times text-2xl"></i>
                 </button>
@@ -1015,7 +998,7 @@ function showAllEntriesForProject(dealName, priority) {
                         ${sortedEntries.map((entry, index) => `
                             <tr class="hover:bg-gray-50">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${entry.salesName || '-'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${escapeHtml(entry.salesName || '-')}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">Rp ${formatNumber(entry.value) || '0'}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${entry.stage === 'win' ? 'bg-green-100 text-green-800' : 
@@ -1102,7 +1085,6 @@ function updateProgressBarUI(progress, isOnHold = false) {
     const progressFill = document.getElementById('progressFill');
     
     if (!progressPercentage || !progressFill) {
-        console.warn("Progress bar elements not found");
         return;
     }
     
@@ -1144,151 +1126,6 @@ function updateCheckpoints(progress, isOnHold = false) {
             checkpoint.classList.remove('active', 'onhold');
         }
     });
-}
-
-// ==================== FUNGSI COMMENTS ====================
-
-async function loadComments(dealId) {
-    try {
-        const querySnapshot = await commentsCollection
-            .where('dealId', '==', dealId)
-            .orderBy('timestamp', 'asc')
-            .get();
-        
-        const comments = [];
-        querySnapshot.forEach((doc) => {
-            comments.push({ id: doc.id, ...doc.data() });
-        });
-        
-        return comments;
-    } catch (error) {
-        console.error("Error loading comments:", error);
-        return [];
-    }
-}
-
-function renderComments(comments, containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    if (comments.length === 0) {
-        container.innerHTML = `
-            <div class="text-center text-gray-500 py-4">
-                <i class="fas fa-comments text-2xl mb-2"></i>
-                <p>Belum ada komentar</p>
-            </div>
-        `;
-        return;
-    }
-    
-    comments.forEach(comment => {
-        const commentItem = document.createElement('div');
-        const isManager = managerEmails.includes(comment.userEmail);
-        const isCurrentUser = comment.userEmail === auth.currentUser?.email;
-        
-        commentItem.className = `comment-item ${isManager ? 'manager' : 'sales'}`;
-        
-        const canDelete = currentUserRole === 'admin' || currentUserRole === 'manager' || isCurrentUser;
-        
-        commentItem.innerHTML = `
-            <div class="comment-header">
-                <div>
-                    <span class="comment-author">${comment.userEmail}</span>
-                    <span class="comment-role ${isManager ? 'manager' : 'sales'} ml-2">
-                        ${isManager ? 'Manager' : 'Sales'}
-                    </span>
-                </div>
-                <div class="comment-time">${formatDateTime(comment.timestamp)}</div>
-            </div>
-            <div class="comment-content">${comment.content}</div>
-            ${canDelete ? `
-                <button class="comment-delete-btn" data-comment-id="${comment.id}" data-deal-id="${comment.dealId}">
-                    <i class="fas fa-trash"></i>
-                </button>
-            ` : ''}
-        `;
-        
-        container.appendChild(commentItem);
-    });
-    
-    container.querySelectorAll('.comment-delete-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const commentId = btn.dataset.commentId;
-            const dealId = btn.dataset.dealId;
-            await deleteComment(commentId, dealId);
-        });
-    });
-    
-    const commentsCountElement = document.getElementById(containerId === 'commentsList' ? 'commentsCount' : 'detailCommentsCount');
-    if (commentsCountElement) {
-        commentsCountElement.textContent = `${comments.length} komentar`;
-    }
-}
-
-async function deleteComment(commentId, dealId) {
-    if (!commentId) {
-        showToast("Komentar tidak ditemukan", 3000);
-        return;
-    }
-    
-    try {
-        await commentsCollection.doc(commentId).delete();
-        
-        showToast("Komentar berhasil dihapus", 2000);
-        
-        if (currentDealIdForComments === dealId) {
-            const comments = await loadComments(dealId);
-            renderComments(comments, 'detailCommentsList');
-            
-            if (document.getElementById('commentsList')) {
-                renderComments(comments, 'commentsList');
-            }
-        }
-    } catch (error) {
-        console.error("Error deleting comment:", error);
-        showToast("Gagal menghapus komentar", 3000);
-    }
-}
-
-async function addComment(dealId, content) {
-    if (!content.trim()) {
-        showToast("Komentar tidak boleh kosong", 3000);
-        return;
-    }
-    
-    try {
-        const commentData = {
-            dealId: dealId,
-            content: content.trim(),
-            userEmail: auth.currentUser.email,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        
-        await commentsCollection.add(commentData);
-        
-        if (currentDealIdForComments === dealId) {
-            const comments = await loadComments(dealId);
-            renderComments(comments, 'detailCommentsList');
-            
-            if (document.getElementById('commentsList')) {
-                renderComments(comments, 'commentsList');
-            }
-        }
-        
-        document.getElementById('detailCommentInput').value = '';
-        if (document.getElementById('commentInput')) {
-            document.getElementById('commentInput').value = '';
-        }
-        
-        showToast("Komentar berhasil ditambahkan", 2000);
-        
-    } catch (error) {
-        console.error("Error adding comment:", error);
-        showToast("Gagal menambahkan komentar", 3000);
-    }
 }
 
 // ==================== FUNGSI MERGE PROJECT DALAM DEAL CARD ====================
@@ -1342,12 +1179,6 @@ function identifyMergedProjects(dealsList) {
     return mergedProjectsInfo;
 }
 
-/**
- * Mendapatkan nilai yang akan ditampilkan untuk sebuah project di card
- * Logika:
- * - Jika hanya 1 project aktif (tidak lost) untuk nama project tersebut, tampilkan nilai asli
- * - Jika multiple project aktif, tampilkan nilai tertinggi
- */
 function getCardDisplayValue(deal, allDealsWithSameName) {
     const activeProjects = allDealsWithSameName.filter(d => d.stage !== 'lost');
     
@@ -1374,25 +1205,20 @@ function renderMergedDealCard(dealGroup) {
         activeSalesPerProject[key] = activeSales;
     }
     
-    // Dapatkan semua project dengan nama yang sama (semua priority)
     const allProjectDeals = deals.filter(deal => 
         deal.dealName?.trim().toLowerCase() === dealNameLower
     );
     
-    // Filter project yang tidak lost
     const activeProjects = allProjectDeals.filter(d => d.stage !== 'lost');
     const isLastProject = activeProjects.length === 1;
     
-    // Hitung nilai yang akan ditampilkan
     let displayValue;
     let highestValueOverall;
     
     if (isLastProject) {
-        // Jika hanya 1 project aktif, tampilkan nilai asli dari project yang aktif
         displayValue = activeProjects[0].value || 0;
         highestValueOverall = displayValue;
     } else {
-        // Jika multiple project aktif, tampilkan nilai tertinggi
         highestValueOverall = Math.max(...activeProjects.map(d => d.value || 0));
         displayValue = highestValueOverall;
     }
@@ -1480,14 +1306,14 @@ function renderMergedDealCard(dealGroup) {
 
     dealCard.innerHTML = `
         <div class="flex justify-between items-start">
-            <h3 class="font-bold text-gray-800">${dealName || 'No Name'}</h3>
+            <h3 class="font-bold text-gray-800">${escapeHtml(dealName || 'No Name')}</h3>
             <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
                 ${priority}
             </span>
         </div>
         ${salesSelectorHTML}
         <div class="mt-1 text-sm text-gray-600 deal-details">
-            <p><i class="fas fa-user-tie mr-1"></i> ${activeSales}</p>
+            <p><i class="fas fa-user-tie mr-1"></i> ${escapeHtml(activeSales)}</p>
             <p class="font-semibold text-blue-600" title="${valueTooltip}">
                 ${valueDisplay}
             </p>
@@ -1569,7 +1395,6 @@ function setupMergeDealCardEvents(dealCard, dealGroup) {
                         const selectedDeal = dealGroup.find(deal => deal.salesName === selectedSales);
                         
                         if (selectedDeal) {
-                            // Dapatkan semua project dengan nama yang sama untuk menghitung nilai yang ditampilkan
                             const allProjectDeals = deals.filter(d => 
                                 d.dealName?.trim().toLowerCase() === dealName
                             );
@@ -1590,7 +1415,7 @@ function setupMergeDealCardEvents(dealCard, dealGroup) {
                             const dateElement = card.querySelector('.text-xs');
                             
                             if (salesNameElement) {
-                                salesNameElement.innerHTML = `<i class="fas fa-user-tie mr-1"></i> ${selectedSales}`;
+                                salesNameElement.innerHTML = `<i class="fas fa-user-tie mr-1"></i> ${escapeHtml(selectedSales)}`;
                             }
                             
                             if (valueElement) {
@@ -1696,16 +1521,13 @@ function renderIndividualDealCard(deal) {
     dealCard.dataset.dealName = deal.dealName?.toLowerCase();
     dealCard.dataset.priority = deal.priority || 'Priority';
     
-    // Dapatkan semua project dengan nama yang sama
     const allProjectDeals = deals.filter(d => 
         d.dealName?.trim().toLowerCase() === deal.dealName?.trim().toLowerCase()
     );
     
-    // Filter project yang tidak lost
     const activeProjects = allProjectDeals.filter(d => d.stage !== 'lost');
     const isLastProject = activeProjects.length === 1;
     
-    // Hitung nilai yang akan ditampilkan
     let displayValue;
     let highestValueOverall;
     
@@ -1770,13 +1592,13 @@ function renderIndividualDealCard(deal) {
 
     dealCard.innerHTML = `
         <div class="flex justify-between items-start">
-            <h3 class="font-bold text-gray-800">${deal.dealName || 'No Name'}</h3>
+            <h3 class="font-bold text-gray-800">${escapeHtml(deal.dealName || 'No Name')}</h3>
             <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
                 ${deal.priority || 'Priority'}
             </span>
         </div>
         <div class="mt-1 text-sm text-gray-600 deal-details">
-            <p><i class="fas fa-user-tie mr-1"></i> ${deal.salesName || '-'}</p>
+            <p><i class="fas fa-user-tie mr-1"></i> ${escapeHtml(deal.salesName || '-')}</p>
             <p class="font-semibold text-blue-600" title="${valueTooltip}">
                 ${valueDisplay}
             </p>
@@ -1828,16 +1650,13 @@ function renderDealList(deal, index) {
     const priorityBadgeClass = getPriorityBadgeClass(deal.priority);
     const winDate = getWinDate(deal);
     
-    // Dapatkan semua project dengan nama yang sama
     const allProjectDeals = deals.filter(d => 
         d.dealName?.trim().toLowerCase() === deal.dealName?.trim().toLowerCase()
     );
     
-    // Filter project yang tidak lost
     const activeProjects = allProjectDeals.filter(d => d.stage !== 'lost');
     const isLastProject = activeProjects.length === 1;
     
-    // Hitung nilai yang akan ditampilkan
     let displayValue;
     if (isLastProject) {
         displayValue = deal.value || 0;
@@ -1884,9 +1703,9 @@ function renderDealList(deal, index) {
     
     row.innerHTML = `
         <td class="px-4 py-3 align-top text-sm">${index + 1}</td>
-        <td class="px-4 py-3 align-top text-sm font-medium">${deal.salesName || '-'}</td>
+        <td class="px-4 py-3 align-top text-sm">${escapeHtml(deal.salesName || '-')}</td>
         <td class="px-4 py-3 align-top text-sm">
-            ${dealNameDisplay}
+            ${escapeHtml(dealNameDisplay)}
             ${allProjectDeals.length > 1 ? `
                 <span class="ml-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800" title="Project ini memiliki ${allProjectDeals.length} entries dengan berbagai priority">
                     <i class="fas fa-tags mr-1"></i>${allProjectDeals.length}
@@ -1897,7 +1716,7 @@ function renderDealList(deal, index) {
                     <i class="fas fa-star mr-1"></i>Last
                 </span>
             ` : ''}
-        </td>
+            </td>
         <td class="px-4 py-3 align-top text-sm">
             ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}
             ${winDate ? `
@@ -1905,17 +1724,17 @@ function renderDealList(deal, index) {
                 <i class="fas fa-calendar-check mr-1"></i>${formatDate(winDate)}
             </div>
             ` : ''}
-        </td>
-        <td class="px-4 py-3 align-top text-sm">${consultantDisplay}</td>
-        <td class="px-4 py-3 align-top text-sm">${contractorDisplay}</td>
+            </td>
+        <td class="px-4 py-3 align-top text-sm">${escapeHtml(consultantDisplay)}</td>
+        <td class="px-4 py-3 align-top text-sm">${escapeHtml(contractorDisplay)}</td>
         <td class="px-4 py-3 align-top text-sm font-semibold" title="${valueTooltip}">
             ${valueDisplay}
-        </td>
+            </td>
         <td class="px-4 py-3 align-top">
             <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
                 ${deal.priority || 'Priority'}
             </span>
-        </td>
+            </td>
         <td class="px-4 py-3 align-top text-sm deal-actions">
             <div class="flex space-x-2">
                 <button class="view-detail-btn text-blue-600 hover:text-blue-800">
@@ -1930,12 +1749,12 @@ function renderDealList(deal, index) {
                 </button>
                 ` : ''}
                 ${allProjectDeals.length > 1 ? `
-                <button class="text-purple-600 hover:text-purple-900 view-all-priorities-btn" data-deal-name="${deal.dealName}" title="Lihat semua priority untuk project ini">
+                <button class="text-purple-600 hover:text-purple-900 view-all-priorities-btn" data-deal-name="${escapeHtml(deal.dealName)}" title="Lihat semua priority untuk project ini">
                     <i class="fas fa-list"></i>
                 </button>
                 ` : ''}
             </div>
-        </td>
+            </td>
     `;
     
     return row;
@@ -1949,7 +1768,6 @@ function showAllPrioritiesForProject(dealName) {
         return;
     }
     
-    // Filter project yang tidak lost
     const activeEntries = allEntries.filter(deal => deal.stage !== 'lost');
     const isLastProject = activeEntries.length === 1;
     
@@ -1981,7 +1799,7 @@ function showAllPrioritiesForProject(dealName) {
     modal.innerHTML = `
         <div class="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[90vh] overflow-hidden">
             <div class="flex justify-between items-center p-4 border-b">
-                <h2 class="text-xl font-semibold text-gray-800">Semua Priority untuk Project: ${dealName}</h2>
+                <h2 class="text-xl font-semibold text-gray-800">Semua Priority untuk Project: ${escapeHtml(dealName)}</h2>
                 <button class="close-all-priorities text-gray-500 hover:text-gray-700">
                     <i class="fas fa-times text-2xl"></i>
                 </button>
@@ -2023,7 +1841,7 @@ function showAllPrioritiesForProject(dealName) {
                                     return `
                                     <tr class="${rowClass}">
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${entry.salesName || '-'}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${escapeHtml(entry.salesName || '-')}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
                                             Rp ${formatNumber(entry.value) || '0'}
                                             ${!isActive ? '<span class="ml-1 text-xs text-red-500">(Lost)</span>' : ''}
@@ -2165,17 +1983,17 @@ function renderRecycleBinContent() {
         row.className = 'border-b hover:bg-gray-50';
         
         row.innerHTML = `
-            <td class="p-3 text-sm">${deal.dealName || 'No Name'}</td>
-            <td class="p-3 text-sm">${deal.salesName || '-'}</td>
+            <td class="p-3 text-sm">${escapeHtml(deal.dealName || 'No Name')}</td>
+            <td class="p-3 text-sm">${escapeHtml(deal.salesName || '-')}</td>
             <td class="p-3 text-sm">Rp ${formatNumber(deal.value) || '0'}</td>
             <td class="p-3 text-sm">${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}</td>
             <td class="p-3 text-sm">${formatDateTime(deal.deletedAt)}</td>
-            <td class="p-3 text-sm">${deal.deletedByEmail || '-'}</td>
+            <td class="p-3 text-sm">${escapeHtml(deal.deletedByEmail || '-')}</td>
             <td class="p-3 text-sm">
                 <button class="restore-deal-btn text-green-600 hover:text-green-800 mr-3" data-id="${deal.id}">
                     <i class="fas fa-undo mr-1"></i> Restore
                 </button>
-                <button class="permanent-delete-btn text-red-600 hover:text-red-800" data-id="${deal.id}" data-name="${deal.dealName || 'No Name'}">
+                <button class="permanent-delete-btn text-red-600 hover:text-red-800" data-id="${deal.id}" data-name="${escapeHtml(deal.dealName || 'No Name')}">
                     <i class="fas fa-trash mr-1"></i> Hapus Permanen
                 </button>
             </td>
@@ -2400,8 +2218,6 @@ function updateActivityBadge() {
 function extractDealNameFromActivity(message) {
     if (!message) return null;
     
-    console.log("Extracting deal name from:", message);
-    
     const patterns = [
         /Deal "([^"]+)"/,
         /"([^"]+)"\s+(ditambahkan|diperbarui)/,
@@ -2415,7 +2231,6 @@ function extractDealNameFromActivity(message) {
         const match = message.match(pattern);
         if (match && match[1]) {
             const extractedName = match[1].trim();
-            console.log("Extracted deal name:", extractedName);
             return extractedName;
         }
     }
@@ -2432,7 +2247,6 @@ function extractDealNameFromActivity(message) {
             name += (name ? ' ' : '') + word;
         }
         if (name) {
-            console.log("Extracted deal name (fallback):", name);
             return name;
         }
     }
@@ -2443,13 +2257,10 @@ function extractDealNameFromActivity(message) {
 async function findDealByName(dealName) {
     if (!dealName) return null;
     
-    console.log("Mencari deal dengan nama:", dealName);
-    
     const normalizedSearchName = dealName.trim().toLowerCase();
     
     for (const [id, deal] of dealsByIdCache.entries()) {
         if (deal.dealName && deal.dealName.trim().toLowerCase() === normalizedSearchName) {
-            console.log("Deal ditemukan di cache:", deal);
             return deal;
         }
     }
@@ -2459,7 +2270,6 @@ async function findDealByName(dealName) {
     );
     
     if (deal) {
-        console.log("Deal ditemukan di array lokal:", deal);
         dealsByIdCache.set(deal.id, deal);
         return deal;
     }
@@ -2469,14 +2279,11 @@ async function findDealByName(dealName) {
     );
     
     if (deal) {
-        console.log("Deal ditemukan dengan partial match:", deal);
         dealsByIdCache.set(deal.id, deal);
         return deal;
     }
     
     try {
-        console.log("Mencari deal di Firestore...");
-        
         const exactQuery = await dealsCollection
             .where('dealName', '==', dealName)
             .limit(1)
@@ -2485,8 +2292,6 @@ async function findDealByName(dealName) {
         if (!exactQuery.empty) {
             const doc = exactQuery.docs[0];
             deal = { id: doc.id, ...doc.data() };
-            console.log("Deal ditemukan di Firestore (exact):", deal);
-            
             deals.push(deal);
             dealsByIdCache.set(deal.id, deal);
             return deal;
@@ -2501,8 +2306,6 @@ async function findDealByName(dealName) {
         if (!startQuery.empty) {
             const doc = startQuery.docs[0];
             deal = { id: doc.id, ...doc.data() };
-            console.log("Deal ditemukan di Firestore (starts with):", deal);
-            
             deals.push(deal);
             dealsByIdCache.set(deal.id, deal);
             return deal;
@@ -2513,8 +2316,6 @@ async function findDealByName(dealName) {
             const data = doc.data();
             if (data.dealName && data.dealName.toLowerCase().includes(normalizedSearchName)) {
                 deal = { id: doc.id, ...data };
-                console.log("Deal ditemukan di Firestore (contains):", deal);
-                
                 deals.push(deal);
                 dealsByIdCache.set(deal.id, deal);
                 return deal;
@@ -2525,7 +2326,6 @@ async function findDealByName(dealName) {
         console.error("Error mencari deal di Firestore:", error);
     }
     
-    console.log("Deal tidak ditemukan untuk nama:", dealName);
     return null;
 }
 
@@ -2545,11 +2345,8 @@ function restoreActivityModalState() {
     }
 }
 
-// Fungsi untuk membuka modal aktivitas dengan loading state langsung
 async function openActivityModal() {
-    // Cegah multiple click
     if (isActivityModalOpening) {
-        console.log("Activity modal already opening, ignoring click");
         return;
     }
     
@@ -2567,12 +2364,10 @@ async function openActivityModal() {
             return;
         }
         
-        // Tampilkan modal dengan loading state langsung (tanpa delay)
         activityModal.classList.remove('hidden');
         activityModalContent.classList.remove('modal-content-leave-active');
         activityModalContent.classList.add('modal-content-enter-active');
         
-        // Tampilkan loading indicator
         activityFeed.innerHTML = `
             <div class="text-center text-gray-500 py-8">
                 <i class="fas fa-spinner fa-spin text-3xl mb-2"></i>
@@ -2580,13 +2375,10 @@ async function openActivityModal() {
             </div>
         `;
         
-        // Set isOpen ke true segera
         activityModalState.isOpen = true;
         
-        // Load data di background
         await loadActivitiesFromFirebase(true);
         
-        // Render aktivitas
         activityFeed.innerHTML = '';
         
         if (activities.length === 0) {
@@ -2603,7 +2395,6 @@ async function openActivityModal() {
                 return tsB - tsA;
             });
 
-            // Gunakan Promise.all untuk mencari semua deal secara paralel
             const activityPromises = sortedActivities.map(async (activity) => {
                 const dealName = extractDealNameFromActivity(activity.message);
                 if (dealName) {
@@ -2624,7 +2415,7 @@ async function openActivityModal() {
                 activityItem.innerHTML = `
                     <div class="flex items-start">
                         <div class="flex-1">
-                            <p class="text-sm ${isUnread ? 'font-semibold' : ''}">${activity.message || 'Aktivitas tidak tersedia'}</p>
+                            <p class="text-sm ${isUnread ? 'font-semibold' : ''}">${escapeHtml(activity.message || 'Aktivitas tidak tersedia')}</p>
                             <div class="flex items-center mt-1 text-xs text-gray-500">
                                 <i class="fas fa-clock mr-1"></i>
                                 <span>${timeStr}</span>
@@ -2636,7 +2427,7 @@ async function openActivityModal() {
                             <div class="ml-2">
                                 <button class="view-activity-deal text-blue-600 hover:text-blue-800 p-1" 
                                         data-deal-id="${activity.deal.id}" 
-                                        data-deal-name="${activity.deal.dealName}"
+                                        data-deal-name="${escapeHtml(activity.deal.dealName)}"
                                         title="Lihat detail deal">
                                     <i class="fas fa-eye"></i>
                                 </button>
@@ -2677,14 +2468,12 @@ async function openActivityModal() {
             });
         }
         
-        // Tandai sebagai sudah dibaca
         markActivitiesAsRead();
         
     } catch (error) {
         console.error("Error opening activity modal:", error);
         showToast("Gagal membuka aktivitas", 3000);
     } finally {
-        // Reset flag setelah selesai
         setTimeout(() => {
             isActivityModalOpening = false;
         }, 500);
@@ -2931,15 +2720,11 @@ async function loadDealsFromFirebase(forceRefresh = false) {
         });
         
         console.log("Total deals loaded:", deals.length);
-        console.log("Unique years found:", Array.from(uniqueYears));
         
-        // Filter uniqueSales berdasarkan role user untuk dropdown
         if (currentUserRole !== 'admin' && currentUserRole !== 'manager') {
-            // Untuk sales, hanya tampilkan nama sales mereka sendiri di dropdown
             const currentSales = getCurrentSalesName();
             if (currentSales) {
                 uniqueSales = new Set([currentSales]);
-                console.log("Filtered uniqueSales untuk dropdown:", Array.from(uniqueSales));
             }
         }
         
@@ -2959,6 +2744,9 @@ async function loadDealsFromFirebase(forceRefresh = false) {
         populateFilterDropdowns();
         createPriorityDashboard();
         applyActiveFilters();
+        
+        // Jalankan migrasi komentar setelah deals dimuat
+        await migrateOldComments();
         
     } catch (error) {
         console.error("Error loading deals:", error);
@@ -3007,7 +2795,6 @@ function canUserEditDeal(deal) {
 function populateDropdown(selectElementId, uniqueValues, selectedValue = 'all') {
     const selectElement = document.getElementById(selectElementId);
     if (!selectElement) {
-        console.warn(`Element with ID '${selectElementId}' not found.`);
         return;
     }
 
@@ -3153,7 +2940,6 @@ function processSalesData(salesName = 'all') {
         salesDeals = deals.filter(deal => deal.salesName === salesName);
     }
     
-    // Filter berdasarkan user untuk sales
     salesDeals = filterDealsByUser(salesDeals);
     
     const uniqueProjects = getUniqueProjectsForDashboard(salesDeals);
@@ -3475,7 +3261,6 @@ function processPriorityData(priority = 'all') {
         priorityDeals = deals.filter(deal => deal.priority === priority);
     }
     
-    // Filter berdasarkan user
     priorityDeals = filterDealsByUser(priorityDeals);
     
     const uniqueProjects = getUniqueProjectsForDashboard(priorityDeals);
@@ -3822,7 +3607,6 @@ function renderPriorityCharts() {
 function processDealDataForCharts(dealsData) {
     console.log("Processing deal data for charts, total deals:", dealsData.length);
     
-    // Filter berdasarkan user
     const userDealsData = filterDealsByUser(dealsData);
     
     const uniqueProjects = getUniqueProjectsForDashboard(userDealsData);
@@ -4208,7 +3992,6 @@ function showDealsByPriority(salesFilter, priority) {
         filteredDeals = deals.filter(deal => deal.salesName === selectedSales && deal.priority === priority);
     }
     
-    // Filter berdasarkan user
     filteredDeals = filterDealsByUser(filteredDeals);
     
     const uniqueFilteredDeals = getUniqueProjectsForDashboard(filteredDeals);
@@ -4255,8 +4038,8 @@ function showDealsByPriority(salesFilter, priority) {
                 return `
                 <tr class="hover:bg-gray-50 cursor-pointer view-detail-row" data-id="${deal.id}">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${deal.dealName || 'No Name'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${deal.salesName || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${escapeHtml(deal.dealName || 'No Name')}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${escapeHtml(deal.salesName || '-')}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">${valueDisplay}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${deal.stage === 'win' ? 'bg-green-100 text-green-800' : 
@@ -4294,7 +4077,6 @@ function showDealsByStage(priorityFilter, stage) {
         filteredDeals = deals.filter(deal => deal.priority === selectedPriority && deal.stage === stage);
     }
     
-    // Filter berdasarkan user
     filteredDeals = filterDealsByUser(filteredDeals);
     
     const uniqueFilteredDeals = getUniqueProjectsForDashboard(filteredDeals);
@@ -4342,8 +4124,8 @@ function showDealsByStage(priorityFilter, stage) {
                 return `
                 <tr class="hover:bg-gray-50 cursor-pointer view-detail-row" data-id="${deal.id}">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${deal.dealName || 'No Name'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${deal.salesName || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${escapeHtml(deal.dealName || 'No Name')}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${escapeHtml(deal.salesName || '-')}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">${valueDisplay}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
@@ -4478,6 +4260,24 @@ function applyUserPermissions() {
 }
 
 // ==================== FUNGSI EVENT LISTENERS ====================
+
+// Handler untuk submit komentar dari modal utama
+function commentSubmitHandler() {
+    const commentInput = document.getElementById('commentInput');
+    const comment = commentInput ? commentInput.value : '';
+    if (currentDealIdForComments) {
+        addComment(currentDealIdForComments, comment);
+    }
+}
+
+// Handler untuk submit komentar dari detail modal
+function detailCommentSubmitHandler() {
+    const detailCommentInput = document.getElementById('detailCommentInput');
+    const comment = detailCommentInput ? detailCommentInput.value : '';
+    if (currentDealIdForComments) {
+        addComment(currentDealIdForComments, comment);
+    }
+}
 
 function initEventListeners() {
     console.log("Initializing event listeners...");
@@ -4668,13 +4468,8 @@ function initEventListeners() {
         
         const commentSubmitBtn = document.getElementById('commentSubmitBtn');
         if (commentSubmitBtn) {
-            commentSubmitBtn.addEventListener('click', function() {
-                const commentInput = document.getElementById('commentInput');
-                const comment = commentInput ? commentInput.value : '';
-                if (currentDealIdForComments) {
-                    addComment(currentDealIdForComments, comment);
-                }
-            });
+            commentSubmitBtn.removeEventListener('click', commentSubmitHandler);
+            commentSubmitBtn.addEventListener('click', commentSubmitHandler);
         }
         
         const stageSelect = document.getElementById('stage');
@@ -4696,13 +4491,8 @@ function initEventListeners() {
         
         const detailCommentSubmitBtn = document.getElementById('detailCommentSubmitBtn');
         if (detailCommentSubmitBtn) {
-            detailCommentSubmitBtn.addEventListener('click', function() {
-                const detailCommentInput = document.getElementById('detailCommentInput');
-                const comment = detailCommentInput ? detailCommentInput.value : '';
-                if (currentDealIdForComments) {
-                    addComment(currentDealIdForComments, comment);
-                }
-            });
+            detailCommentSubmitBtn.removeEventListener('click', detailCommentSubmitHandler);
+            detailCommentSubmitBtn.addEventListener('click', detailCommentSubmitHandler);
         }
         
         const closeActivityBtn = document.getElementById('closeActivityBtn');
@@ -4830,17 +4620,9 @@ function switchView(viewType) {
     applyActiveFilters();
 }
 
-/**
- * FUNGSI UTAMA UNTUK MENAMPILKAN DEALS DI PIPELINES STAGE
- * Fungsi ini menggunakan getFilteredDeals() yang sudah memfilter berdasarkan user
- */
 function applyActiveFilters() {
     try {
-        // Gunakan fungsi getFilteredDeals yang sudah memfilter berdasarkan user
-        // dan filter-filter lainnya (search, priority, stage, dll)
         const filteredDeals = getFilteredDeals();
-        
-        console.log(`[applyActiveFilters] Applying filters: ${filteredDeals.length} deals to display for user ${currentSalesName || currentUserEmail}`);
         renderFilteredDeals(filteredDeals);
     } catch (error) {
         console.error("Error applying active filters:", error);
@@ -4875,10 +4657,6 @@ function filterDeals() {
     }
 }
 
-/**
- * RENDER FILTERED DEALS KE PIPELINES STAGE
- * Data yang masuk ke fungsi ini sudah terfilter berdasarkan user
- */
 function renderFilteredDeals(filteredDeals) {
     const pipelineStage = document.getElementById('pipelines-stage');
     if (!pipelineStage) return;
@@ -4900,7 +4678,6 @@ function renderFilteredDeals(filteredDeals) {
     }
     
     if (currentView === 'card') {
-        // Kelompokkan deals berdasarkan nama project dan priority
         const dealsByNameAndPriority = {};
         filteredDeals.forEach(deal => {
             const dealName = deal.dealName?.toLowerCase().trim();
@@ -5271,7 +5048,7 @@ function getDealsByDateRange() {
                 startDate = new Date(now.getFullYear(), 0, 1);
                 endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
                 break;
-            default: // 'all'
+            default:
                 return deals;
         }
     }
@@ -5373,8 +5150,8 @@ function prepareDetailedExportData(dealsData) {
             'PIC': deal.pic || '',
             'Plan PO': deal.planPO || '',
             'Remarks': deal.remarks || '',
-            'Tanggal Dibuat': deal.createdAt ? formatDate(deal.createdAt) : '',
-            'Terakhir Update': deal.updatedAt ? formatDateTime(deal.updatedAt) : '',
+            'Tanggal Dibuat': formatDate(deal.createdAt),
+            'Terakhir Update': formatDateTime(deal.updatedAt),
             'Dibuat Oleh': deal.createdBy || ''
         };
     });
@@ -5775,7 +5552,7 @@ async function openDealModal(dealId = null) {
                 updateProgressBarFromStage(deal.stage);
                 
                 currentDealIdForComments = deal.id;
-                const comments = await loadComments(deal.id);
+                const comments = await loadCommentsByProjectName(deal.id);
                 renderComments(comments, 'commentsList');
                 if (commentsSection) {
                     commentsSection.style.display = 'block';
@@ -5796,7 +5573,6 @@ async function openDealModal(dealId = null) {
                 const salesNameSelect = document.getElementById('salesName');
                 if (salesNameSelect && userSalesName) {
                     salesNameSelect.value = userSalesName;
-                    // Untuk sales, disable dropdown salesName agar tidak bisa diganti
                     salesNameSelect.disabled = true;
                 }
             } else {
@@ -5842,7 +5618,6 @@ function closeDealModal() {
         dealModalContent.removeEventListener('transitionend', handler);
         currentDealIdForComments = null;
         
-        // Reset salesName select disabled state
         const salesNameSelect = document.getElementById('salesName');
         if (salesNameSelect) {
             salesNameSelect.disabled = false;
@@ -6092,16 +5867,13 @@ async function openDealDetailModal(dealId) {
             return;
         }
         
-        // Dapatkan semua project dengan nama yang sama
         const allProjectDeals = deals.filter(d => 
             d.dealName?.trim().toLowerCase() === deal.dealName?.trim().toLowerCase()
         );
         
-        // Filter project yang tidak lost
         const activeProjects = allProjectDeals.filter(d => d.stage !== 'lost');
         const isLastProject = activeProjects.length === 1;
         
-        // Hitung nilai yang akan ditampilkan
         let displayValue;
         if (isLastProject) {
             displayValue = deal.value || 0;
@@ -6224,7 +5996,7 @@ async function openDealDetailModal(dealId) {
         document.getElementById('detailProgress').textContent = `${progress}%`;
         
         currentDealIdForComments = dealId;
-        const comments = await loadComments(dealId);
+        const comments = await loadCommentsByProjectName(dealId);
         renderComments(comments, 'detailCommentsList');
         
         document.getElementById('dealDetailModal').classList.remove('hidden');
@@ -6350,6 +6122,92 @@ async function deleteDeal() {
     }
 }
 
+// ==================== AUTH STATE CHANGE ====================
+
+auth.onAuthStateChanged(async (user) => {
+    if (authInitialized) return;
+    authInitialized = true;
+    
+    console.log("Auth state changed:", user ? user.email : "no user");
+    
+    if (!user && window.location.pathname.includes('app.html')) {
+        console.log("No user, redirecting to login");
+        window.location.href = 'login.html';
+        return;
+    }
+    
+    if (user && window.location.pathname.includes('login.html')) {
+        console.log("User already logged in, redirecting to app");
+        window.location.href = 'app.html';
+        return;
+    }
+
+    if (user && window.location.pathname.includes('app.html')) {
+        try {
+            currentUserEmail = user.email;
+            
+            // Cek apakah migrasi sudah pernah dilakukan
+            const migrationFlag = localStorage.getItem('comments_migration_completed');
+            if (migrationFlag === 'true') {
+                commentsMigrationCompleted = true;
+            }
+            
+            const userWelcome = document.getElementById('userWelcome');
+            if (userWelcome) {
+                userWelcome.textContent = user.email;
+            }
+
+            if (managerEmails.includes(user.email)) {
+                if (user.email === 'admin@genetek.co.id' || user.email === 'david@genetek.co.id') {
+                    currentUserRole = 'admin';
+                } else {
+                    currentUserRole = 'manager';
+                }
+                await usersCollection.doc(user.uid).set({ 
+                    role: currentUserRole,
+                    email: user.email 
+                }, { merge: true });
+            } else {
+                currentUserRole = 'user';
+                const userDoc = await usersCollection.doc(user.uid).get();
+                if (!userDoc.exists) {
+                    await usersCollection.doc(user.uid).set({ 
+                        role: 'user',
+                        email: user.email 
+                    }, { merge: true });
+                } else {
+                    currentUserRole = userDoc.data().role || 'user';
+                }
+            }
+            
+            currentSalesName = getCurrentSalesName();
+            
+            console.log("Current role:", currentUserRole);
+            console.log("Current sales name:", currentSalesName);
+            console.log("Current user email:", currentUserEmail);
+            
+            applyUserPermissions();
+            
+            await loadConsultantsFromFirebase();
+            await loadDropdownOptions();
+            await loadDealsFromFirebase();
+            await loadActivitiesFromFirebase();
+            
+            initEventListeners();
+            initViewToggle();
+            initExportElements();
+            initYearFilter();
+            
+            if (currentUserRole === 'admin') {
+                loadRecycleBin();
+            }
+        } catch (error) {
+            console.error("Error checking user role:", error);
+            showToast("Gagal memuat data pengguna. Silakan refresh halaman.", 5000);
+        }
+    }
+});
+
 // ==================== INISIALISASI ====================
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -6371,3 +6229,4 @@ window.closeEmptyRecycleBinModal = closeEmptyRecycleBinModal;
 window.closeExportModal = closeExportModal;
 window.closePriorityModal = closePriorityModal;
 window.closeClickableChartModal = closeClickableChartModal;
+window.refreshCommentsForCurrentDeal = refreshCommentsForCurrentDeal;
