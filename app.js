@@ -130,6 +130,7 @@ let salesCharts = {
 
 // Variabel untuk menyimpan deal yang sedang dilihat komentarnya
 let currentDealIdForComments = null;
+let currentProjectNameForComments = null;
 
 // Variabel untuk menyimpan pilihan sales aktif per project name
 let activeSalesPerProject = {};
@@ -163,14 +164,47 @@ function getCurrentSalesName() {
 }
 
 /**
+ * Mendapatkan semua deal ID untuk project dengan nama yang sama
+ */
+function getAllDealIdsByProjectName(dealId) {
+    const originalDeal = getDealById(dealId);
+    if (!originalDeal || !originalDeal.dealName) return [dealId];
+    
+    const projectName = originalDeal.dealName.trim().toLowerCase();
+    
+    const sameNameDeals = deals.filter(deal => 
+        deal.dealName && deal.dealName.trim().toLowerCase() === projectName
+    );
+    
+    const allDealIds = sameNameDeals.map(deal => deal.id);
+    
+    if (allDealIds.length === 0) return [dealId];
+    
+    return allDealIds;
+}
+
+/**
+ * Mendapatkan nama project dari deal ID
+ */
+function getProjectNameByDealId(dealId) {
+    const deal = getDealById(dealId);
+    return deal ? deal.dealName : null;
+}
+
+/**
+ * Escape HTML untuk keamanan
+ */
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/**
  * Filter deals berdasarkan user yang login
- * - Admin/Manager: melihat semua deals
- * - Sales: hanya melihat deals miliknya sendiri
- * 
- * INI ADALAH FUNGSI PALING PENTING UNTUK FILTER BERDASARKAN SALES
  */
 function filterDealsByUser(dealsList) {
-    // Jika admin atau manager, tampilkan semua
     if (currentUserRole === 'admin' || currentUserRole === 'manager') {
         console.log("Admin/Manager: menampilkan semua deals");
         return dealsList;
@@ -184,15 +218,9 @@ function filterDealsByUser(dealsList) {
     
     console.log(`Sales mode: filtering deals for sales: ${currentSales}`);
     
-    // Filter hanya deal yang salesName-nya sama dengan currentSales
     const filtered = dealsList.filter(deal => {
         const dealSales = deal.salesName;
         const match = dealSales === currentSales;
-        if (!match) {
-            console.log(`Excluding deal: ${deal.dealName} (sales: ${dealSales}) - not matching ${currentSales}`);
-        } else {
-            console.log(`Including deal: ${deal.dealName} (sales: ${dealSales})`);
-        }
         return match;
     });
     
@@ -202,25 +230,12 @@ function filterDealsByUser(dealsList) {
 
 /**
  * MENDAPATKAN DEALS YANG SUDAH DIFILTER BERDASARKAN USER
- * INI ADALAH FUNGSI UTAMA YANG DIGUNAKAN UNTUK MENDAPATKAN DATA YANG AKAN DITAMPILKAN
- * 
- * URUTAN FILTER YANG BENAR:
- * 1. Filter berdasarkan role user (sales hanya lihat project sendiri)
- * 2. Filter berdasarkan tahun aktif
- * 3. Filter berdasarkan filter yang dipilih user di UI
  */
 function getFilteredDeals() {
-    // Langkah 1: Mulai dengan semua deals
     let baseDeals = deals;
-    
-    // Langkah 2: PENTING! Filter berdasarkan role user TERLEBIH DAHULU
-    // Ini memastikan sales hanya melihat project miliknya
     baseDeals = filterDealsByUser(baseDeals);
-    
-    // Langkah 3: Kemudian filter berdasarkan tahun aktif
     baseDeals = getDealsByYear(activeYear, baseDeals);
     
-    // Langkah 4: Terakhir filter berdasarkan filter yang dipilih user di UI
     const filteredDeals = baseDeals.filter(deal => {
         const matchesSearch = 
             activeFilters.searchTerm === '' ||
@@ -262,25 +277,19 @@ function getFilteredDeals() {
             matchesConsultant && matchesContractor && matchesFacility && matchesProduct && matchesPackage;
     });
     
-    console.log(`[getFilteredDeals] Final filtered deals for ${currentSalesName || currentUserEmail}: ${filteredDeals.length} deals`);
     return filteredDeals;
 }
 
 /**
- * Mendapatkan deals yang sudah difilter berdasarkan user UNTUK DASHBOARD (unique projects)
- * Fungsi ini memastikan bahwa hanya project milik sales yang bersangkutan yang ditampilkan
+ * Mendapatkan deals yang sudah difilter untuk dashboard
  */
 function getFilteredUniqueProjectsForDashboard() {
-    // Dapatkan deals yang sudah difilter berdasarkan user
     const userFilteredDeals = getFilteredDeals();
     
-    // Jika user adalah sales, pastikan hanya project miliknya yang masuk ke unique projects
     if (currentUserRole !== 'admin' && currentUserRole !== 'manager') {
         const currentSales = getCurrentSalesName();
         if (currentSales) {
-            // Filter ulang untuk memastikan tidak ada project sales lain
             const salesOnlyDeals = userFilteredDeals.filter(deal => deal.salesName === currentSales);
-            console.log(`[getFilteredUniqueProjectsForDashboard] Unique projects untuk sales ${currentSales}: ${salesOnlyDeals.length} deals`);
             return getUniqueProjectsForDashboard(salesOnlyDeals);
         }
     }
@@ -288,149 +297,13 @@ function getFilteredUniqueProjectsForDashboard() {
     return getUniqueProjectsForDashboard(userFilteredDeals);
 }
 
-// Fungsi untuk menangani perubahan status autentikasi
-auth.onAuthStateChanged(async (user) => {
-    if (authInitialized) return;
-    authInitialized = true;
-    
-    console.log("Auth state changed:", user ? user.email : "no user");
-    
-    if (!user && window.location.pathname.includes('app.html')) {
-        console.log("No user, redirecting to login");
-        window.location.href = 'login.html';
-        return;
-    }
-    
-    if (user && window.location.pathname.includes('login.html')) {
-        console.log("User already logged in, redirecting to app");
-        window.location.href = 'app.html';
-        return;
-    }
-
-    if (user && window.location.pathname.includes('app.html')) {
-        try {
-            // Simpan email user yang login
-            currentUserEmail = user.email;
-            
-            // Update welcome message
-            const userWelcome = document.getElementById('userWelcome');
-            if (userWelcome) {
-                userWelcome.textContent = user.email;
-            }
-
-            // Cek role admin/manager
-            if (managerEmails.includes(user.email)) {
-                // Jika email adalah admin atau david, berikan role admin
-                if (user.email === 'admin@genetek.co.id' || user.email === 'david@genetek.co.id') {
-                    currentUserRole = 'admin';
-                } else {
-                    currentUserRole = 'manager';
-                }
-                await usersCollection.doc(user.uid).set({ 
-                    role: currentUserRole,
-                    email: user.email 
-                }, { merge: true });
-            } else {
-                // Untuk user biasa (sales)
-                currentUserRole = 'user';
-                const userDoc = await usersCollection.doc(user.uid).get();
-                if (!userDoc.exists) {
-                    await usersCollection.doc(user.uid).set({ 
-                        role: 'user',
-                        email: user.email 
-                    }, { merge: true });
-                } else {
-                    currentUserRole = userDoc.data().role || 'user';
-                }
-            }
-            
-            // Dapatkan nama sales dari email
-            currentSalesName = getCurrentSalesName();
-            
-            console.log("Current role:", currentUserRole);
-            console.log("Current sales name:", currentSalesName);
-            console.log("Current user email:", currentUserEmail);
-            
-            applyUserPermissions();
-            
-            // Load data dengan urutan yang benar
-            await loadConsultantsFromFirebase();
-            await loadDropdownOptions();
-            await loadDealsFromFirebase();
-            await loadActivitiesFromFirebase();
-            
-            initEventListeners();
-            initViewToggle();
-            initExportElements();
-            initYearFilter();
-            
-            // Load Recycle Bin data untuk admin
-            if (currentUserRole === 'admin') {
-                loadRecycleBin();
-            }
-        } catch (error) {
-            console.error("Error checking user role:", error);
-            showToast("Gagal memuat data pengguna. Silakan refresh halaman.", 5000);
-        }
-    }
-});
-
-// ==================== FUNGSI UTAMA UNTUK MENANGANI NILAI PROJECT ====================
-
-/**
- * Mendapatkan nilai yang akan ditampilkan untuk sebuah project
- * Logika:
- * - Jika hanya 1 project aktif (tidak lost) untuk nama project tersebut, tampilkan nilai asli
- * - Jika multiple project aktif, tampilkan nilai tertinggi
- */
-function getDisplayValueForProject(deal, allDealsWithSameName) {
-    // Filter project yang tidak lost
-    const activeProjects = allDealsWithSameName.filter(d => d.stage !== 'lost');
-    
-    // Jika hanya 1 project aktif yang tersisa, tampilkan nilai asli
-    if (activeProjects.length === 1) {
-        return deal.value || 0;
-    }
-    
-    // Jika multiple project aktif, tampilkan nilai tertinggi
-    const maxValue = Math.max(...activeProjects.map(d => d.value || 0));
-    return maxValue;
-}
-
-/**
- * Mengecek apakah sebuah project adalah satu-satunya yang aktif untuk nama project tersebut
- */
-function isLastActiveProject(deal, allDealsWithSameName) {
-    const activeProjects = allDealsWithSameName.filter(d => d.stage !== 'lost');
-    return activeProjects.length === 1;
-}
-
-/**
- * Mendapatkan nilai tertinggi dari semua project dengan nama yang sama (hanya dari yang aktif/tidak lost)
- */
-function getHighestValueForProjectName(projectName, dealsList) {
-    const allDealsWithSameName = dealsList.filter(d => 
-        d.dealName?.trim().toLowerCase() === projectName?.toLowerCase()
-    );
-    const activeProjects = allDealsWithSameName.filter(d => d.stage !== 'lost');
-    
-    if (activeProjects.length === 0) return 0;
-    return Math.max(...activeProjects.map(d => d.value || 0));
-}
-
 /**
  * Menggabungkan project dengan nama yang sama untuk dashboard
- * Logika baru: 
- * - Jika hanya 1 project aktif (tidak lost) untuk nama project tersebut, tampilkan nilai asli
- * - Jika multiple project aktif, tampilkan nilai tertinggi
  */
 function getUniqueProjectsForDashboard(dealsList) {
-    // Buat map dengan key kombinasi nama project + priority
     const projectMap = new Map();
-    // Map untuk menyimpan daftar semua project per nama project (untuk analisis)
     const allProjectsByName = new Map();
     
-    // Kumpulkan semua project per nama project
     dealsList.forEach(deal => {
         const projectName = deal.dealName?.trim();
         if (!projectName) return;
@@ -441,7 +314,6 @@ function getUniqueProjectsForDashboard(dealsList) {
         allProjectsByName.get(projectName).push(deal);
     });
     
-    // Hitung nilai tertinggi per nama project (hanya dari project aktif)
     const maxValueByProjectName = new Map();
     for (const [projectName, projectDeals] of allProjectsByName) {
         const activeProjects = projectDeals.filter(d => d.stage !== 'lost');
@@ -451,7 +323,6 @@ function getUniqueProjectsForDashboard(dealsList) {
         }
     }
     
-    // Kelompokkan berdasarkan nama project + priority
     dealsList.forEach(deal => {
         const projectName = deal.dealName?.trim();
         const priority = deal.priority || 'Priority';
@@ -470,31 +341,24 @@ function getUniqueProjectsForDashboard(dealsList) {
     projectMap.forEach((duplicateDeals, key) => {
         const [projectName, priority] = key.split('|');
         
-        // Filter hanya project yang tidak lost untuk ditampilkan
         const activeDeals = duplicateDeals.filter(deal => deal.stage !== 'lost');
         
         if (activeDeals.length === 0) {
-            // Jika semua project lost, jangan tampilkan
             return;
         }
         
-        // Dapatkan semua project dengan nama yang sama
         const allDealsWithSameName = allProjectsByName.get(projectName) || [];
         const activeProjectsCount = allDealsWithSameName.filter(d => d.stage !== 'lost').length;
         const isLastProject = (activeProjectsCount === 1);
         
-        // Untuk setiap deal dalam group ini, kita perlu menentukan nilai yang ditampilkan
         activeDeals.forEach(deal => {
-            // Tentukan nilai yang akan ditampilkan
             let displayValue;
             let hasHigherValueFromOtherPriority = false;
             
             if (isLastProject) {
-                // Jika hanya 1 project aktif untuk nama ini, tampilkan nilai asli
                 displayValue = deal.value || 0;
                 hasHigherValueFromOtherPriority = false;
             } else {
-                // Jika multiple project aktif, tampilkan nilai tertinggi dari semua project aktif
                 const highestValue = maxValueByProjectName.get(projectName) || 0;
                 displayValue = highestValue;
                 hasHigherValueFromOtherPriority = (deal.value || 0) < highestValue;
@@ -513,7 +377,6 @@ function getUniqueProjectsForDashboard(dealsList) {
         });
     });
     
-    // Hapus duplikat berdasarkan ID (karena bisa jadi satu deal masuk ke uniqueProjects multiple times)
     const seenIds = new Set();
     const finalUniqueProjects = [];
     for (const project of uniqueProjects) {
@@ -523,67 +386,44 @@ function getUniqueProjectsForDashboard(dealsList) {
         }
     }
     
-    console.log(`[getUniqueProjectsForDashboard] Unique projects: ${finalUniqueProjects.length} dari ${dealsList.length} total deals`);
-    
     return finalUniqueProjects;
 }
 
 // ==================== FILTER TAHUN ====================
 
-/**
- * Inisialisasi filter tahun untuk 2025 dan 2026
- */
 function initYearFilter() {
     const yearFilterContainer = document.querySelector('.year-filter-container');
     if (!yearFilterContainer) return;
 
-    // Gunakan event delegation
     yearFilterContainer.addEventListener('click', (e) => {
         const yearBadge = e.target.closest('.year-badge');
         if (!yearBadge) return;
 
         const year = yearBadge.dataset.year;
         
-        // Update active class
         document.querySelectorAll('.year-badge').forEach(badge => {
             badge.classList.remove('active');
         });
         yearBadge.classList.add('active');
         
-        // Set active year
         activeYear = year;
         
-        // Reset cache untuk tahun yang dipilih
         if (!priorityStatsCache[year]) {
             priorityStatsCache[year] = null;
         }
         
-        console.log(`Tahun aktif diubah ke: ${year}`);
-        
-        // Update filter year di activeFilters
         activeFilters.year = year;
-        
-        // Reload data dengan filter baru
         applyActiveFilters();
-        
-        // Update priority dashboard
         createPriorityDashboard();
         
         showToast(`Menampilkan data tahun ${year === 'all' ? 'semua tahun' : year}`, 2000);
     });
 }
 
-/**
- * Filter deals berdasarkan tahun yang dipilih dengan caching
- * Memperhatikan filter user terlebih dahulu
- */
 function getDealsByYear(year, baseDeals = null) {
-    // Jika baseDeals tidak diberikan, gunakan deals yang sudah difilter user
     const sourceDeals = baseDeals !== null ? baseDeals : filterDealsByUser(deals);
     
-    // Cek cache
     if (dealsByYearCache[year] && baseDeals === null) {
-        console.log(`Mengambil data tahun ${year} dari cache: ${dealsByYearCache[year].length} deals`);
         return dealsByYearCache[year];
     }
     
@@ -591,7 +431,6 @@ function getDealsByYear(year, baseDeals = null) {
         if (baseDeals === null) {
             dealsByYearCache[year] = sourceDeals;
         }
-        console.log(`Semua tahun: ${sourceDeals.length} deals`);
         return sourceDeals;
     }
     
@@ -612,7 +451,6 @@ function getDealsByYear(year, baseDeals = null) {
             
             return dealDate.getFullYear().toString() === year;
         } catch (e) {
-            console.error("Error parsing date:", e);
             return false;
         }
     });
@@ -620,9 +458,192 @@ function getDealsByYear(year, baseDeals = null) {
     if (baseDeals === null) {
         dealsByYearCache[year] = filtered;
     }
-    console.log(`Tahun ${year}: ${filtered.length} deals ditemukan`);
     
     return filtered;
+}
+
+// ==================== FUNGSI COMMENTS YANG DIMODIFIKASI ====================
+
+/**
+ * Load komentar untuk project (berdasarkan nama project, bukan per deal)
+ */
+async function loadComments(dealId) {
+    try {
+        const deal = getDealById(dealId);
+        if (!deal || !deal.dealName) {
+            console.log("Deal or deal name not found for ID:", dealId);
+            return [];
+        }
+        
+        const projectName = deal.dealName.trim();
+        console.log(`Loading comments for project: "${projectName}" (from deal: ${dealId})`);
+        
+        const querySnapshot = await commentsCollection
+            .where('projectName', '==', projectName)
+            .orderBy('timestamp', 'asc')
+            .get();
+        
+        const comments = [];
+        querySnapshot.forEach((doc) => {
+            comments.push({ id: doc.id, ...doc.data() });
+        });
+        
+        console.log(`Found ${comments.length} comments for project "${projectName}"`);
+        return comments;
+    } catch (error) {
+        console.error("Error loading comments:", error);
+        return [];
+    }
+}
+
+/**
+ * Render komentar ke container
+ */
+function renderComments(comments, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (comments.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-gray-500 py-4">
+                <i class="fas fa-comments text-2xl mb-2"></i>
+                <p>Belum ada komentar</p>
+            </div>
+        `;
+        return;
+    }
+    
+    comments.forEach(comment => {
+        const commentItem = document.createElement('div');
+        const isManager = managerEmails.includes(comment.userEmail);
+        const isCurrentUser = comment.userEmail === auth.currentUser?.email;
+        
+        commentItem.className = `comment-item ${isManager ? 'manager' : 'sales'}`;
+        
+        const canDelete = currentUserRole === 'admin' || currentUserRole === 'manager' || isCurrentUser;
+        
+        const salesInfo = comment.salesName ? `<span class="comment-sales ml-2 text-xs text-gray-500">(Sales: ${comment.salesName})</span>` : '';
+        
+        commentItem.innerHTML = `
+            <div class="comment-header">
+                <div>
+                    <span class="comment-author">${escapeHtml(comment.userEmail)}</span>
+                    ${salesInfo}
+                    <span class="comment-role ${isManager ? 'manager' : 'sales'} ml-2">
+                        ${isManager ? 'Manager' : 'Sales'}
+                    </span>
+                </div>
+                <div class="comment-time">${formatDateTime(comment.timestamp)}</div>
+            </div>
+            <div class="comment-content">${escapeHtml(comment.content)}</div>
+            ${canDelete ? `
+                <button class="comment-delete-btn" data-comment-id="${comment.id}" data-project-name="${comment.projectName}">
+                    <i class="fas fa-trash"></i>
+                </button>
+            ` : ''}
+        `;
+        
+        container.appendChild(commentItem);
+    });
+    
+    container.querySelectorAll('.comment-delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const commentId = btn.dataset.commentId;
+            const projectName = btn.dataset.projectName;
+            await deleteComment(commentId, projectName);
+        });
+    });
+    
+    const commentsCountElement = document.getElementById(containerId === 'commentsList' ? 'commentsCount' : 'detailCommentsCount');
+    if (commentsCountElement) {
+        commentsCountElement.textContent = `${comments.length} komentar`;
+    }
+}
+
+/**
+ * Hapus komentar
+ */
+async function deleteComment(commentId, projectName) {
+    if (!commentId) {
+        showToast("Komentar tidak ditemukan", 3000);
+        return;
+    }
+    
+    try {
+        await commentsCollection.doc(commentId).delete();
+        
+        showToast("Komentar berhasil dihapus", 2000);
+        
+        if (currentDealIdForComments) {
+            const comments = await loadComments(currentDealIdForComments);
+            renderComments(comments, 'detailCommentsList');
+            
+            if (document.getElementById('commentsList')) {
+                renderComments(comments, 'commentsList');
+            }
+        }
+    } catch (error) {
+        console.error("Error deleting comment:", error);
+        showToast("Gagal menghapus komentar", 3000);
+    }
+}
+
+/**
+ * Tambah komentar untuk project (berdasarkan nama project)
+ */
+async function addComment(dealId, content) {
+    if (!content.trim()) {
+        showToast("Komentar tidak boleh kosong", 3000);
+        return;
+    }
+    
+    try {
+        const deal = getDealById(dealId);
+        if (!deal || !deal.dealName) {
+            showToast("Project tidak ditemukan", 3000);
+            return;
+        }
+        
+        const projectName = deal.dealName.trim();
+        const currentSalesNameValue = getCurrentSalesName();
+        
+        console.log(`Adding comment to project: "${projectName}" from sales: ${currentSalesNameValue}`);
+        
+        const commentData = {
+            projectName: projectName,
+            dealId: dealId,
+            content: content.trim(),
+            userEmail: auth.currentUser.email,
+            salesName: currentSalesNameValue,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        await commentsCollection.add(commentData);
+        
+        if (currentDealIdForComments) {
+            const comments = await loadComments(currentDealIdForComments);
+            renderComments(comments, 'detailCommentsList');
+            
+            if (document.getElementById('commentsList')) {
+                renderComments(comments, 'commentsList');
+            }
+        }
+        
+        const detailCommentInput = document.getElementById('detailCommentInput');
+        if (detailCommentInput) detailCommentInput.value = '';
+        
+        const commentInput = document.getElementById('commentInput');
+        if (commentInput) commentInput.value = '';
+        
+        showToast("Komentar berhasil ditambahkan", 2000);
+        
+    } catch (error) {
+        console.error("Error adding comment:", error);
+        showToast("Gagal menambahkan komentar", 3000);
+    }
 }
 
 // ==================== FUNGSI DROPDOWN OPTIONS ====================
@@ -644,7 +665,6 @@ async function loadDropdownOptions() {
             if (data.pics) {
                 uniquePICs = new Set(data.pics);
             }
-            console.log("Dropdown options loaded from Firebase");
         }
     } catch (error) {
         console.error("Error loading dropdown options:", error);
@@ -660,7 +680,6 @@ async function saveDropdownOptions() {
             pics: Array.from(uniquePICs),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-        console.log("Dropdown options saved to Firebase");
     } catch (error) {
         console.error("Error saving dropdown options:", error);
     }
@@ -698,7 +717,6 @@ async function deleteDropdownOption(field, value) {
 }
 
 function updateDropdownOptions() {
-    // Update facility dropdown
     if (facilitySelect) {
         const currentValue = facilitySelect.value;
         facilitySelect.innerHTML = `
@@ -722,7 +740,6 @@ function updateDropdownOptions() {
         facilitySelect.value = currentValue;
     }
 
-    // Update package dropdown
     if (packageSelect) {
         const currentValue = packageSelect.value;
         packageSelect.innerHTML = `
@@ -750,15 +767,11 @@ function updateDropdownOptions() {
 // ==================== FUNGSI PRIORITY DASHBOARD ====================
 
 function calculatePriorityStats(year) {
-    console.log(`Menghitung priority stats untuk tahun: ${year}`);
-    
     if (priorityStatsCache[year]) {
-        console.log(`Menggunakan cache untuk tahun ${year}`);
         return priorityStatsCache[year];
     }
     
     const yearDeals = getDealsByYear(year);
-    // Filter deals berdasarkan user
     const userYearDeals = filterDealsByUser(yearDeals);
     const uniqueProjects = getUniqueProjectsForDashboard(userYearDeals);
     
@@ -908,11 +921,11 @@ function openPriorityModal(priority, deals) {
                                     <i class="fas fa-copy mr-1"></i>${deal.totalEntries}x
                                 </span>
                             ` : ''}
-                         </td>
+                          </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${deal.salesName || '-'}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold" title="${valueTooltip}">
                             ${valueDisplay}
-                         </td>
+                          </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${deal.stage === 'win' ? 'bg-green-100 text-green-800' : 
                                 deal.stage === 'lost' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">
@@ -1102,7 +1115,6 @@ function updateProgressBarUI(progress, isOnHold = false) {
     const progressFill = document.getElementById('progressFill');
     
     if (!progressPercentage || !progressFill) {
-        console.warn("Progress bar elements not found");
         return;
     }
     
@@ -1144,151 +1156,6 @@ function updateCheckpoints(progress, isOnHold = false) {
             checkpoint.classList.remove('active', 'onhold');
         }
     });
-}
-
-// ==================== FUNGSI COMMENTS ====================
-
-async function loadComments(dealId) {
-    try {
-        const querySnapshot = await commentsCollection
-            .where('dealId', '==', dealId)
-            .orderBy('timestamp', 'asc')
-            .get();
-        
-        const comments = [];
-        querySnapshot.forEach((doc) => {
-            comments.push({ id: doc.id, ...doc.data() });
-        });
-        
-        return comments;
-    } catch (error) {
-        console.error("Error loading comments:", error);
-        return [];
-    }
-}
-
-function renderComments(comments, containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    if (comments.length === 0) {
-        container.innerHTML = `
-            <div class="text-center text-gray-500 py-4">
-                <i class="fas fa-comments text-2xl mb-2"></i>
-                <p>Belum ada komentar</p>
-            </div>
-        `;
-        return;
-    }
-    
-    comments.forEach(comment => {
-        const commentItem = document.createElement('div');
-        const isManager = managerEmails.includes(comment.userEmail);
-        const isCurrentUser = comment.userEmail === auth.currentUser?.email;
-        
-        commentItem.className = `comment-item ${isManager ? 'manager' : 'sales'}`;
-        
-        const canDelete = currentUserRole === 'admin' || currentUserRole === 'manager' || isCurrentUser;
-        
-        commentItem.innerHTML = `
-            <div class="comment-header">
-                <div>
-                    <span class="comment-author">${comment.userEmail}</span>
-                    <span class="comment-role ${isManager ? 'manager' : 'sales'} ml-2">
-                        ${isManager ? 'Manager' : 'Sales'}
-                    </span>
-                </div>
-                <div class="comment-time">${formatDateTime(comment.timestamp)}</div>
-            </div>
-            <div class="comment-content">${comment.content}</div>
-            ${canDelete ? `
-                <button class="comment-delete-btn" data-comment-id="${comment.id}" data-deal-id="${comment.dealId}">
-                    <i class="fas fa-trash"></i>
-                </button>
-            ` : ''}
-        `;
-        
-        container.appendChild(commentItem);
-    });
-    
-    container.querySelectorAll('.comment-delete-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const commentId = btn.dataset.commentId;
-            const dealId = btn.dataset.dealId;
-            await deleteComment(commentId, dealId);
-        });
-    });
-    
-    const commentsCountElement = document.getElementById(containerId === 'commentsList' ? 'commentsCount' : 'detailCommentsCount');
-    if (commentsCountElement) {
-        commentsCountElement.textContent = `${comments.length} komentar`;
-    }
-}
-
-async function deleteComment(commentId, dealId) {
-    if (!commentId) {
-        showToast("Komentar tidak ditemukan", 3000);
-        return;
-    }
-    
-    try {
-        await commentsCollection.doc(commentId).delete();
-        
-        showToast("Komentar berhasil dihapus", 2000);
-        
-        if (currentDealIdForComments === dealId) {
-            const comments = await loadComments(dealId);
-            renderComments(comments, 'detailCommentsList');
-            
-            if (document.getElementById('commentsList')) {
-                renderComments(comments, 'commentsList');
-            }
-        }
-    } catch (error) {
-        console.error("Error deleting comment:", error);
-        showToast("Gagal menghapus komentar", 3000);
-    }
-}
-
-async function addComment(dealId, content) {
-    if (!content.trim()) {
-        showToast("Komentar tidak boleh kosong", 3000);
-        return;
-    }
-    
-    try {
-        const commentData = {
-            dealId: dealId,
-            content: content.trim(),
-            userEmail: auth.currentUser.email,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        
-        await commentsCollection.add(commentData);
-        
-        if (currentDealIdForComments === dealId) {
-            const comments = await loadComments(dealId);
-            renderComments(comments, 'detailCommentsList');
-            
-            if (document.getElementById('commentsList')) {
-                renderComments(comments, 'commentsList');
-            }
-        }
-        
-        document.getElementById('detailCommentInput').value = '';
-        if (document.getElementById('commentInput')) {
-            document.getElementById('commentInput').value = '';
-        }
-        
-        showToast("Komentar berhasil ditambahkan", 2000);
-        
-    } catch (error) {
-        console.error("Error adding comment:", error);
-        showToast("Gagal menambahkan komentar", 3000);
-    }
 }
 
 // ==================== FUNGSI MERGE PROJECT DALAM DEAL CARD ====================
@@ -1342,12 +1209,6 @@ function identifyMergedProjects(dealsList) {
     return mergedProjectsInfo;
 }
 
-/**
- * Mendapatkan nilai yang akan ditampilkan untuk sebuah project di card
- * Logika:
- * - Jika hanya 1 project aktif (tidak lost) untuk nama project tersebut, tampilkan nilai asli
- * - Jika multiple project aktif, tampilkan nilai tertinggi
- */
 function getCardDisplayValue(deal, allDealsWithSameName) {
     const activeProjects = allDealsWithSameName.filter(d => d.stage !== 'lost');
     
@@ -1374,25 +1235,20 @@ function renderMergedDealCard(dealGroup) {
         activeSalesPerProject[key] = activeSales;
     }
     
-    // Dapatkan semua project dengan nama yang sama (semua priority)
     const allProjectDeals = deals.filter(deal => 
         deal.dealName?.trim().toLowerCase() === dealNameLower
     );
     
-    // Filter project yang tidak lost
     const activeProjects = allProjectDeals.filter(d => d.stage !== 'lost');
     const isLastProject = activeProjects.length === 1;
     
-    // Hitung nilai yang akan ditampilkan
     let displayValue;
     let highestValueOverall;
     
     if (isLastProject) {
-        // Jika hanya 1 project aktif, tampilkan nilai asli dari project yang aktif
         displayValue = activeProjects[0].value || 0;
         highestValueOverall = displayValue;
     } else {
-        // Jika multiple project aktif, tampilkan nilai tertinggi
         highestValueOverall = Math.max(...activeProjects.map(d => d.value || 0));
         displayValue = highestValueOverall;
     }
@@ -1569,7 +1425,6 @@ function setupMergeDealCardEvents(dealCard, dealGroup) {
                         const selectedDeal = dealGroup.find(deal => deal.salesName === selectedSales);
                         
                         if (selectedDeal) {
-                            // Dapatkan semua project dengan nama yang sama untuk menghitung nilai yang ditampilkan
                             const allProjectDeals = deals.filter(d => 
                                 d.dealName?.trim().toLowerCase() === dealName
                             );
@@ -1696,16 +1551,13 @@ function renderIndividualDealCard(deal) {
     dealCard.dataset.dealName = deal.dealName?.toLowerCase();
     dealCard.dataset.priority = deal.priority || 'Priority';
     
-    // Dapatkan semua project dengan nama yang sama
     const allProjectDeals = deals.filter(d => 
         d.dealName?.trim().toLowerCase() === deal.dealName?.trim().toLowerCase()
     );
     
-    // Filter project yang tidak lost
     const activeProjects = allProjectDeals.filter(d => d.stage !== 'lost');
     const isLastProject = activeProjects.length === 1;
     
-    // Hitung nilai yang akan ditampilkan
     let displayValue;
     let highestValueOverall;
     
@@ -1828,16 +1680,13 @@ function renderDealList(deal, index) {
     const priorityBadgeClass = getPriorityBadgeClass(deal.priority);
     const winDate = getWinDate(deal);
     
-    // Dapatkan semua project dengan nama yang sama
     const allProjectDeals = deals.filter(d => 
         d.dealName?.trim().toLowerCase() === deal.dealName?.trim().toLowerCase()
     );
     
-    // Filter project yang tidak lost
     const activeProjects = allProjectDeals.filter(d => d.stage !== 'lost');
     const isLastProject = activeProjects.length === 1;
     
-    // Hitung nilai yang akan ditampilkan
     let displayValue;
     if (isLastProject) {
         displayValue = deal.value || 0;
@@ -1897,7 +1746,7 @@ function renderDealList(deal, index) {
                     <i class="fas fa-star mr-1"></i>Last
                 </span>
             ` : ''}
-        </td>
+         </td>
         <td class="px-4 py-3 align-top text-sm">
             ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}
             ${winDate ? `
@@ -1905,17 +1754,17 @@ function renderDealList(deal, index) {
                 <i class="fas fa-calendar-check mr-1"></i>${formatDate(winDate)}
             </div>
             ` : ''}
-        </td>
+         </td>
         <td class="px-4 py-3 align-top text-sm">${consultantDisplay}</td>
         <td class="px-4 py-3 align-top text-sm">${contractorDisplay}</td>
         <td class="px-4 py-3 align-top text-sm font-semibold" title="${valueTooltip}">
             ${valueDisplay}
-        </td>
+         </td>
         <td class="px-4 py-3 align-top">
             <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
                 ${deal.priority || 'Priority'}
             </span>
-        </td>
+         </td>
         <td class="px-4 py-3 align-top text-sm deal-actions">
             <div class="flex space-x-2">
                 <button class="view-detail-btn text-blue-600 hover:text-blue-800">
@@ -1935,7 +1784,7 @@ function renderDealList(deal, index) {
                 </button>
                 ` : ''}
             </div>
-        </td>
+         </td>
     `;
     
     return row;
@@ -1949,7 +1798,6 @@ function showAllPrioritiesForProject(dealName) {
         return;
     }
     
-    // Filter project yang tidak lost
     const activeEntries = allEntries.filter(deal => deal.stage !== 'lost');
     const isLastProject = activeEntries.length === 1;
     
@@ -2400,8 +2248,6 @@ function updateActivityBadge() {
 function extractDealNameFromActivity(message) {
     if (!message) return null;
     
-    console.log("Extracting deal name from:", message);
-    
     const patterns = [
         /Deal "([^"]+)"/,
         /"([^"]+)"\s+(ditambahkan|diperbarui)/,
@@ -2415,7 +2261,6 @@ function extractDealNameFromActivity(message) {
         const match = message.match(pattern);
         if (match && match[1]) {
             const extractedName = match[1].trim();
-            console.log("Extracted deal name:", extractedName);
             return extractedName;
         }
     }
@@ -2432,7 +2277,6 @@ function extractDealNameFromActivity(message) {
             name += (name ? ' ' : '') + word;
         }
         if (name) {
-            console.log("Extracted deal name (fallback):", name);
             return name;
         }
     }
@@ -2443,13 +2287,10 @@ function extractDealNameFromActivity(message) {
 async function findDealByName(dealName) {
     if (!dealName) return null;
     
-    console.log("Mencari deal dengan nama:", dealName);
-    
     const normalizedSearchName = dealName.trim().toLowerCase();
     
     for (const [id, deal] of dealsByIdCache.entries()) {
         if (deal.dealName && deal.dealName.trim().toLowerCase() === normalizedSearchName) {
-            console.log("Deal ditemukan di cache:", deal);
             return deal;
         }
     }
@@ -2459,7 +2300,6 @@ async function findDealByName(dealName) {
     );
     
     if (deal) {
-        console.log("Deal ditemukan di array lokal:", deal);
         dealsByIdCache.set(deal.id, deal);
         return deal;
     }
@@ -2469,14 +2309,11 @@ async function findDealByName(dealName) {
     );
     
     if (deal) {
-        console.log("Deal ditemukan dengan partial match:", deal);
         dealsByIdCache.set(deal.id, deal);
         return deal;
     }
     
     try {
-        console.log("Mencari deal di Firestore...");
-        
         const exactQuery = await dealsCollection
             .where('dealName', '==', dealName)
             .limit(1)
@@ -2485,8 +2322,6 @@ async function findDealByName(dealName) {
         if (!exactQuery.empty) {
             const doc = exactQuery.docs[0];
             deal = { id: doc.id, ...doc.data() };
-            console.log("Deal ditemukan di Firestore (exact):", deal);
-            
             deals.push(deal);
             dealsByIdCache.set(deal.id, deal);
             return deal;
@@ -2501,8 +2336,6 @@ async function findDealByName(dealName) {
         if (!startQuery.empty) {
             const doc = startQuery.docs[0];
             deal = { id: doc.id, ...doc.data() };
-            console.log("Deal ditemukan di Firestore (starts with):", deal);
-            
             deals.push(deal);
             dealsByIdCache.set(deal.id, deal);
             return deal;
@@ -2513,8 +2346,6 @@ async function findDealByName(dealName) {
             const data = doc.data();
             if (data.dealName && data.dealName.toLowerCase().includes(normalizedSearchName)) {
                 deal = { id: doc.id, ...data };
-                console.log("Deal ditemukan di Firestore (contains):", deal);
-                
                 deals.push(deal);
                 dealsByIdCache.set(deal.id, deal);
                 return deal;
@@ -2525,7 +2356,6 @@ async function findDealByName(dealName) {
         console.error("Error mencari deal di Firestore:", error);
     }
     
-    console.log("Deal tidak ditemukan untuk nama:", dealName);
     return null;
 }
 
@@ -2545,11 +2375,8 @@ function restoreActivityModalState() {
     }
 }
 
-// Fungsi untuk membuka modal aktivitas dengan loading state langsung
 async function openActivityModal() {
-    // Cegah multiple click
     if (isActivityModalOpening) {
-        console.log("Activity modal already opening, ignoring click");
         return;
     }
     
@@ -2567,12 +2394,10 @@ async function openActivityModal() {
             return;
         }
         
-        // Tampilkan modal dengan loading state langsung (tanpa delay)
         activityModal.classList.remove('hidden');
         activityModalContent.classList.remove('modal-content-leave-active');
         activityModalContent.classList.add('modal-content-enter-active');
         
-        // Tampilkan loading indicator
         activityFeed.innerHTML = `
             <div class="text-center text-gray-500 py-8">
                 <i class="fas fa-spinner fa-spin text-3xl mb-2"></i>
@@ -2580,13 +2405,10 @@ async function openActivityModal() {
             </div>
         `;
         
-        // Set isOpen ke true segera
         activityModalState.isOpen = true;
         
-        // Load data di background
         await loadActivitiesFromFirebase(true);
         
-        // Render aktivitas
         activityFeed.innerHTML = '';
         
         if (activities.length === 0) {
@@ -2603,7 +2425,6 @@ async function openActivityModal() {
                 return tsB - tsA;
             });
 
-            // Gunakan Promise.all untuk mencari semua deal secara paralel
             const activityPromises = sortedActivities.map(async (activity) => {
                 const dealName = extractDealNameFromActivity(activity.message);
                 if (dealName) {
@@ -2677,14 +2498,12 @@ async function openActivityModal() {
             });
         }
         
-        // Tandai sebagai sudah dibaca
         markActivitiesAsRead();
         
     } catch (error) {
         console.error("Error opening activity modal:", error);
         showToast("Gagal membuka aktivitas", 3000);
     } finally {
-        // Reset flag setelah selesai
         setTimeout(() => {
             isActivityModalOpening = false;
         }, 500);
@@ -2931,15 +2750,11 @@ async function loadDealsFromFirebase(forceRefresh = false) {
         });
         
         console.log("Total deals loaded:", deals.length);
-        console.log("Unique years found:", Array.from(uniqueYears));
         
-        // Filter uniqueSales berdasarkan role user untuk dropdown
         if (currentUserRole !== 'admin' && currentUserRole !== 'manager') {
-            // Untuk sales, hanya tampilkan nama sales mereka sendiri di dropdown
             const currentSales = getCurrentSalesName();
             if (currentSales) {
                 uniqueSales = new Set([currentSales]);
-                console.log("Filtered uniqueSales untuk dropdown:", Array.from(uniqueSales));
             }
         }
         
@@ -3007,7 +2822,6 @@ function canUserEditDeal(deal) {
 function populateDropdown(selectElementId, uniqueValues, selectedValue = 'all') {
     const selectElement = document.getElementById(selectElementId);
     if (!selectElement) {
-        console.warn(`Element with ID '${selectElementId}' not found.`);
         return;
     }
 
@@ -3153,7 +2967,6 @@ function processSalesData(salesName = 'all') {
         salesDeals = deals.filter(deal => deal.salesName === salesName);
     }
     
-    // Filter berdasarkan user untuk sales
     salesDeals = filterDealsByUser(salesDeals);
     
     const uniqueProjects = getUniqueProjectsForDashboard(salesDeals);
@@ -3475,7 +3288,6 @@ function processPriorityData(priority = 'all') {
         priorityDeals = deals.filter(deal => deal.priority === priority);
     }
     
-    // Filter berdasarkan user
     priorityDeals = filterDealsByUser(priorityDeals);
     
     const uniqueProjects = getUniqueProjectsForDashboard(priorityDeals);
@@ -3822,7 +3634,6 @@ function renderPriorityCharts() {
 function processDealDataForCharts(dealsData) {
     console.log("Processing deal data for charts, total deals:", dealsData.length);
     
-    // Filter berdasarkan user
     const userDealsData = filterDealsByUser(dealsData);
     
     const uniqueProjects = getUniqueProjectsForDashboard(userDealsData);
@@ -4208,7 +4019,6 @@ function showDealsByPriority(salesFilter, priority) {
         filteredDeals = deals.filter(deal => deal.salesName === selectedSales && deal.priority === priority);
     }
     
-    // Filter berdasarkan user
     filteredDeals = filterDealsByUser(filteredDeals);
     
     const uniqueFilteredDeals = getUniqueProjectsForDashboard(filteredDeals);
@@ -4294,7 +4104,6 @@ function showDealsByStage(priorityFilter, stage) {
         filteredDeals = deals.filter(deal => deal.priority === selectedPriority && deal.stage === stage);
     }
     
-    // Filter berdasarkan user
     filteredDeals = filterDealsByUser(filteredDeals);
     
     const uniqueFilteredDeals = getUniqueProjectsForDashboard(filteredDeals);
@@ -4478,6 +4287,24 @@ function applyUserPermissions() {
 }
 
 // ==================== FUNGSI EVENT LISTENERS ====================
+
+// Handler untuk submit komentar dari modal utama
+function commentSubmitHandler() {
+    const commentInput = document.getElementById('commentInput');
+    const comment = commentInput ? commentInput.value : '';
+    if (currentDealIdForComments) {
+        addComment(currentDealIdForComments, comment);
+    }
+}
+
+// Handler untuk submit komentar dari detail modal
+function detailCommentSubmitHandler() {
+    const detailCommentInput = document.getElementById('detailCommentInput');
+    const comment = detailCommentInput ? detailCommentInput.value : '';
+    if (currentDealIdForComments) {
+        addComment(currentDealIdForComments, comment);
+    }
+}
 
 function initEventListeners() {
     console.log("Initializing event listeners...");
@@ -4668,13 +4495,8 @@ function initEventListeners() {
         
         const commentSubmitBtn = document.getElementById('commentSubmitBtn');
         if (commentSubmitBtn) {
-            commentSubmitBtn.addEventListener('click', function() {
-                const commentInput = document.getElementById('commentInput');
-                const comment = commentInput ? commentInput.value : '';
-                if (currentDealIdForComments) {
-                    addComment(currentDealIdForComments, comment);
-                }
-            });
+            commentSubmitBtn.removeEventListener('click', commentSubmitHandler);
+            commentSubmitBtn.addEventListener('click', commentSubmitHandler);
         }
         
         const stageSelect = document.getElementById('stage');
@@ -4696,13 +4518,8 @@ function initEventListeners() {
         
         const detailCommentSubmitBtn = document.getElementById('detailCommentSubmitBtn');
         if (detailCommentSubmitBtn) {
-            detailCommentSubmitBtn.addEventListener('click', function() {
-                const detailCommentInput = document.getElementById('detailCommentInput');
-                const comment = detailCommentInput ? detailCommentInput.value : '';
-                if (currentDealIdForComments) {
-                    addComment(currentDealIdForComments, comment);
-                }
-            });
+            detailCommentSubmitBtn.removeEventListener('click', detailCommentSubmitHandler);
+            detailCommentSubmitBtn.addEventListener('click', detailCommentSubmitHandler);
         }
         
         const closeActivityBtn = document.getElementById('closeActivityBtn');
@@ -4830,17 +4647,9 @@ function switchView(viewType) {
     applyActiveFilters();
 }
 
-/**
- * FUNGSI UTAMA UNTUK MENAMPILKAN DEALS DI PIPELINES STAGE
- * Fungsi ini menggunakan getFilteredDeals() yang sudah memfilter berdasarkan user
- */
 function applyActiveFilters() {
     try {
-        // Gunakan fungsi getFilteredDeals yang sudah memfilter berdasarkan user
-        // dan filter-filter lainnya (search, priority, stage, dll)
         const filteredDeals = getFilteredDeals();
-        
-        console.log(`[applyActiveFilters] Applying filters: ${filteredDeals.length} deals to display for user ${currentSalesName || currentUserEmail}`);
         renderFilteredDeals(filteredDeals);
     } catch (error) {
         console.error("Error applying active filters:", error);
@@ -4875,10 +4684,6 @@ function filterDeals() {
     }
 }
 
-/**
- * RENDER FILTERED DEALS KE PIPELINES STAGE
- * Data yang masuk ke fungsi ini sudah terfilter berdasarkan user
- */
 function renderFilteredDeals(filteredDeals) {
     const pipelineStage = document.getElementById('pipelines-stage');
     if (!pipelineStage) return;
@@ -4900,7 +4705,6 @@ function renderFilteredDeals(filteredDeals) {
     }
     
     if (currentView === 'card') {
-        // Kelompokkan deals berdasarkan nama project dan priority
         const dealsByNameAndPriority = {};
         filteredDeals.forEach(deal => {
             const dealName = deal.dealName?.toLowerCase().trim();
@@ -5271,7 +5075,7 @@ function getDealsByDateRange() {
                 startDate = new Date(now.getFullYear(), 0, 1);
                 endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
                 break;
-            default: // 'all'
+            default:
                 return deals;
         }
     }
@@ -5796,7 +5600,6 @@ async function openDealModal(dealId = null) {
                 const salesNameSelect = document.getElementById('salesName');
                 if (salesNameSelect && userSalesName) {
                     salesNameSelect.value = userSalesName;
-                    // Untuk sales, disable dropdown salesName agar tidak bisa diganti
                     salesNameSelect.disabled = true;
                 }
             } else {
@@ -5842,7 +5645,6 @@ function closeDealModal() {
         dealModalContent.removeEventListener('transitionend', handler);
         currentDealIdForComments = null;
         
-        // Reset salesName select disabled state
         const salesNameSelect = document.getElementById('salesName');
         if (salesNameSelect) {
             salesNameSelect.disabled = false;
@@ -6092,16 +5894,13 @@ async function openDealDetailModal(dealId) {
             return;
         }
         
-        // Dapatkan semua project dengan nama yang sama
         const allProjectDeals = deals.filter(d => 
             d.dealName?.trim().toLowerCase() === deal.dealName?.trim().toLowerCase()
         );
         
-        // Filter project yang tidak lost
         const activeProjects = allProjectDeals.filter(d => d.stage !== 'lost');
         const isLastProject = activeProjects.length === 1;
         
-        // Hitung nilai yang akan ditampilkan
         let displayValue;
         if (isLastProject) {
             displayValue = deal.value || 0;
@@ -6349,6 +6148,86 @@ async function deleteDeal() {
         showToast("Gagal menghapus deal", 3000);
     }
 }
+
+// ==================== AUTH STATE CHANGE ====================
+
+auth.onAuthStateChanged(async (user) => {
+    if (authInitialized) return;
+    authInitialized = true;
+    
+    console.log("Auth state changed:", user ? user.email : "no user");
+    
+    if (!user && window.location.pathname.includes('app.html')) {
+        console.log("No user, redirecting to login");
+        window.location.href = 'login.html';
+        return;
+    }
+    
+    if (user && window.location.pathname.includes('login.html')) {
+        console.log("User already logged in, redirecting to app");
+        window.location.href = 'app.html';
+        return;
+    }
+
+    if (user && window.location.pathname.includes('app.html')) {
+        try {
+            currentUserEmail = user.email;
+            
+            const userWelcome = document.getElementById('userWelcome');
+            if (userWelcome) {
+                userWelcome.textContent = user.email;
+            }
+
+            if (managerEmails.includes(user.email)) {
+                if (user.email === 'admin@genetek.co.id' || user.email === 'david@genetek.co.id') {
+                    currentUserRole = 'admin';
+                } else {
+                    currentUserRole = 'manager';
+                }
+                await usersCollection.doc(user.uid).set({ 
+                    role: currentUserRole,
+                    email: user.email 
+                }, { merge: true });
+            } else {
+                currentUserRole = 'user';
+                const userDoc = await usersCollection.doc(user.uid).get();
+                if (!userDoc.exists) {
+                    await usersCollection.doc(user.uid).set({ 
+                        role: 'user',
+                        email: user.email 
+                    }, { merge: true });
+                } else {
+                    currentUserRole = userDoc.data().role || 'user';
+                }
+            }
+            
+            currentSalesName = getCurrentSalesName();
+            
+            console.log("Current role:", currentUserRole);
+            console.log("Current sales name:", currentSalesName);
+            console.log("Current user email:", currentUserEmail);
+            
+            applyUserPermissions();
+            
+            await loadConsultantsFromFirebase();
+            await loadDropdownOptions();
+            await loadDealsFromFirebase();
+            await loadActivitiesFromFirebase();
+            
+            initEventListeners();
+            initViewToggle();
+            initExportElements();
+            initYearFilter();
+            
+            if (currentUserRole === 'admin') {
+                loadRecycleBin();
+            }
+        } catch (error) {
+            console.error("Error checking user role:", error);
+            showToast("Gagal memuat data pengguna. Silakan refresh halaman.", 5000);
+        }
+    }
+});
 
 // ==================== INISIALISASI ====================
 
