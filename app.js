@@ -122,6 +122,7 @@ const managerEmails = [
     'david@genetek.co.id',
     'crenata@genetek.co.id',
     'agoesdh@genetek.co.id',
+    'yib_wahyu@genetek.co.id',
     'satriopk@genetek.co.id',
     'admin@genetek.co.id'
 ];
