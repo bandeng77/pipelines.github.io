@@ -107,7 +107,6 @@ const emailToSalesNameMap = {
     'm_husni@genetek.co.id': 'Husni',
     'edwin@genetek.co.id': 'Edwin',
     'engineering@genetek.co.id': 'Engineering',
-    'yib_wahyu@genetek.co.id': 'YIB Wahyu'
 };
 
 // Reverse mapping dari nama sales ke email
