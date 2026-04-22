@@ -227,11 +227,36 @@ function getFilteredDeals() {
     baseDeals = getDealsByYear(activeYear, baseDeals);
     
     const filteredDeals = baseDeals.filter(deal => {
-        const matchesSearch = 
-            activeFilters.searchTerm === '' ||
-            (deal.dealName && deal.dealName.toLowerCase().includes(activeFilters.searchTerm)) ||
-            (deal.salesName && deal.salesName.toLowerCase().includes(activeFilters.searchTerm));
+        // Fungsi untuk mengecek apakah search term cocok dengan berbagai field
+        const matchesSearchTerm = (searchTerm, deal) => {
+            if (searchTerm === '') return true;
+            
+            const term = searchTerm.toLowerCase();
+            
+            // Cek nama project
+            if (deal.dealName && deal.dealName.toLowerCase().includes(term)) return true;
+            
+            // Cek nama sales
+            if (deal.salesName && deal.salesName.toLowerCase().includes(term)) return true;
+            
+            // Cek konsultan
+            if (deal.consultant && deal.consultant.toLowerCase().includes(term)) return true;
+            
+            // Cek kontraktor (bisa string atau array)
+            if (deal.contractor) {
+                if (Array.isArray(deal.contractor)) {
+                    for (const contractor of deal.contractor) {
+                        if (contractor && contractor.toLowerCase().includes(term)) return true;
+                    }
+                } else {
+                    if (deal.contractor.toLowerCase().includes(term)) return true;
+                }
+            }
+            
+            return false;
+        };
         
+        const matchesSearch = matchesSearchTerm(activeFilters.searchTerm, deal);
         const matchesPriority = 
             activeFilters.priority === 'all' || 
             (deal.priority && deal.priority === activeFilters.priority);
@@ -1184,10 +1209,10 @@ function openPriorityModal(priority, deals) {
                                 deal.stage === 'lost' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">
                                 ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}
                             </span>
-                          </td>
+                           </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             <i class="fas fa-clock text-gray-400 mr-1"></i>${lastUpdateDate}
-                          </td>
+                           </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <button class="text-blue-600 hover:text-blue-900 mr-3 view-detail-btn" data-id="${deal.id}">
                                 <i class="fas fa-eye"></i>
@@ -1197,7 +1222,7 @@ function openPriorityModal(priority, deals) {
                                     <i class="fas fa-list"></i>
                                 </button>
                             ` : ''}
-                          </td>
+                           </td>
                     </tr>
                 `}).join('')}
             </tbody>
