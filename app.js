@@ -1,7 +1,6 @@
-// ==================== FULL SCRIPT PERBAIKAN KOMENTAR ====================
+// ==================== FULL SCRIPT DENGAN UPLOAD FILE KE DROPBOX ====================
 // File: app.js
-// Sistem Komentar: 1 Project Name = 1 Thread Komentar Bersama untuk Semua Sales
-// DENGAN MIGRASI DATA KOMENTAR LAMA
+// Sistem Komentar + Upload File (PDF/Foto) ke Dropbox
 
 // Konfigurasi Firebase
 const firebaseConfig = {
@@ -23,6 +22,14 @@ const activitiesCollection = db.collection('activities');
 const usersCollection = db.collection('users');
 const dropdownOptionsCollection = db.collection('dropdownOptions');
 const commentsCollection = db.collection('comments');
+const attachmentsCollection = db.collection('attachments');
+
+// Konfigurasi Dropbox
+const DROPBOX_CONFIG = {
+    appKey: '9nb74swzwdyqo5r',
+    accessToken: 'sl.u.AGcxKF1T1UW_U3tDu0eF4-iiuRyCUi9Yb-DbkAj65xTOEf23GttAFcmoILGsYeHDxeBc62gDbwZHovlMBk0LXrrOLaM6VcJ2d0fg0hXKe7F7Hed4ejKmXI4GEPWmJNY7Z-aSOpCGV3rL-5HuXpZazash3_k75kxNqDWo9i9YviMR2wMZxQ2OracmVbVzTgCpLq0_RPYjzm-Cq-h4x4YvXTps03_hUj54CMETIJ-9sqdV35LI--j6SDCeNzeoDpCTzfSoOAL4CNKimqCGLspwouCz9UDKjlUIA5OxNB_0szDn2i39ed6zKEwGmuyesCD06KbcYbEQbpG_1_TnqRU4Eza1G-JyK6RD1Er4yUqZOGy3BmSiJ_gl8JZhv2S3DNDozi_-Wpi22xizOyKxF48r7kU7ihOe9ihAjWfUBeEEl1I9O2NUV7nLLQJSn7pRdvC05kLGFBhZ1u9Dgr10Fx5jd7KthFxfSQHOsQxM-0GrW4xJZMVmIl3WvIgcWuFMlA6QNeLuaZNcuyKKFLl7QIbt3nutAAsjzjdkXaMcU50m9SANoslBYRnUQ5qEnIUCilZqjtMxodHdePxG5N06jzR-jt463fJ4c8ZzVoC00KhHas2Hn8PyE7wwp4VL3DOZto7Mr0lnG1LhXVIwh95BSRDPxkpYRhWErcQ_yl7AECVGSVsIxqLuGuQS5YAs2ujgoB9Esefh1y3u9M0NW5f4xwaUhtxFF6BzYePliiR6VVhZ0RFXPREGoV6S-v4Ynbt_9XNycd3uwHVNFlTLhly4vxRSYi4ulupH2_loKJ2SglTP96nJtqh-Gi8f7bevLuKePF__JPu7ZkagPh4pT1FDdJLWMzeJ_0R8_aSQekXkN-cI_KtMsq0ad4jIDFTwsLIiMcLjJ5NxY4kKoVFZYjUtOVK3UTlUzkjjPQ8x201CqfBcLBXQ5uBfkYOgiGiOPIb8hJm5PzaJxAmBbG5Y9xDUcrz_DZEIUYnbeM3quTXAa_ojJWJS1uPRbE_U0UZQmGCw2bsMPlkHyU65WSqDNUHKtjElrI8I3GhRUW25-MgSU7klvt98JvU_4Wr-JITyMFy9HwfdsT6L6JYDl_bI1NknQJVAqrBa8Qjw_Y7yoVYWjPjO5vNhcnb7qn15PGWaaQ2wARq_2PSlIeowz10GQU7te-9wg_TAqT7qbWyQBHoxR_PzayvX7wj3LANXHKosElIzezS_WyH3IU6n6vxankKUQOyLBO-g3Vccb-315QRKFDtlw3gPkPu1sVsVYKdNUNVgHjsfJCWx8wbysZpw9XxPyVcMXg8PHQXMOImica5fmYZTCw73-6DUUanbo8xFijj0NVPNLlU',
+    appFolderName: 'owncloud-efk'
+};
 
 let deals = [];
 let deletedDeals = [];
@@ -159,11 +166,783 @@ let dealToDeleteName = '';
 // Flag untuk mencegah multiple click
 let isActivityModalOpening = false;
 
-// ==================== FUNGSI UTILITAS DASAR (DIDEKLARASIKAN AWAL) ====================
+// ==================== FUNGSI DROPBOX UPLOAD ====================
 
 /**
- * Mendapatkan nama sales dari email yang login
+ * Upload file ke Dropbox
+ * @param {File} file - File yang akan diupload
+ * @param {string} path - Path di Dropbox (contoh: /deals/DEAL_ID/filename)
+ * @returns {Promise<Object>} - Hasil upload dengan link download
  */
+async function uploadToDropbox(file, path) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async function() {
+            try {
+                const base64Data = reader.result.split(',')[1];
+                
+                const response = await fetch('https://content.dropboxapi.com/2/files/upload', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${DROPBOX_CONFIG.accessToken}`,
+                        'Content-Type': 'application/octet-stream',
+                        'Dropbox-API-Arg': JSON.stringify({
+                            path: path,
+                            mode: 'add',
+                            autorename: true,
+                            mute: false
+                        })
+                    },
+                    body: base64Data
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error_summary || 'Upload failed');
+                }
+                
+                const result = await response.json();
+                
+                // Dapatkan link download
+                const linkResponse = await fetch('https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${DROPBOX_CONFIG.accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        path: result.path_display,
+                        settings: {
+                            requested_visibility: 'public',
+                            audience: 'public',
+                            access: 'viewer'
+                        }
+                    })
+                });
+                
+                let downloadUrl = '';
+                if (linkResponse.ok) {
+                    const linkResult = await linkResponse.json();
+                    downloadUrl = linkResult.url.replace('?dl=0', '?dl=1');
+                } else {
+                    // Jika sudah ada shared link
+                    const listResponse = await fetch('https://api.dropboxapi.com/2/sharing/list_shared_links', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${DROPBOX_CONFIG.accessToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            path: result.path_display
+                        })
+                    });
+                    if (listResponse.ok) {
+                        const listResult = await listResponse.json();
+                        if (listResult.links && listResult.links.length > 0) {
+                            downloadUrl = listResult.links[0].url.replace('?dl=0', '?dl=1');
+                        }
+                    }
+                }
+                
+                resolve({
+                    success: true,
+                    path: result.path_display,
+                    downloadUrl: downloadUrl,
+                    name: file.name,
+                    size: file.size,
+                    type: file.type
+                });
+            } catch (error) {
+                reject(error);
+            }
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+    });
+}
+
+/**
+ * Hapus file dari Dropbox
+ * @param {string} path - Path file di Dropbox
+ */
+async function deleteFromDropbox(path) {
+    try {
+        const response = await fetch('https://api.dropboxapi.com/2/files/delete_v2', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${DROPBOX_CONFIG.accessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                path: path
+            })
+        });
+        
+        if (!response.ok) {
+            console.warn('Failed to delete file from Dropbox:', await response.json());
+        }
+        return response.ok;
+    } catch (error) {
+        console.error('Error deleting from Dropbox:', error);
+        return false;
+    }
+}
+
+/**
+ * Simpan attachment ke Firestore
+ * @param {Object} attachmentData - Data attachment
+ */
+async function saveAttachmentToFirestore(attachmentData) {
+    try {
+        const docRef = await attachmentsCollection.add({
+            ...attachmentData,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        return { id: docRef.id, ...attachmentData };
+    } catch (error) {
+        console.error('Error saving attachment to Firestore:', error);
+        throw error;
+    }
+}
+
+/**
+ * Hapus attachment dari Firestore dan Dropbox
+ * @param {string} attachmentId - ID attachment
+ * @param {string} dropboxPath - Path di Dropbox
+ */
+async function deleteAttachment(attachmentId, dropboxPath) {
+    try {
+        // Hapus dari Dropbox
+        if (dropboxPath) {
+            await deleteFromDropbox(dropboxPath);
+        }
+        
+        // Hapus dari Firestore
+        await attachmentsCollection.doc(attachmentId).delete();
+        
+        showToast('Attachment berhasil dihapus', 2000);
+        
+        // Refresh tampilan attachment
+        if (currentDealIdForComments) {
+            await loadAttachmentsForDeal(currentDealIdForComments);
+            renderAttachments(document.getElementById('dealAttachmentsList'), currentDealIdForComments);
+        }
+        
+        // Refresh komentar attachments
+        await refreshCommentAttachments();
+        
+    } catch (error) {
+        console.error('Error deleting attachment:', error);
+        showToast('Gagal menghapus attachment', 3000);
+    }
+}
+
+/**
+ * Load attachments untuk sebuah deal
+ * @param {string} dealId - ID deal
+ */
+async function loadAttachmentsForDeal(dealId) {
+    try {
+        const querySnapshot = await attachmentsCollection
+            .where('dealId', '==', dealId)
+            .orderBy('createdAt', 'desc')
+            .get();
+        
+        const attachments = [];
+        querySnapshot.forEach(doc => {
+            attachments.push({ id: doc.id, ...doc.data() });
+        });
+        
+        return attachments;
+    } catch (error) {
+        console.error('Error loading attachments:', error);
+        return [];
+    }
+}
+
+/**
+ * Render attachment ke container
+ * @param {HTMLElement} container - Container untuk menampilkan attachment
+ * @param {string} dealId - ID deal
+ */
+async function renderAttachments(container, dealId) {
+    if (!container) return;
+    
+    const attachments = await loadAttachmentsForDeal(dealId);
+    
+    if (attachments.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-gray-500 py-2 text-sm">
+                <i class="fas fa-paperclip"></i> Belum ada attachment
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    attachments.forEach(attachment => {
+        const isImage = attachment.type && attachment.type.startsWith('image/');
+        const fileIcon = isImage ? 'fa-image' : 
+                        attachment.type === 'application/pdf' ? 'fa-file-pdf' : 'fa-file';
+        const fileColor = isImage ? 'text-blue-500' : 
+                         attachment.type === 'application/pdf' ? 'text-red-500' : 'text-gray-500';
+        
+        const attachmentDiv = document.createElement('div');
+        attachmentDiv.className = 'attachment-item bg-gray-50 rounded-lg p-2 mb-2 flex items-center justify-between hover:bg-gray-100 transition';
+        
+        attachmentDiv.innerHTML = `
+            <div class="flex items-center space-x-3 flex-1 min-w-0">
+                <i class="fas ${fileIcon} ${fileColor} text-lg"></i>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-800 truncate" title="${escapeHtml(attachment.name)}">${escapeHtml(attachment.name)}</p>
+                    <p class="text-xs text-gray-500">${formatFileSize(attachment.size)} • ${formatDateTime(attachment.createdAt)}</p>
+                    <p class="text-xs text-gray-400">Upload oleh: ${escapeHtml(attachment.uploadedBy || '-')}</p>
+                </div>
+            </div>
+            <div class="flex space-x-2">
+                <a href="${attachment.downloadUrl}" target="_blank" class="text-blue-600 hover:text-blue-800 p-1" title="Download/View">
+                    <i class="fas fa-download"></i>
+                </a>
+                ${(currentUserRole === 'admin' || currentUserRole === 'manager' || attachment.uploadedBy === auth.currentUser?.email) ? `
+                    <button class="delete-attachment-btn text-red-600 hover:text-red-800 p-1" data-id="${attachment.id}" data-path="${escapeHtml(attachment.dropboxPath || '')}">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                ` : ''}
+            </div>
+        `;
+        
+        container.appendChild(attachmentDiv);
+    });
+    
+    // Event listener untuk delete button
+    container.querySelectorAll('.delete-attachment-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const attachmentId = btn.dataset.id;
+            const dropboxPath = btn.dataset.path;
+            await deleteAttachment(attachmentId, dropboxPath);
+        });
+    });
+}
+
+/**
+ * Upload attachment untuk deal
+ * @param {string} dealId - ID deal
+ * @param {File} file - File yang akan diupload
+ */
+async function uploadAttachmentForDeal(dealId, file) {
+    if (!dealId) {
+        showToast('Deal ID tidak ditemukan', 3000);
+        return false;
+    }
+    
+    // Validasi file
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+        showToast('Ukuran file maksimal 10MB', 3000);
+        return false;
+    }
+    
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'image/jpg'];
+    if (!allowedTypes.includes(file.type)) {
+        showToast('Hanya file PDF dan gambar yang diperbolehkan', 3000);
+        return false;
+    }
+    
+    try {
+        showToast('Mengupload file...', 2000);
+        
+        // Dapatkan deal untuk mendapatkan nama project
+        let deal = getDealById(dealId);
+        if (!deal) {
+            deal = deals.find(d => d.id === dealId);
+        }
+        if (!deal) {
+            const dealDoc = await dealsCollection.doc(dealId).get();
+            if (dealDoc.exists) {
+                deal = { id: dealDoc.id, ...dealDoc.data() };
+            }
+        }
+        
+        const projectName = deal?.dealName || 'unknown';
+        const safeProjectName = projectName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
+        const timestamp = Date.now();
+        const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const dropboxPath = `/${DROPBOX_CONFIG.appFolderName}/deals/${safeProjectName}/${timestamp}_${safeFileName}`;
+        
+        const uploadResult = await uploadToDropbox(file, dropboxPath);
+        
+        if (uploadResult.success) {
+            const attachmentData = {
+                dealId: dealId,
+                projectName: projectName,
+                fileName: file.name,
+                fileSize: file.size,
+                fileType: file.type,
+                dropboxPath: uploadResult.path,
+                downloadUrl: uploadResult.downloadUrl,
+                uploadedBy: auth.currentUser?.email,
+                uploadedByName: getCurrentSalesName() || auth.currentUser?.email
+            };
+            
+            await saveAttachmentToFirestore(attachmentData);
+            
+            await activitiesCollection.add({
+                message: `Attachment "${file.name}" diupload untuk deal "${projectName}" oleh ${auth.currentUser?.email}.`,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                userEmail: auth.currentUser?.email,
+                read: false,
+                dealId: dealId
+            });
+            
+            showToast('File berhasil diupload!', 2000);
+            
+            // Refresh tampilan attachment
+            await renderAttachments(document.getElementById('dealAttachmentsList'), dealId);
+            await refreshCommentAttachments();
+            
+            return true;
+        } else {
+            throw new Error('Upload failed');
+        }
+    } catch (error) {
+        console.error('Error uploading attachment:', error);
+        showToast('Gagal mengupload file: ' + error.message, 3000);
+        return false;
+    }
+}
+
+/**
+ * Format ukuran file
+ * @param {number} bytes - Ukuran dalam bytes
+ * @returns {string} - Ukuran terformat
+ */
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// ==================== FUNGSI UPLOAD ATTACHMENT UNTUK KOMENTAR ====================
+
+let currentCommentAttachmentFile = null;
+let currentCommentAttachmentPreview = null;
+
+/**
+ * Upload attachment untuk komentar
+ * @param {string} commentId - ID komentar (opsional, untuk update)
+ * @param {string} dealId - ID deal
+ * @param {File} file - File yang akan diupload
+ * @param {string} commentContent - Isi komentar
+ */
+async function uploadAttachmentForComment(dealId, file, commentContent) {
+    if (!dealId) {
+        showToast('Deal ID tidak ditemukan', 3000);
+        return false;
+    }
+    
+    // Validasi file
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+        showToast('Ukuran file maksimal 10MB', 3000);
+        return false;
+    }
+    
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'image/jpg'];
+    if (!allowedTypes.includes(file.type)) {
+        showToast('Hanya file PDF dan gambar yang diperbolehkan', 3000);
+        return false;
+    }
+    
+    try {
+        showToast('Mengupload attachment komentar...', 2000);
+        
+        // Dapatkan deal
+        let deal = getDealById(dealId);
+        if (!deal) {
+            deal = deals.find(d => d.id === dealId);
+        }
+        if (!deal) {
+            const dealDoc = await dealsCollection.doc(dealId).get();
+            if (dealDoc.exists) {
+                deal = { id: dealDoc.id, ...dealDoc.data() };
+            }
+        }
+        
+        const projectName = deal?.dealName || 'unknown';
+        const safeProjectName = projectName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
+        const timestamp = Date.now();
+        const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const dropboxPath = `/${DROPBOX_CONFIG.appFolderName}/comments/${safeProjectName}/${timestamp}_${safeFileName}`;
+        
+        const uploadResult = await uploadToDropbox(file, dropboxPath);
+        
+        if (uploadResult.success) {
+            // Simpan attachment komentar
+            const attachmentData = {
+                dealId: dealId,
+                projectName: projectName,
+                fileName: file.name,
+                fileSize: file.size,
+                fileType: file.type,
+                dropboxPath: uploadResult.path,
+                downloadUrl: uploadResult.downloadUrl,
+                uploadedBy: auth.currentUser?.email,
+                uploadedByName: getCurrentSalesName() || auth.currentUser?.email,
+                isCommentAttachment: true,
+                commentContent: commentContent
+            };
+            
+            const savedAttachment = await saveAttachmentToFirestore(attachmentData);
+            
+            showToast('Attachment komentar berhasil diupload!', 2000);
+            
+            return savedAttachment;
+        } else {
+            throw new Error('Upload failed');
+        }
+    } catch (error) {
+        console.error('Error uploading comment attachment:', error);
+        showToast('Gagal mengupload attachment komentar: ' + error.message, 3000);
+        return false;
+    }
+}
+
+/**
+ * Setup comment attachment input
+ */
+function setupCommentAttachmentInput() {
+    const commentAttachmentInput = document.getElementById('commentAttachmentInput');
+    const commentAttachmentPreview = document.getElementById('commentAttachmentPreview');
+    const commentAttachmentRemove = document.getElementById('commentAttachmentRemove');
+    
+    if (commentAttachmentInput) {
+        commentAttachmentInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                currentCommentAttachmentFile = file;
+                if (commentAttachmentPreview) {
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(evt) {
+                            commentAttachmentPreview.innerHTML = `
+                                <div class="relative inline-block">
+                                    <img src="${evt.target.result}" class="h-16 w-16 object-cover rounded border">
+                                    <button type="button" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs" id="removeCommentAttachment">×</button>
+                                </div>
+                            `;
+                            const removeBtn = commentAttachmentPreview.querySelector('#removeCommentAttachment');
+                            if (removeBtn) {
+                                removeBtn.addEventListener('click', removeCommentAttachment);
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        commentAttachmentPreview.innerHTML = `
+                            <div class="relative inline-block">
+                                <div class="bg-gray-100 rounded p-2 flex items-center space-x-2">
+                                    <i class="fas fa-file-pdf text-red-500"></i>
+                                    <span class="text-xs truncate max-w-32">${file.name}</span>
+                                </div>
+                                <button type="button" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs" id="removeCommentAttachment">×</button>
+                            </div>
+                        `;
+                        const removeBtn = commentAttachmentPreview.querySelector('#removeCommentAttachment');
+                        if (removeBtn) {
+                            removeBtn.addEventListener('click', removeCommentAttachment);
+                        }
+                    }
+                    commentAttachmentPreview.classList.remove('hidden');
+                }
+            }
+        });
+    }
+    
+    if (commentAttachmentRemove) {
+        commentAttachmentRemove.addEventListener('click', removeCommentAttachment);
+    }
+}
+
+function removeCommentAttachment() {
+    currentCommentAttachmentFile = null;
+    const commentAttachmentInput = document.getElementById('commentAttachmentInput');
+    const commentAttachmentPreview = document.getElementById('commentAttachmentPreview');
+    if (commentAttachmentInput) commentAttachmentInput.value = '';
+    if (commentAttachmentPreview) {
+        commentAttachmentPreview.innerHTML = '';
+        commentAttachmentPreview.classList.add('hidden');
+    }
+}
+
+/**
+ * Setup detail comment attachment input
+ */
+function setupDetailCommentAttachmentInput() {
+    const detailCommentAttachmentInput = document.getElementById('detailCommentAttachmentInput');
+    const detailCommentAttachmentPreview = document.getElementById('detailCommentAttachmentPreview');
+    
+    if (detailCommentAttachmentInput) {
+        detailCommentAttachmentInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                currentCommentAttachmentFile = file;
+                if (detailCommentAttachmentPreview) {
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(evt) {
+                            detailCommentAttachmentPreview.innerHTML = `
+                                <div class="relative inline-block">
+                                    <img src="${evt.target.result}" class="h-16 w-16 object-cover rounded border">
+                                    <button type="button" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs" id="removeDetailCommentAttachment">×</button>
+                                </div>
+                            `;
+                            const removeBtn = detailCommentAttachmentPreview.querySelector('#removeDetailCommentAttachment');
+                            if (removeBtn) {
+                                removeBtn.addEventListener('click', removeDetailCommentAttachment);
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        detailCommentAttachmentPreview.innerHTML = `
+                            <div class="relative inline-block">
+                                <div class="bg-gray-100 rounded p-2 flex items-center space-x-2">
+                                    <i class="fas fa-file-pdf text-red-500"></i>
+                                    <span class="text-xs truncate max-w-32">${file.name}</span>
+                                </div>
+                                <button type="button" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs" id="removeDetailCommentAttachment">×</button>
+                            </div>
+                        `;
+                        const removeBtn = detailCommentAttachmentPreview.querySelector('#removeDetailCommentAttachment');
+                        if (removeBtn) {
+                            removeBtn.addEventListener('click', removeDetailCommentAttachment);
+                        }
+                    }
+                    detailCommentAttachmentPreview.classList.remove('hidden');
+                }
+            }
+        });
+    }
+}
+
+function removeDetailCommentAttachment() {
+    currentCommentAttachmentFile = null;
+    const detailCommentAttachmentInput = document.getElementById('detailCommentAttachmentInput');
+    const detailCommentAttachmentPreview = document.getElementById('detailCommentAttachmentPreview');
+    if (detailCommentAttachmentInput) detailCommentAttachmentInput.value = '';
+    if (detailCommentAttachmentPreview) {
+        detailCommentAttachmentPreview.innerHTML = '';
+        detailCommentAttachmentPreview.classList.add('hidden');
+    }
+}
+
+/**
+ * Refresh comment attachments display
+ */
+async function refreshCommentAttachments() {
+    if (currentDealIdForComments) {
+        await renderAttachments(document.getElementById('dealAttachmentsList'), currentDealIdForComments);
+    }
+}
+
+// ==================== FUNGSI KOMENTAR MODIFIED DENGAN ATTACHMENT ====================
+
+/**
+ * Render komentar ke container (1 thread komentar untuk semua sales)
+ * Modified: dengan attachment
+ */
+function renderComments(comments, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) {
+        console.log(`Container ${containerId} not found`);
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    if (!comments || comments.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-gray-500 py-4">
+                <i class="fas fa-comments text-2xl mb-2"></i>
+                <p>Belum ada komentar</p>
+                <p class="text-xs mt-1">Semua sales yang mengerjakan project ini dapat melihat komentar</p>
+            </div>
+        `;
+        
+        const commentsCountElement = document.getElementById(containerId === 'commentsList' ? 'commentsCount' : 'detailCommentsCount');
+        if (commentsCountElement) {
+            commentsCountElement.textContent = '0 komentar';
+        }
+        return;
+    }
+    
+    // Urutkan komentar berdasarkan timestamp
+    const sortedComments = [...comments].sort((a, b) => {
+        const timeA = a.timestamp ? (a.timestamp.toDate ? a.timestamp.toDate().getTime() : new Date(a.timestamp).getTime()) : 0;
+        const timeB = b.timestamp ? (b.timestamp.toDate ? b.timestamp.toDate().getTime() : new Date(b.timestamp).getTime()) : 0;
+        return timeA - timeB;
+    });
+    
+    sortedComments.forEach(comment => {
+        const commentItem = document.createElement('div');
+        const isManager = managerEmails.includes(comment.userEmail);
+        const isCurrentUser = comment.userEmail === auth.currentUser?.email;
+        
+        commentItem.className = `comment-item ${isManager ? 'manager' : 'sales'}`;
+        
+        const canDelete = currentUserRole === 'admin' || currentUserRole === 'manager' || isCurrentUser;
+        
+        const salesInfo = comment.salesName ? `<span class="comment-sales ml-2">(Sales: ${escapeHtml(comment.salesName)})</span>` : '';
+        
+        let timeStr = '-';
+        if (comment.timestamp) {
+            try {
+                if (comment.timestamp.toDate) {
+                    timeStr = formatDateTime(comment.timestamp);
+                } else if (comment.timestamp.seconds) {
+                    timeStr = formatDateTime(new Date(comment.timestamp.seconds * 1000));
+                } else {
+                    timeStr = formatDateTime(comment.timestamp);
+                }
+            } catch(e) {
+                timeStr = '-';
+            }
+        }
+        
+        commentItem.innerHTML = `
+            <div class="comment-header">
+                <div>
+                    <span class="comment-author">${escapeHtml(comment.userEmail)}</span>
+                    ${salesInfo}
+                    <span class="comment-role ${isManager ? 'manager' : 'sales'} ml-2">
+                        ${isManager ? 'Manager' : 'Sales'}
+                    </span>
+                </div>
+                <div class="comment-time">${timeStr}</div>
+            </div>
+            <div class="comment-content">${escapeHtml(comment.content)}</div>
+            ${canDelete ? `
+                <button class="comment-delete-btn" data-comment-id="${comment.id}" data-project-key="${escapeHtml(comment.projectKey || '')}">
+                    <i class="fas fa-trash"></i>
+                </button>
+            ` : ''}
+        `;
+        
+        container.appendChild(commentItem);
+    });
+    
+    // Event listener untuk delete button
+    container.querySelectorAll('.comment-delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const commentId = btn.dataset.commentId;
+            await deleteComment(commentId);
+        });
+    });
+    
+    const commentsCountElement = document.getElementById(containerId === 'commentsList' ? 'commentsCount' : 'detailCommentsCount');
+    if (commentsCountElement) {
+        commentsCountElement.textContent = `${comments.length} komentar`;
+    }
+}
+
+/**
+ * Tambah komentar untuk project (dengan attachment)
+ */
+async function addComment(dealId, content) {
+    if ((!content || !content.trim()) && !currentCommentAttachmentFile) {
+        showToast("Komentar atau attachment tidak boleh kosong", 3000);
+        return;
+    }
+    
+    try {
+        let deal = getDealById(dealId);
+        if (!deal) {
+            deal = deals.find(d => d.id === dealId);
+        }
+        if (!deal) {
+            const dealDoc = await dealsCollection.doc(dealId).get();
+            if (dealDoc.exists) {
+                deal = { id: dealDoc.id, ...dealDoc.data() };
+            }
+        }
+        
+        if (!deal || !deal.dealName) {
+            showToast("Project tidak ditemukan", 3000);
+            return;
+        }
+        
+        const projectKey = getProjectKey(deal.dealName);
+        const projectName = deal.dealName.trim();
+        const currentSalesNameValue = getCurrentSalesName();
+        const currentUser = auth.currentUser;
+        
+        if (!currentUser) {
+            showToast("Anda harus login untuk berkomentar", 3000);
+            return;
+        }
+        
+        let attachmentUrl = null;
+        let attachmentInfo = null;
+        
+        // Upload attachment jika ada
+        if (currentCommentAttachmentFile) {
+            const uploadResult = await uploadAttachmentForComment(dealId, currentCommentAttachmentFile, content);
+            if (uploadResult) {
+                attachmentUrl = uploadResult.downloadUrl;
+                attachmentInfo = {
+                    fileName: currentCommentAttachmentFile.name,
+                    fileSize: currentCommentAttachmentFile.size,
+                    fileType: currentCommentAttachmentFile.type,
+                    downloadUrl: uploadResult.downloadUrl
+                };
+            }
+        }
+        
+        const commentData = {
+            projectKey: projectKey,
+            projectName: projectName,
+            dealId: dealId,
+            content: content?.trim() || (currentCommentAttachmentFile ? `[Attachment: ${currentCommentAttachmentFile.name}]` : ''),
+            userEmail: currentUser.email,
+            salesName: currentSalesNameValue,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            attachmentUrl: attachmentUrl,
+            attachmentInfo: attachmentInfo
+        };
+        
+        await commentsCollection.add(commentData);
+        
+        // Reset attachment
+        removeCommentAttachment();
+        removeDetailCommentAttachment();
+        currentCommentAttachmentFile = null;
+        
+        const comments = await loadCommentsByProjectName(dealId);
+        renderComments(comments, 'detailCommentsList');
+        
+        if (document.getElementById('commentsList')) {
+            renderComments(comments, 'commentsList');
+        }
+        
+        const detailCommentInput = document.getElementById('detailCommentInput');
+        if (detailCommentInput) detailCommentInput.value = '';
+        
+        const commentInput = document.getElementById('commentInput');
+        if (commentInput) commentInput.value = '';
+        
+        showToast("Komentar berhasil ditambahkan", 2000);
+        
+    } catch (error) {
+        console.error("Error adding comment:", error);
+        showToast("Gagal menambahkan komentar: " + error.message, 3000);
+    }
+}
+
+// ==================== FUNGSI UTILITAS DASAR ====================
+
 function getCurrentSalesName() {
     if (currentUserEmail && emailToSalesNameMap[currentUserEmail]) {
         return emailToSalesNameMap[currentUserEmail];
@@ -171,9 +950,6 @@ function getCurrentSalesName() {
     return null;
 }
 
-/**
- * Escape HTML untuk keamanan
- */
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -181,19 +957,11 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-/**
- * Mendapatkan project key yang unik untuk komentar (berdasarkan nama project)
- * Semua sales yang mengerjakan project yang sama akan menggunakan key yang sama
- */
 function getProjectKey(dealName) {
     if (!dealName) return null;
-    // Normalisasi: lowercase, trim, dan hapus spasi berlebih
     return dealName.trim().toLowerCase();
 }
 
-/**
- * Filter deals berdasarkan user yang login
- */
 function filterDealsByUser(dealsList) {
     if (currentUserRole === 'admin' || currentUserRole === 'manager') {
         console.log("Admin/Manager: menampilkan semua deals");
@@ -218,31 +986,20 @@ function filterDealsByUser(dealsList) {
     return filtered;
 }
 
-/**
- * MENDAPATKAN DEALS YANG SUDAH DIFILTER BERDASARKAN USER
- */
 function getFilteredDeals() {
     let baseDeals = deals;
     baseDeals = filterDealsByUser(baseDeals);
     baseDeals = getDealsByYear(activeYear, baseDeals);
     
     const filteredDeals = baseDeals.filter(deal => {
-        // Fungsi untuk mengecek apakah search term cocok dengan berbagai field
         const matchesSearchTerm = (searchTerm, deal) => {
             if (searchTerm === '') return true;
             
             const term = searchTerm.toLowerCase();
             
-            // Cek nama project
             if (deal.dealName && deal.dealName.toLowerCase().includes(term)) return true;
-            
-            // Cek nama sales
             if (deal.salesName && deal.salesName.toLowerCase().includes(term)) return true;
-            
-            // Cek konsultan
             if (deal.consultant && deal.consultant.toLowerCase().includes(term)) return true;
-            
-            // Cek kontraktor (bisa string atau array)
             if (deal.contractor) {
                 if (Array.isArray(deal.contractor)) {
                     for (const contractor of deal.contractor) {
@@ -295,9 +1052,6 @@ function getFilteredDeals() {
     return filteredDeals;
 }
 
-/**
- * Mendapatkan deals yang sudah difilter untuk dashboard
- */
 function getFilteredUniqueProjectsForDashboard() {
     const userFilteredDeals = getFilteredDeals();
     
@@ -312,9 +1066,6 @@ function getFilteredUniqueProjectsForDashboard() {
     return getUniqueProjectsForDashboard(userFilteredDeals);
 }
 
-/**
- * Menggabungkan project dengan nama yang sama untuk dashboard
- */
 function getUniqueProjectsForDashboard(dealsList) {
     const projectMap = new Map();
     const allProjectsByName = new Map();
@@ -404,8 +1155,6 @@ function getUniqueProjectsForDashboard(dealsList) {
     return finalUniqueProjects;
 }
 
-// ==================== FILTER TAHUN ====================
-
 function initYearFilter() {
     const yearFilterContainer = document.querySelector('.year-filter-container');
     if (!yearFilterContainer) return;
@@ -477,13 +1226,8 @@ function getDealsByYear(year, baseDeals = null) {
     return filtered;
 }
 
-// ==================== FUNGSI MIGRASI KOMENTAR LAMA ====================
+// ==================== MIGRASI KOMENTAR LAMA ====================
 
-/**
- * MIGRASI DATA KOMENTAR LAMA
- * Fungsi ini akan membaca semua komentar lama (tanpa projectKey) dan menambahkan projectKey
- * berdasarkan dealId yang tersimpan
- */
 async function migrateOldComments() {
     if (commentsMigrationCompleted) {
         console.log("Migrasi komentar sudah pernah dilakukan, skip...");
@@ -493,22 +1237,17 @@ async function migrateOldComments() {
     console.log("Memulai migrasi data komentar lama...");
     
     try {
-        // Ambil semua komentar
         const allCommentsSnapshot = await commentsCollection.get();
         const commentsToMigrate = [];
-        
-        // Buat peta dealName ke projectKey
         const dealNameToProjectKey = new Map();
         
         for (const doc of allCommentsSnapshot.docs) {
             const commentData = doc.data();
             
-            // Jika komentar sudah memiliki projectKey, skip
             if (commentData.projectKey) {
                 continue;
             }
             
-            // Jika komentar memiliki projectName, gunakan langsung
             if (commentData.projectName) {
                 const projectKey = getProjectKey(commentData.projectName);
                 commentsToMigrate.push({
@@ -519,16 +1258,12 @@ async function migrateOldComments() {
                 continue;
             }
             
-            // Jika komentar memiliki dealId, cari dealName dari dealId
             if (commentData.dealId) {
-                // Cek cache terlebih dahulu
                 let dealName = dealNameToProjectKey.get(commentData.dealId);
                 
                 if (!dealName) {
-                    // Cari di deals array
                     let deal = deals.find(d => d.id === commentData.dealId);
                     
-                    // Jika tidak ditemukan, coba ambil dari Firestore
                     if (!deal) {
                         try {
                             const dealDoc = await dealsCollection.doc(commentData.dealId).get();
@@ -563,7 +1298,6 @@ async function migrateOldComments() {
             }
         }
         
-        // Lakukan migrasi batch
         if (commentsToMigrate.length > 0) {
             console.log(`Menemukan ${commentsToMigrate.length} komentar yang perlu dimigrasi`);
             
@@ -578,7 +1312,6 @@ async function migrateOldComments() {
                 });
                 batchCount++;
                 
-                // Batch maksimal 500 operasi
                 if (batchCount >= 450) {
                     await batch.commit();
                     console.log(`Batch migrasi ${batchCount} komentar berhasil`);
@@ -586,7 +1319,6 @@ async function migrateOldComments() {
                 }
             }
             
-            // Commit sisa batch
             if (batchCount > 0) {
                 await batch.commit();
                 console.log(`Batch migrasi terakhir ${batchCount} komentar berhasil`);
@@ -598,8 +1330,6 @@ async function migrateOldComments() {
         }
         
         commentsMigrationCompleted = true;
-        
-        // Simpan flag migrasi ke localStorage agar tidak migrasi ulang
         localStorage.setItem('comments_migration_completed', 'true');
         
     } catch (error) {
@@ -607,23 +1337,16 @@ async function migrateOldComments() {
     }
 }
 
-/**
- * Load komentar berdasarkan PROJECT NAME (semua sales dalam 1 project bisa lihat komentar yang sama)
- * Versi yang kompatibel dengan komentar lama dan baru
- */
 async function loadCommentsByProjectName(dealId) {
     try {
         console.log(`Loading comments for deal ID: ${dealId}`);
         
-        // Dapatkan deal dari ID
         let deal = getDealById(dealId);
         
-        // Jika tidak ditemukan di cache, coba cari di deals array
         if (!deal) {
             deal = deals.find(d => d.id === dealId);
         }
         
-        // Jika masih tidak ditemukan, coba ambil dari Firestore
         if (!deal) {
             const dealDoc = await dealsCollection.doc(dealId).get();
             if (dealDoc.exists) {
@@ -641,7 +1364,6 @@ async function loadCommentsByProjectName(dealId) {
         const projectKey = getProjectKey(deal.dealName);
         console.log(`Loading comments for project key: "${projectKey}"`);
         
-        // Load komentar berdasarkan projectKey (semua komentar untuk project ini)
         const querySnapshot = await commentsCollection
             .where('projectKey', '==', projectKey)
             .orderBy('timestamp', 'asc')
@@ -659,7 +1381,6 @@ async function loadCommentsByProjectName(dealId) {
         
         console.log(`Found ${comments.length} comments for project "${projectKey}"`);
         
-        // Jika tidak ada komentar dengan projectKey, coba cari komentar lama berdasarkan dealId
         if (comments.length === 0) {
             console.log(`Tidak ada komentar dengan projectKey, mencoba mencari komentar lama berdasarkan dealId: ${dealId}`);
             
@@ -681,7 +1402,6 @@ async function loadCommentsByProjectName(dealId) {
             if (oldComments.length > 0) {
                 console.log(`Found ${oldComments.length} old comments for dealId: ${dealId}`);
                 
-                // Migrasi komentar lama ini secara realtime
                 const batch = db.batch();
                 for (const comment of oldComments) {
                     const commentRef = commentsCollection.doc(comment.id);
@@ -704,110 +1424,6 @@ async function loadCommentsByProjectName(dealId) {
     }
 }
 
-/**
- * Render komentar ke container (1 thread komentar untuk semua sales)
- */
-function renderComments(comments, containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) {
-        console.log(`Container ${containerId} not found`);
-        return;
-    }
-    
-    container.innerHTML = '';
-    
-    if (!comments || comments.length === 0) {
-        container.innerHTML = `
-            <div class="text-center text-gray-500 py-4">
-                <i class="fas fa-comments text-2xl mb-2"></i>
-                <p>Belum ada komentar</p>
-                <p class="text-xs mt-1">Semua sales yang mengerjakan project ini dapat melihat komentar</p>
-            </div>
-        `;
-        
-        const commentsCountElement = document.getElementById(containerId === 'commentsList' ? 'commentsCount' : 'detailCommentsCount');
-        if (commentsCountElement) {
-            commentsCountElement.textContent = '0 komentar';
-        }
-        return;
-    }
-    
-    // Urutkan komentar berdasarkan timestamp (terlama ke terbaru)
-    const sortedComments = [...comments].sort((a, b) => {
-        const timeA = a.timestamp ? (a.timestamp.toDate ? a.timestamp.toDate().getTime() : new Date(a.timestamp).getTime()) : 0;
-        const timeB = b.timestamp ? (b.timestamp.toDate ? b.timestamp.toDate().getTime() : new Date(b.timestamp).getTime()) : 0;
-        return timeA - timeB;
-    });
-    
-    sortedComments.forEach(comment => {
-        const commentItem = document.createElement('div');
-        const isManager = managerEmails.includes(comment.userEmail);
-        const isCurrentUser = comment.userEmail === auth.currentUser?.email;
-        
-        commentItem.className = `comment-item ${isManager ? 'manager' : 'sales'}`;
-        
-        const canDelete = currentUserRole === 'admin' || currentUserRole === 'manager' || isCurrentUser;
-        
-        // Tampilkan sales name jika ada
-        const salesInfo = comment.salesName ? `<span class="comment-sales ml-2">(Sales: ${escapeHtml(comment.salesName)})</span>` : '';
-        
-        // Format timestamp dengan aman
-        let timeStr = '-';
-        if (comment.timestamp) {
-            try {
-                if (comment.timestamp.toDate) {
-                    timeStr = formatDateTime(comment.timestamp);
-                } else if (comment.timestamp.seconds) {
-                    timeStr = formatDateTime(new Date(comment.timestamp.seconds * 1000));
-                } else {
-                    timeStr = formatDateTime(comment.timestamp);
-                }
-            } catch(e) {
-                timeStr = '-';
-            }
-        }
-        
-        commentItem.innerHTML = `
-            <div class="comment-header">
-                <div>
-                    <span class="comment-author">${escapeHtml(comment.userEmail)}</span>
-                    ${salesInfo}
-                    <span class="comment-role ${isManager ? 'manager' : 'sales'} ml-2">
-                        ${isManager ? 'Manager' : 'Sales'}
-                    </span>
-                </div>
-                <div class="comment-time">${timeStr}</div>
-            </div>
-            <div class="comment-content">${escapeHtml(comment.content)}</div>
-            ${canDelete ? `
-                <button class="comment-delete-btn" data-comment-id="${comment.id}" data-project-key="${escapeHtml(comment.projectKey || '')}">
-                    <i class="fas fa-trash"></i>
-                </button>
-            ` : ''}
-        `;
-        
-        container.appendChild(commentItem);
-    });
-    
-    // Event listener untuk delete button
-    container.querySelectorAll('.comment-delete-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const commentId = btn.dataset.commentId;
-            await deleteComment(commentId);
-        });
-    });
-    
-    // Update counter komentar
-    const commentsCountElement = document.getElementById(containerId === 'commentsList' ? 'commentsCount' : 'detailCommentsCount');
-    if (commentsCountElement) {
-        commentsCountElement.textContent = `${comments.length} komentar`;
-    }
-}
-
-/**
- * Hapus komentar
- */
 async function deleteComment(commentId) {
     if (!commentId) {
         showToast("Komentar tidak ditemukan", 3000);
@@ -819,7 +1435,6 @@ async function deleteComment(commentId) {
         
         showToast("Komentar berhasil dihapus", 2000);
         
-        // Refresh komentar untuk project yang sedang aktif
         if (currentDealIdForComments) {
             const comments = await loadCommentsByProjectName(currentDealIdForComments);
             renderComments(comments, 'detailCommentsList');
@@ -834,86 +1449,6 @@ async function deleteComment(commentId) {
     }
 }
 
-/**
- * Tambah komentar untuk project (berdasarkan PROJECT NAME, bukan per sales)
- * Semua sales dalam 1 project akan melihat komentar yang sama
- */
-async function addComment(dealId, content) {
-    if (!content || !content.trim()) {
-        showToast("Komentar tidak boleh kosong", 3000);
-        return;
-    }
-    
-    try {
-        // Dapatkan deal untuk mengetahui nama project
-        let deal = getDealById(dealId);
-        
-        if (!deal) {
-            deal = deals.find(d => d.id === dealId);
-        }
-        
-        if (!deal) {
-            const dealDoc = await dealsCollection.doc(dealId).get();
-            if (dealDoc.exists) {
-                deal = { id: dealDoc.id, ...dealDoc.data() };
-            }
-        }
-        
-        if (!deal || !deal.dealName) {
-            showToast("Project tidak ditemukan", 3000);
-            return;
-        }
-        
-        const projectKey = getProjectKey(deal.dealName);
-        const projectName = deal.dealName.trim();
-        const currentSalesNameValue = getCurrentSalesName();
-        const currentUser = auth.currentUser;
-        
-        if (!currentUser) {
-            showToast("Anda harus login untuk berkomentar", 3000);
-            return;
-        }
-        
-        console.log(`Adding comment to project key: "${projectKey}" from user: ${currentUser.email}, sales: ${currentSalesNameValue}`);
-        
-        const commentData = {
-            projectKey: projectKey,
-            projectName: projectName,
-            dealId: dealId,
-            content: content.trim(),
-            userEmail: currentUser.email,
-            salesName: currentSalesNameValue,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        
-        await commentsCollection.add(commentData);
-        
-        // Refresh komentar
-        const comments = await loadCommentsByProjectName(dealId);
-        renderComments(comments, 'detailCommentsList');
-        
-        if (document.getElementById('commentsList')) {
-            renderComments(comments, 'commentsList');
-        }
-        
-        // Clear input
-        const detailCommentInput = document.getElementById('detailCommentInput');
-        if (detailCommentInput) detailCommentInput.value = '';
-        
-        const commentInput = document.getElementById('commentInput');
-        if (commentInput) commentInput.value = '';
-        
-        showToast("Komentar berhasil ditambahkan", 2000);
-        
-    } catch (error) {
-        console.error("Error adding comment:", error);
-        showToast("Gagal menambahkan komentar: " + error.message, 3000);
-    }
-}
-
-/**
- * Fungsi untuk memuat ulang komentar untuk deal yang sedang aktif
- */
 async function refreshCommentsForCurrentDeal() {
     if (currentDealIdForComments) {
         const comments = await loadCommentsByProjectName(currentDealIdForComments);
@@ -924,7 +1459,7 @@ async function refreshCommentsForCurrentDeal() {
     }
 }
 
-// ==================== FUNGSI DROPDOWN OPTIONS ====================
+// ==================== DROPDOWN OPTIONS ====================
 
 async function loadDropdownOptions() {
     try {
@@ -1042,7 +1577,7 @@ function updateDropdownOptions() {
     populateDropdown('pic', uniquePICs);
 }
 
-// ==================== FUNGSI PRIORITY DASHBOARD ====================
+// ==================== PRIORITY DASHBOARD ====================
 
 function calculatePriorityStats(year) {
     if (priorityStatsCache[year]) {
@@ -1353,7 +1888,7 @@ function showAllEntriesForProject(dealName, priority) {
     });
 }
 
-// ==================== FUNGSI PROGRESS BAR ====================
+// ==================== PROGRESS BAR ====================
 
 function updateProgressBarFromStage(stage) {
     let progress = 0;
@@ -1436,7 +1971,7 @@ function updateCheckpoints(progress, isOnHold = false) {
     });
 }
 
-// ==================== FUNGSI MERGE PROJECT DALAM DEAL CARD ====================
+// ==================== MERGE PROJECT DALAM DEAL CARD ====================
 
 function groupDealsByNameAndPriority(dealsList) {
     const groupedDeals = {};
@@ -2201,7 +2736,7 @@ function showAllPrioritiesForProject(dealName) {
     });
 }
 
-// ==================== FUNGSI WIN DATE ====================
+// ==================== WIN DATE ====================
 
 function getWinDate(deal) {
     if (deal.stage !== 'win' || !deal.updatedAt) return null;
@@ -2220,7 +2755,7 @@ function getWinDate(deal) {
     return deal.updatedAt;
 }
 
-// ==================== FUNGSI RECYCLE BIN ====================
+// ==================== RECYCLE BIN ====================
 
 async function loadRecycleBin() {
     try {
@@ -2468,7 +3003,7 @@ function closeRecycleBinModal() {
     }, { once: true });
 }
 
-// ==================== FUNGSI AKTIVITAS ====================
+// ==================== AKTIVITAS ====================
 
 async function loadActivitiesFromFirebase(forceRefresh = false) {
     console.log("Loading activities from Firebase...");
@@ -2898,7 +3433,7 @@ function getPriorityBadgeClass(priority) {
     }
 }
 
-// ==================== FUNGSI DEALS ====================
+// ==================== DEALS ====================
 
 function populateYearDropdown() {
     const filterYearSelect = document.getElementById('filterYear');
@@ -3053,7 +3588,6 @@ async function loadDealsFromFirebase(forceRefresh = false) {
         createPriorityDashboard();
         applyActiveFilters();
         
-        // Jalankan migrasi komentar setelah deals dimuat
         await migrateOldComments();
         
     } catch (error) {
@@ -3156,7 +3690,7 @@ function formatNumberInput(inputElement) {
     inputElement.value = new Intl.NumberFormat('id-ID').format(numberValue);
 }
 
-// ==================== FUNGSI STATISTIK MODAL ====================
+// ==================== STATISTIK MODAL ====================
 
 function openStatsModal() {
     const statsModal = document.getElementById('statsModal');
@@ -3238,7 +3772,7 @@ function populateSalesFilter() {
     }
 }
 
-// ==================== FUNGSI STATISTIK PER SALES ====================
+// ==================== STATISTIK PER SALES ====================
 
 function processSalesData(salesName = 'all') {
     let salesDeals;
@@ -3559,7 +4093,7 @@ function renderSalesCharts() {
     }
 }
 
-// ==================== FUNGSI STATISTIK PER PRIORITY ====================
+// ==================== STATISTIK PER PRIORITY ====================
 
 function processPriorityData(priority = 'all') {
     let priorityDeals;
@@ -3910,7 +4444,7 @@ function renderPriorityCharts() {
     }
 }
 
-// ==================== FUNGSI STATISTIK OVERVIEW ====================
+// ==================== STATISTIK OVERVIEW ====================
 
 function processDealDataForCharts(dealsData) {
     console.log("Processing deal data for charts, total deals:", dealsData.length);
@@ -4289,7 +4823,7 @@ function renderAllCharts() {
     }
 }
 
-// ==================== FUNGSI CLICKABLE CHART ====================
+// ==================== CLICKABLE CHART ====================
 
 function showDealsByPriority(salesFilter, priority) {
     const selectedSales = salesFilter.value;
@@ -4505,7 +5039,7 @@ function updateBeforeDiscountEventListeners() {
     }
 }
 
-// ==================== FUNGSI SORTABLE ====================
+// ==================== SORTABLE ====================
 
 function initSortable() {
     const pipelineStage = document.getElementById('pipelines-stage');
@@ -4527,7 +5061,7 @@ function initSortable() {
     });
 }
 
-// ==================== FUNGSI PERMISSIONS ====================
+// ==================== PERMISSIONS ====================
 
 function applyUserPermissions() {
     try {
@@ -4567,9 +5101,8 @@ function applyUserPermissions() {
     }
 }
 
-// ==================== FUNGSI EVENT LISTENERS ====================
+// ==================== EVENT LISTENERS ====================
 
-// Handler untuk submit komentar dari modal utama
 function commentSubmitHandler() {
     const commentInput = document.getElementById('commentInput');
     const comment = commentInput ? commentInput.value : '';
@@ -4578,7 +5111,6 @@ function commentSubmitHandler() {
     }
 }
 
-// Handler untuk submit komentar dari detail modal
 function detailCommentSubmitHandler() {
     const detailCommentInput = document.getElementById('detailCommentInput');
     const comment = detailCommentInput ? detailCommentInput.value : '';
@@ -4731,7 +5263,36 @@ function initEventListeners() {
                 const modal = document.getElementById('allPrioritiesModal');
                 if (modal) modal.remove();
             }
+            
+            // Attachment upload handler
+            if (e.target.closest('#dealAttachmentUpload')) {
+                const uploadBtn = e.target.closest('#dealAttachmentUpload');
+                const fileInput = document.getElementById('dealAttachmentFile');
+                if (fileInput) fileInput.click();
+            }
+            
+            if (e.target.closest('#commentAttachmentBtn')) {
+                const fileInput = document.getElementById('commentAttachmentInput');
+                if (fileInput) fileInput.click();
+            }
+            
+            if (e.target.closest('#detailCommentAttachmentBtn')) {
+                const fileInput = document.getElementById('detailCommentAttachmentInput');
+                if (fileInput) fileInput.click();
+            }
         });
+
+        // Attachment file input handlers
+        const dealAttachmentFile = document.getElementById('dealAttachmentFile');
+        if (dealAttachmentFile) {
+            dealAttachmentFile.addEventListener('change', async function(e) {
+                const file = e.target.files[0];
+                if (file && currentDealIdForComments) {
+                    await uploadAttachmentForDeal(currentDealIdForComments, file);
+                    dealAttachmentFile.value = '';
+                }
+            });
+        }
 
         const dealForm = document.getElementById('dealForm');
         if (dealForm) {
@@ -4856,6 +5417,8 @@ function initEventListeners() {
         }
 
         setupConsultantSearch();
+        setupCommentAttachmentInput();
+        setupDetailCommentAttachmentInput();
         
         toggleDeleteOptionButtons();
         
@@ -5164,7 +5727,7 @@ function resetFilters() {
     createPriorityDashboard();
 }
 
-// ==================== FUNGSI SEARCH KONSULTAN ====================
+// ==================== SEARCH KONSULTAN ====================
 
 function setupConsultantSearch() {
     if (!consultantSearchInput || !consultantHiddenInput || !consultantSuggestionsDiv) {
@@ -5240,7 +5803,7 @@ function handleDocumentClick(event) {
     }
 }
 
-// ==================== FUNGSI EXPORT EXCEL ====================
+// ==================== EXPORT EXCEL ====================
 
 function initExportElements() {
     const exportExcelBtn = document.getElementById('exportExcelBtn');
@@ -5522,7 +6085,7 @@ function prepareSummaryExportData(dealsData) {
     });
 }
 
-// ==================== FUNGSI TAMBAHAN UNTUK DEAL ====================
+// ==================== TAMBAHAN UNTUK DEAL ====================
 
 function addContractorField(initialValue = '') {
     const contractorListDiv = document.getElementById('contractorList');
@@ -5865,6 +6428,9 @@ async function openDealModal(dealId = null) {
                 if (commentsSection) {
                     commentsSection.style.display = 'block';
                 }
+                
+                // Load attachments
+                await renderAttachments(document.getElementById('dealAttachmentsList'), deal.id);
             }
         } else {
             modalTitle.textContent = 'Tambah Deal Baru';
@@ -6307,6 +6873,9 @@ async function openDealDetailModal(dealId) {
         const comments = await loadCommentsByProjectName(dealId);
         renderComments(comments, 'detailCommentsList');
         
+        // Load attachments
+        await renderAttachments(document.getElementById('detailAttachmentsList'), dealId);
+        
         document.getElementById('dealDetailModal').classList.remove('hidden');
         const dealDetailModalContent = document.getElementById('dealDetailModalContent');
         if (dealDetailModalContent) {
@@ -6454,7 +7023,6 @@ auth.onAuthStateChanged(async (user) => {
         try {
             currentUserEmail = user.email;
             
-            // Cek apakah migrasi sudah pernah dilakukan
             const migrationFlag = localStorage.getItem('comments_migration_completed');
             if (migrationFlag === 'true') {
                 commentsMigrationCompleted = true;
@@ -6538,3 +7106,5 @@ window.closeExportModal = closeExportModal;
 window.closePriorityModal = closePriorityModal;
 window.closeClickableChartModal = closeClickableChartModal;
 window.refreshCommentsForCurrentDeal = refreshCommentsForCurrentDeal;
+window.uploadAttachmentForDeal = uploadAttachmentForDeal;
+window.uploadAttachmentForComment = uploadAttachmentForComment;
