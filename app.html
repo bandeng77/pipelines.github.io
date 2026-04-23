@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Sales Pipeline Manager - Genetek</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -1401,6 +1401,11 @@
         .priority-modal-content table td:last-child {
             white-space: normal;
         }
+
+        /* Preview Modal Styles */
+        #previewModal {
+            z-index: 300;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 main-container">
@@ -2005,6 +2010,7 @@
                                 <p class="text-gray-700 font-semibold">Progress:</p>
                                 <p id="detailProgress" class="text-gray-900"></p>
                             </div>
+                            <div class="detail-item col-span-2" id="otherPrioritiesInfo"></div>
                             <div class="detail-item col-span-2">
                                 <p class="text-gray-700 font-semibold">Remarks:</p>
                                 <p id="detailRemarks" class="text-gray-900"></p>
