@@ -169,7 +169,7 @@ let isActivityModalOpening = false;
 // ==================== FUNGSI DROPBOX UPLOAD ====================
 
 /**
- * Upload file ke Dropbox
+ * Upload file ke Dropbox dengan mempertahankan nama file asli
  * @param {File} file - File yang akan diupload
  * @param {string} path - Path di Dropbox (contoh: /deals/DEAL_ID/filename)
  * @returns {Promise<Object>} - Hasil upload dengan link download
@@ -180,6 +180,9 @@ async function uploadToDropbox(file, path) {
         reader.onload = async function() {
             try {
                 const base64Data = reader.result.split(',')[1];
+                
+                // Gunakan path dengan nama file asli yang sudah di-encode
+                const encodedPath = encodeURIComponent(path).replace(/%2F/g, '/');
                 
                 const response = await fetch('https://content.dropboxapi.com/2/files/upload', {
                     method: 'POST',
@@ -203,7 +206,7 @@ async function uploadToDropbox(file, path) {
                 
                 const result = await response.json();
                 
-                // Dapatkan link download
+                // Dapatkan link download dengan direct download (dl=1)
                 const linkResponse = await fetch('https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings', {
                     method: 'POST',
                     headers: {
@@ -225,7 +228,7 @@ async function uploadToDropbox(file, path) {
                     const linkResult = await linkResponse.json();
                     downloadUrl = linkResult.url.replace('?dl=0', '?dl=1');
                 } else {
-                    // Jika sudah ada shared link
+                    // Jika sudah ada shared link, coba list dan dapatkan yang existing
                     const listResponse = await fetch('https://api.dropboxapi.com/2/sharing/list_shared_links', {
                         method: 'POST',
                         headers: {
@@ -326,6 +329,7 @@ async function deleteAttachment(attachmentId, dropboxPath) {
         if (currentDealIdForComments) {
             await loadAttachmentsForDeal(currentDealIdForComments);
             renderAttachments(document.getElementById('dealAttachmentsList'), currentDealIdForComments);
+            renderAttachments(document.getElementById('detailAttachmentsList'), currentDealIdForComments);
         }
         
         // Refresh komentar attachments
@@ -361,7 +365,7 @@ async function loadAttachmentsForDeal(dealId) {
 }
 
 /**
- * Render attachment ke container
+ * Render attachment ke container dengan preview
  * @param {HTMLElement} container - Container untuk menampilkan attachment
  * @param {string} dealId - ID deal
  */
@@ -383,13 +387,30 @@ async function renderAttachments(container, dealId) {
     
     attachments.forEach(attachment => {
         const isImage = attachment.type && attachment.type.startsWith('image/');
+        const isPdf = attachment.type === 'application/pdf';
         const fileIcon = isImage ? 'fa-image' : 
-                        attachment.type === 'application/pdf' ? 'fa-file-pdf' : 'fa-file';
+                        isPdf ? 'fa-file-pdf' : 'fa-file';
         const fileColor = isImage ? 'text-blue-500' : 
-                         attachment.type === 'application/pdf' ? 'text-red-500' : 'text-gray-500';
+                         isPdf ? 'text-red-500' : 'text-gray-500';
         
         const attachmentDiv = document.createElement('div');
         attachmentDiv.className = 'attachment-item bg-gray-50 rounded-lg p-2 mb-2 flex items-center justify-between hover:bg-gray-100 transition';
+        
+        // Preview thumbnail untuk gambar
+        let previewHtml = '';
+        if (isImage && attachment.downloadUrl) {
+            previewHtml = `
+                <button class="preview-attachment-btn text-blue-500 hover:text-blue-700 p-1" data-url="${attachment.downloadUrl}" data-name="${escapeHtml(attachment.name)}" data-type="image">
+                    <i class="fas fa-eye"></i>
+                </button>
+            `;
+        } else if (isPdf && attachment.downloadUrl) {
+            previewHtml = `
+                <button class="preview-attachment-btn text-blue-500 hover:text-blue-700 p-1" data-url="${attachment.downloadUrl}" data-name="${escapeHtml(attachment.name)}" data-type="pdf">
+                    <i class="fas fa-eye"></i>
+                </button>
+            `;
+        }
         
         attachmentDiv.innerHTML = `
             <div class="flex items-center space-x-3 flex-1 min-w-0">
@@ -401,7 +422,8 @@ async function renderAttachments(container, dealId) {
                 </div>
             </div>
             <div class="flex space-x-2">
-                <a href="${attachment.downloadUrl}" target="_blank" class="text-blue-600 hover:text-blue-800 p-1" title="Download/View">
+                ${previewHtml}
+                <a href="${attachment.downloadUrl}" target="_blank" class="text-green-600 hover:text-green-800 p-1" title="Download">
                     <i class="fas fa-download"></i>
                 </a>
                 ${(currentUserRole === 'admin' || currentUserRole === 'manager' || attachment.uploadedBy === auth.currentUser?.email) ? `
@@ -423,6 +445,66 @@ async function renderAttachments(container, dealId) {
             const dropboxPath = btn.dataset.path;
             await deleteAttachment(attachmentId, dropboxPath);
         });
+    });
+    
+    // Event listener untuk preview button
+    container.querySelectorAll('.preview-attachment-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const url = btn.dataset.url;
+            const name = btn.dataset.name;
+            const type = btn.dataset.type;
+            openAttachmentPreview(url, name, type);
+        });
+    });
+}
+
+/**
+ * Preview attachment dalam modal
+ * @param {string} url - URL file
+ * @param {string} name - Nama file
+ * @param {string} type - Tipe file (image/pdf)
+ */
+function openAttachmentPreview(url, name, type) {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[300] p-4';
+    modal.id = 'previewModal';
+    
+    let contentHtml = '';
+    if (type === 'image') {
+        contentHtml = `
+            <div class="max-w-full max-h-full">
+                <img src="${url}" alt="${escapeHtml(name)}" class="max-w-full max-h-[80vh] object-contain mx-auto">
+            </div>
+        `;
+    } else {
+        contentHtml = `
+            <iframe src="${url}" class="w-full h-[80vh] rounded-lg" frameborder="0"></iframe>
+        `;
+    }
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg w-full max-w-5xl max-h-[90vh] overflow-hidden">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h3 class="text-lg font-semibold text-gray-800 truncate">Preview: ${escapeHtml(name)}</h3>
+                <button class="close-preview text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <div class="p-4 overflow-auto max-h-[calc(90vh-70px)] flex justify-center">
+                ${contentHtml}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    modal.querySelector('.close-preview').addEventListener('click', () => {
+        modal.remove();
+    });
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
     });
 }
 
@@ -468,6 +550,7 @@ async function uploadAttachmentForDeal(dealId, file) {
         const projectName = deal?.dealName || 'unknown';
         const safeProjectName = projectName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
         const timestamp = Date.now();
+        // Mempertahankan nama file asli, tambahkan timestamp di depan untuk menghindari duplikasi
         const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
         const dropboxPath = `/${DROPBOX_CONFIG.appFolderName}/deals/${safeProjectName}/${timestamp}_${safeFileName}`;
         
@@ -478,6 +561,7 @@ async function uploadAttachmentForDeal(dealId, file) {
                 dealId: dealId,
                 projectName: projectName,
                 fileName: file.name,
+                originalFileName: file.name,
                 fileSize: file.size,
                 fileType: file.type,
                 dropboxPath: uploadResult.path,
@@ -500,6 +584,7 @@ async function uploadAttachmentForDeal(dealId, file) {
             
             // Refresh tampilan attachment
             await renderAttachments(document.getElementById('dealAttachmentsList'), dealId);
+            await renderAttachments(document.getElementById('detailAttachmentsList'), dealId);
             await refreshCommentAttachments();
             
             return true;
@@ -533,7 +618,6 @@ let currentCommentAttachmentPreview = null;
 
 /**
  * Upload attachment untuk komentar
- * @param {string} commentId - ID komentar (opsional, untuk update)
  * @param {string} dealId - ID deal
  * @param {File} file - File yang akan diupload
  * @param {string} commentContent - Isi komentar
@@ -586,6 +670,7 @@ async function uploadAttachmentForComment(dealId, file, commentContent) {
                 dealId: dealId,
                 projectName: projectName,
                 fileName: file.name,
+                originalFileName: file.name,
                 fileSize: file.size,
                 fileType: file.type,
                 dropboxPath: uploadResult.path,
@@ -617,7 +702,6 @@ async function uploadAttachmentForComment(dealId, file, commentContent) {
 function setupCommentAttachmentInput() {
     const commentAttachmentInput = document.getElementById('commentAttachmentInput');
     const commentAttachmentPreview = document.getElementById('commentAttachmentPreview');
-    const commentAttachmentRemove = document.getElementById('commentAttachmentRemove');
     
     if (commentAttachmentInput) {
         commentAttachmentInput.addEventListener('change', function(e) {
@@ -659,10 +743,6 @@ function setupCommentAttachmentInput() {
                 }
             }
         });
-    }
-    
-    if (commentAttachmentRemove) {
-        commentAttachmentRemove.addEventListener('click', removeCommentAttachment);
     }
 }
 
@@ -744,6 +824,7 @@ function removeDetailCommentAttachment() {
 async function refreshCommentAttachments() {
     if (currentDealIdForComments) {
         await renderAttachments(document.getElementById('dealAttachmentsList'), currentDealIdForComments);
+        await renderAttachments(document.getElementById('detailAttachmentsList'), currentDealIdForComments);
     }
 }
 
@@ -811,6 +892,21 @@ function renderComments(comments, containerId) {
             }
         }
         
+        // Attachment info jika ada
+        let attachmentHtml = '';
+        if (comment.attachmentInfo) {
+            const isImage = comment.attachmentInfo.fileType && comment.attachmentInfo.fileType.startsWith('image/');
+            const fileIcon = isImage ? 'fa-image' : 'fa-file-pdf';
+            attachmentHtml = `
+                <div class="comment-attachment mt-2">
+                    <a href="${comment.attachmentInfo.downloadUrl}" target="_blank" class="text-blue-500 hover:text-blue-700 text-sm flex items-center">
+                        <i class="fas ${fileIcon} mr-1"></i>
+                        ${escapeHtml(comment.attachmentInfo.fileName)}
+                    </a>
+                </div>
+            `;
+        }
+        
         commentItem.innerHTML = `
             <div class="comment-header">
                 <div>
@@ -823,6 +919,7 @@ function renderComments(comments, containerId) {
                 <div class="comment-time">${timeStr}</div>
             </div>
             <div class="comment-content">${escapeHtml(comment.content)}</div>
+            ${attachmentHtml}
             ${canDelete ? `
                 <button class="comment-delete-btn" data-comment-id="${comment.id}" data-project-key="${escapeHtml(comment.projectKey || '')}">
                     <i class="fas fa-trash"></i>
@@ -1744,10 +1841,10 @@ function openPriorityModal(priority, deals) {
                                 deal.stage === 'lost' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">
                                 ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}
                             </span>
-                           </td>
+                            </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             <i class="fas fa-clock text-gray-400 mr-1"></i>${lastUpdateDate}
-                           </td>
+                            </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <button class="text-blue-600 hover:text-blue-900 mr-3 view-detail-btn" data-id="${deal.id}">
                                 <i class="fas fa-eye"></i>
@@ -1757,7 +1854,7 @@ function openPriorityModal(priority, deals) {
                                     <i class="fas fa-list"></i>
                                 </button>
                             ` : ''}
-                           </td>
+                            </td>
                     </tr>
                 `}).join('')}
             </tbody>
@@ -5264,10 +5361,14 @@ function initEventListeners() {
                 if (modal) modal.remove();
             }
             
-            // Attachment upload handler
+            // Attachment upload handlers
             if (e.target.closest('#dealAttachmentUpload')) {
-                const uploadBtn = e.target.closest('#dealAttachmentUpload');
                 const fileInput = document.getElementById('dealAttachmentFile');
+                if (fileInput) fileInput.click();
+            }
+            
+            if (e.target.closest('#detailAttachmentUpload')) {
+                const fileInput = document.getElementById('detailAttachmentFile');
                 if (fileInput) fileInput.click();
             }
             
@@ -5290,6 +5391,17 @@ function initEventListeners() {
                 if (file && currentDealIdForComments) {
                     await uploadAttachmentForDeal(currentDealIdForComments, file);
                     dealAttachmentFile.value = '';
+                }
+            });
+        }
+        
+        const detailAttachmentFile = document.getElementById('detailAttachmentFile');
+        if (detailAttachmentFile) {
+            detailAttachmentFile.addEventListener('change', async function(e) {
+                const file = e.target.files[0];
+                if (file && currentDealIdForComments) {
+                    await uploadAttachmentForDeal(currentDealIdForComments, file);
+                    detailAttachmentFile.value = '';
                 }
             });
         }
