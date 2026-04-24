@@ -1,6 +1,6 @@
-// ==================== FULL SCRIPT DENGAN UPLOAD FILE KE DROPBOX ====================
-// File: app.js
+// ==================== APP.JS - FULL SCRIPT ====================
 // Sistem Komentar + Upload File (PDF/Foto) ke Dropbox
+// Menggunakan method upload dari SpeakUp (arrayBuffer + Uint8Array)
 
 // Konfigurasi Firebase
 const firebaseConfig = {
@@ -24,12 +24,9 @@ const dropdownOptionsCollection = db.collection('dropdownOptions');
 const commentsCollection = db.collection('comments');
 const attachmentsCollection = db.collection('attachments');
 
-// Konfigurasi Dropbox
-const DROPBOX_CONFIG = {
-    appKey: '9nb74swzwdyqo5r',
-    accessToken: 'sl.u.AGd1AkAEAr7rM9JqeOaxTXbjwOv8mi3DticHbXONkW7uGUiU8e0MQfDMkHvikhtquUm8TPSK8B4XEw2XkcgV7qDGtuP8uk2cP2fMwxsTWQxmfVf_7PsCSe-EbQclkQoUkYCSroVbwZLRwef7zXhqlqUul9oSHlUd793uHAPHHvhl0-T50M1lDBZ0E66a9HjqvVzroo_zK0eVDejuPgziC1e5FLHSVVoXW2HTC-lKanFAYO1NGzpP8391abioBrEH3W6VInOgwuw9TpoEjFi-qhILgthX4P3DfO9lhkG_RYj0uFUU9auHcHpsFX9LOMWNNTvFjuSGTZ9yBKJVqGuSbKXZ-_ZNweN1PuMOoPmLotUgf9kgpNXwJB_N03unA6Y3Cb78pA9Zlr08qF4N2j3NnzWcWz5XX7D3BKmFqH0kK417YLc7XROz-gBNpeLl9nClHHeapTtNLIYOVyHYDZN8G8IXfKSHk1OyfNTv0W-vnEB_jadDP4onsZwSSsNU-0s3RmZUfsj9V1qFyFXMaduDVgaS-WLATdTe4tcXtZXPbkiqtf-yOZ7VehsHr47TscK5_ilNX8kZkuk7UZ1BrHHOcom1UpHKgQyKnxQoMOIvhgOMLMX95E5IsbpfxVgGivvIifMcXygbKU1I-loxijPtxEzbEytOYFqgnVGdky5V_pLW39X11L20RpSXNS1WIVp_2-inEQZx5IxnPfxBvCXon-nKJwCA9EHxI94SCT5X-HmWj1Ua-LyAHIPkkLr1_MxPuB9-QhDKTkWaqOBMZuUeLLcMWDm6fYRY1rhhGvcb11FqFJ1pnKixBu3V69Abhs1kImnhUFmlUebVkY5V5wMDGWOdoQ-7maTc2xSx2gKMhoJtwJbhgnU3Hefs_JqHWiYWeQzF-R3klGnTvkbJdPg1gClKbN9W_1rNfnMd31IUuBZjwhnbXoykCRbsS0nmiw-bt0DExrPYPyuL-w4Toeik8ONnSP4YDUakCHPmqTias1XIVbZIFHe5V5sJcgNRBfA-XGmmUVJCYKdPJ8TwWU2IhtJD2xcWQcxrW6UjCi6Cfnls2C3iPij6Ll6mWbw0w66s0voC5jBAkjRCbRTbvp-wHp__wqtRXeltKO8kkrgXT2Lj0WmVImc0B5RdaQNRr2XzerBgJrtGvD1CUmTJDxq0w5r9XQ5PKyVBhLPmDD1IMhC0qx0Y-pPUvBIa8Q_J-oZCaBET2Mj5cOFv0IDW2r8NbwR909md3FWuAZVk-9U6ERku4Ugg7ghyrMgMNSk-qrHBE5UYLFdV3Us2xGyRKjwY_acmoyj9zg-w0CukiOYQCzpMmDacyhPLiZydEOxim6sdjbA',
-    appFolderName: 'owncloud-efk'
-};
+// Konfigurasi Dropbox (token dari SpeakUp yang sudah berhasil)
+const DROPBOX_ACCESS_TOKEN = "sl.u.AGat4kePnTDmanB1vxmDz07xJDsQPcmeFdRvdC7z22MIBpukRgtu6CxYPHB4ve0yUWp6xw0Jk3qiXFo31n1ia_WUkaSdMxY4fTXxu7CmyDEszB7BcZHZFYhcDpKcdKtTLTs7UWR3lCTaRZnDZD253gEHolWWNI0WzeugnP0qvMhUBBVeQOOJqw-ERSquFjqvOD8bam2Es-mUPfsvOOn1jgVff5YhKcJSs7HOZv0Ktd2uBAOQ-U2ITjoQ5sbsareZMSfzNHUWVykEk1jXQrKrZ7yZd1EqmMplcq9hMBiSOVeDPQAyZbcwa2d_zZnel5QMB6S8cFPMRrmb7knAN2ZPLVztH5O1aspiMzifYGrUKgPTS0Dd63DNqNHn40vvjdRvigtztVwbMEPiMxrzJufOPsgSAwq0DigsdNsI5LWZBKWCKGGgg83dA9xEbM9T4_GjgtLb8w3CjkB9n6nWbuTV4sCtoEktxtDppfW1RDoJBCV3gemcg99pHzf7--qHDMzYKG4ZbNxh-74DGmIQPAYSB0ue61aJFOAxYrSuhNmhKgo1Kg6MDaNPNoJ4eKq-EgPodTVyXxkuaf4rYLRnoQoUeXxyRe8Sarj416rz13CjDpuJoK4rzPbAbFC0ott43a9GyNJ6_dMXILNz1IMtqmWCblOxSZhQYednyl6OPXC9CnmARbjsv6yODMkyn9OGCrC0VWWt2uATgIGvoErfiWf-TZXdT-KoCV9eLjwgvBeRt6Dekyii291PfqKDyCKk2IUJvf0eH8J_3wHh2R0nqGL3f_04y1B74kvvxr5me6Fkts8YXRN6iVzIXy_y7WpS1SDgl3UaG6OyiZhn6J06lYfQyD_-5h5GkjCsYMjSOOnXSaHoCdnrTXmoVbaeX8H1WFJUsFIevfsvinTqls9XUpsFhTXouGg0DQUPHOJDgjGxbbzMJlFLFRxGfhtaA14YCu281dyCSZxlz5Y3gk50H87Dyy6YlsDw1CJU9Keq7bSk1v9ggYBM60W9E9fcBaReKnkuLGXAe6N3VokYRA2jSR0A15u4Yy97RiGzfmN0IdOWhWElwdr_kwMKC4KmSFRK9Az_fcOdANttZ8rCPL2z-FmwG3kJJL3qkQNX1XYWCkyQP_nIOHir96wIEhlPPoZcj_79WL9Gh0vzZYJUDVlyqrDM5BdoIktvaTbAhO2c10-XDnMFEAXyaeWdRMQpB9Tx7hzqj3Xe4H3-s9IY5Bhv0SDEgil9Q5gz6Bh_dNVqBXSzqrbpjWzGu0lnWH9GklxnC5NLDSf9k90Hsxmou2X9CDW9SWws3QHRXXnix8RtE8-64nkhZkZdqtFcM85-RXKFoJCWTPk";
+const DROPBOX_APP_FOLDER = "owncloud-efk";
 
 let deals = [];
 let deletedDeals = [];
@@ -166,102 +163,101 @@ let dealToDeleteName = '';
 // Flag untuk mencegah multiple click
 let isActivityModalOpening = false;
 
-// ==================== FUNGSI DROPBOX UPLOAD ====================
+// Variabel untuk upload attachment komentar
+let currentCommentAttachmentFile = null;
+
+// ==================== FUNGSI DROPBOX UPLOAD (METHOD DARI SPEAKUP) ====================
 
 /**
- * Upload file ke Dropbox dengan mempertahankan nama file asli
+ * Upload file ke Dropbox menggunakan arrayBuffer (method dari SpeakUp)
+ * Method ini lebih stabil untuk file besar termasuk PDF
  * @param {File} file - File yang akan diupload
- * @param {string} path - Path di Dropbox (contoh: /deals/DEAL_ID/filename)
+ * @param {string} dropboxPath - Path di Dropbox
  * @returns {Promise<Object>} - Hasil upload dengan link download
  */
-async function uploadToDropbox(file, path) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = async function() {
-            try {
-                const base64Data = reader.result.split(',')[1];
-                
-                // Gunakan path dengan nama file asli yang sudah di-encode
-                const encodedPath = encodeURIComponent(path).replace(/%2F/g, '/');
-                
-                const response = await fetch('https://content.dropboxapi.com/2/files/upload', {
+async function uploadToDropbox(file, dropboxPath) {
+    try {
+        // Method SpeakUp: menggunakan arrayBuffer (binary) bukan base64
+        const arrayBuffer = await file.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+        
+        const response = await fetch('https://content.dropboxapi.com/2/files/upload', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${DROPBOX_ACCESS_TOKEN}`,
+                'Content-Type': 'application/octet-stream',
+                'Dropbox-API-Arg': JSON.stringify({
+                    path: dropboxPath,
+                    mode: 'add',
+                    autorename: true,
+                    mute: false
+                })
+            },
+            body: uint8Array
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error_summary || 'Upload failed');
+        }
+        
+        const result = await response.json();
+        
+        // Dapatkan shared link untuk preview (method dari SpeakUp)
+        let downloadUrl = '';
+        try {
+            const shareResponse = await fetch('https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${DROPBOX_ACCESS_TOKEN}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    path: result.path_display,
+                    settings: {
+                        requested_visibility: 'public',
+                        audience: 'public',
+                        access: 'viewer'
+                    }
+                })
+            });
+            
+            if (shareResponse.ok) {
+                const shareData = await shareResponse.json();
+                downloadUrl = shareData.url.replace('?dl=0', '?dl=1');
+            } else {
+                // Coba cari shared link yang sudah ada
+                const listResponse = await fetch('https://api.dropboxapi.com/2/sharing/list_shared_links', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${DROPBOX_CONFIG.accessToken}`,
-                        'Content-Type': 'application/octet-stream',
-                        'Dropbox-API-Arg': JSON.stringify({
-                            path: path,
-                            mode: 'add',
-                            autorename: true,
-                            mute: false
-                        })
-                    },
-                    body: base64Data
-                });
-                
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error_summary || 'Upload failed');
-                }
-                
-                const result = await response.json();
-                
-                // Dapatkan link download dengan direct download (dl=1)
-                const linkResponse = await fetch('https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${DROPBOX_CONFIG.accessToken}`,
+                        'Authorization': `Bearer ${DROPBOX_ACCESS_TOKEN}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        path: result.path_display,
-                        settings: {
-                            requested_visibility: 'public',
-                            audience: 'public',
-                            access: 'viewer'
-                        }
-                    })
+                    body: JSON.stringify({ path: result.path_display })
                 });
-                
-                let downloadUrl = '';
-                if (linkResponse.ok) {
-                    const linkResult = await linkResponse.json();
-                    downloadUrl = linkResult.url.replace('?dl=0', '?dl=1');
-                } else {
-                    // Jika sudah ada shared link, coba list dan dapatkan yang existing
-                    const listResponse = await fetch('https://api.dropboxapi.com/2/sharing/list_shared_links', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${DROPBOX_CONFIG.accessToken}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            path: result.path_display
-                        })
-                    });
-                    if (listResponse.ok) {
-                        const listResult = await listResponse.json();
-                        if (listResult.links && listResult.links.length > 0) {
-                            downloadUrl = listResult.links[0].url.replace('?dl=0', '?dl=1');
-                        }
+                if (listResponse.ok) {
+                    const listResult = await listResponse.json();
+                    if (listResult.links && listResult.links.length > 0) {
+                        downloadUrl = listResult.links[0].url.replace('?dl=0', '?dl=1');
                     }
                 }
-                
-                resolve({
-                    success: true,
-                    path: result.path_display,
-                    downloadUrl: downloadUrl,
-                    name: file.name,
-                    size: file.size,
-                    type: file.type
-                });
-            } catch (error) {
-                reject(error);
             }
+        } catch (linkError) {
+            console.warn('Could not create shared link:', linkError);
+        }
+        
+        return {
+            success: true,
+            path: result.path_display,
+            downloadUrl: downloadUrl,
+            name: file.name,
+            size: file.size,
+            type: file.type
         };
-        reader.onerror = () => reject(new Error('Failed to read file'));
-        reader.readAsDataURL(file);
-    });
+    } catch (error) {
+        console.error('Upload to Dropbox error:', error);
+        throw error;
+    }
 }
 
 /**
@@ -273,12 +269,10 @@ async function deleteFromDropbox(path) {
         const response = await fetch('https://api.dropboxapi.com/2/files/delete_v2', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${DROPBOX_CONFIG.accessToken}`,
+                'Authorization': `Bearer ${DROPBOX_ACCESS_TOKEN}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                path: path
-            })
+            body: JSON.stringify({ path: path })
         });
         
         if (!response.ok) {
@@ -396,17 +390,11 @@ async function renderAttachments(container, dealId) {
         const attachmentDiv = document.createElement('div');
         attachmentDiv.className = 'attachment-item bg-gray-50 rounded-lg p-2 mb-2 flex items-center justify-between hover:bg-gray-100 transition';
         
-        // Preview thumbnail untuk gambar
+        // Preview thumbnail untuk gambar/PDF
         let previewHtml = '';
-        if (isImage && attachment.downloadUrl) {
+        if ((isImage || isPdf) && attachment.downloadUrl) {
             previewHtml = `
-                <button class="preview-attachment-btn text-blue-500 hover:text-blue-700 p-1" data-url="${attachment.downloadUrl}" data-name="${escapeHtml(attachment.name)}" data-type="image">
-                    <i class="fas fa-eye"></i>
-                </button>
-            `;
-        } else if (isPdf && attachment.downloadUrl) {
-            previewHtml = `
-                <button class="preview-attachment-btn text-blue-500 hover:text-blue-700 p-1" data-url="${attachment.downloadUrl}" data-name="${escapeHtml(attachment.name)}" data-type="pdf">
+                <button class="preview-attachment-btn text-blue-500 hover:text-blue-700 p-1" data-url="${attachment.downloadUrl}" data-name="${escapeHtml(attachment.fileName)}" data-type="${isImage ? 'image' : 'pdf'}">
                     <i class="fas fa-eye"></i>
                 </button>
             `;
@@ -416,9 +404,9 @@ async function renderAttachments(container, dealId) {
             <div class="flex items-center space-x-3 flex-1 min-w-0">
                 <i class="fas ${fileIcon} ${fileColor} text-lg"></i>
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-gray-800 truncate" title="${escapeHtml(attachment.name)}">${escapeHtml(attachment.name)}</p>
-                    <p class="text-xs text-gray-500">${formatFileSize(attachment.size)} • ${formatDateTime(attachment.createdAt)}</p>
-                    <p class="text-xs text-gray-400">Upload oleh: ${escapeHtml(attachment.uploadedBy || '-')}</p>
+                    <p class="text-sm font-medium text-gray-800 truncate" title="${escapeHtml(attachment.fileName)}">${escapeHtml(attachment.fileName)}</p>
+                    <p class="text-xs text-gray-500">${formatFileSize(attachment.fileSize)} • ${formatDateTime(attachment.createdAt)}</p>
+                    <p class="text-xs text-gray-400">Upload oleh: ${escapeHtml(attachment.uploadedByName || '-')}</p>
                 </div>
             </div>
             <div class="flex space-x-2">
@@ -460,7 +448,7 @@ async function renderAttachments(container, dealId) {
 }
 
 /**
- * Preview attachment dalam modal
+ * Preview attachment dalam modal (sama seperti SpeakUp)
  * @param {string} url - URL file
  * @param {string} name - Nama file
  * @param {string} type - Tipe file (image/pdf)
@@ -509,7 +497,20 @@ function openAttachmentPreview(url, name, type) {
 }
 
 /**
- * Upload attachment untuk deal
+ * Format ukuran file
+ * @param {number} bytes - Ukuran dalam bytes
+ * @returns {string} - Ukuran terformat
+ */
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+/**
+ * Upload attachment untuk deal (menggunakan method SpeakUp)
  * @param {string} dealId - ID deal
  * @param {File} file - File yang akan diupload
  */
@@ -550,9 +551,8 @@ async function uploadAttachmentForDeal(dealId, file) {
         const projectName = deal?.dealName || 'unknown';
         const safeProjectName = projectName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
         const timestamp = Date.now();
-        // Mempertahankan nama file asli, tambahkan timestamp di depan untuk menghindari duplikasi
         const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const dropboxPath = `/${DROPBOX_CONFIG.appFolderName}/deals/${safeProjectName}/${timestamp}_${safeFileName}`;
+        const dropboxPath = `/${DROPBOX_APP_FOLDER}/deals/${safeProjectName}/${timestamp}_${safeFileName}`;
         
         const uploadResult = await uploadToDropbox(file, dropboxPath);
         
@@ -598,26 +598,10 @@ async function uploadAttachmentForDeal(dealId, file) {
     }
 }
 
-/**
- * Format ukuran file
- * @param {number} bytes - Ukuran dalam bytes
- * @returns {string} - Ukuran terformat
- */
-function formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
 // ==================== FUNGSI UPLOAD ATTACHMENT UNTUK KOMENTAR ====================
 
-let currentCommentAttachmentFile = null;
-let currentCommentAttachmentPreview = null;
-
 /**
- * Upload attachment untuk komentar
+ * Upload attachment untuk komentar (menggunakan method SpeakUp)
  * @param {string} dealId - ID deal
  * @param {File} file - File yang akan diupload
  * @param {string} commentContent - Isi komentar
@@ -660,7 +644,7 @@ async function uploadAttachmentForComment(dealId, file, commentContent) {
         const safeProjectName = projectName.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
         const timestamp = Date.now();
         const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const dropboxPath = `/${DROPBOX_CONFIG.appFolderName}/comments/${safeProjectName}/${timestamp}_${safeFileName}`;
+        const dropboxPath = `/${DROPBOX_APP_FOLDER}/comments/${safeProjectName}/${timestamp}_${safeFileName}`;
         
         const uploadResult = await uploadToDropbox(file, dropboxPath);
         
@@ -713,7 +697,7 @@ function setupCommentAttachmentInput() {
                         const reader = new FileReader();
                         reader.onload = function(evt) {
                             commentAttachmentPreview.innerHTML = `
-                                <div class="relative inline-block">
+                                <div class="relative inline-block mt-2">
                                     <img src="${evt.target.result}" class="h-16 w-16 object-cover rounded border">
                                     <button type="button" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs" id="removeCommentAttachment">×</button>
                                 </div>
@@ -726,7 +710,7 @@ function setupCommentAttachmentInput() {
                         reader.readAsDataURL(file);
                     } else {
                         commentAttachmentPreview.innerHTML = `
-                            <div class="relative inline-block">
+                            <div class="relative inline-block mt-2">
                                 <div class="bg-gray-100 rounded p-2 flex items-center space-x-2">
                                     <i class="fas fa-file-pdf text-red-500"></i>
                                     <span class="text-xs truncate max-w-32">${file.name}</span>
@@ -774,7 +758,7 @@ function setupDetailCommentAttachmentInput() {
                         const reader = new FileReader();
                         reader.onload = function(evt) {
                             detailCommentAttachmentPreview.innerHTML = `
-                                <div class="relative inline-block">
+                                <div class="relative inline-block mt-2">
                                     <img src="${evt.target.result}" class="h-16 w-16 object-cover rounded border">
                                     <button type="button" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs" id="removeDetailCommentAttachment">×</button>
                                 </div>
@@ -787,7 +771,7 @@ function setupDetailCommentAttachmentInput() {
                         reader.readAsDataURL(file);
                     } else {
                         detailCommentAttachmentPreview.innerHTML = `
-                            <div class="relative inline-block">
+                            <div class="relative inline-block mt-2">
                                 <div class="bg-gray-100 rounded p-2 flex items-center space-x-2">
                                     <i class="fas fa-file-pdf text-red-500"></i>
                                     <span class="text-xs truncate max-w-32">${file.name}</span>
@@ -2218,18 +2202,20 @@ function renderMergedDealCard(dealGroup) {
     let salesSelectorHTML = '';
     if (hasMultipleSales && salesNames.length > 1 && (currentUserRole === 'admin' || currentUserRole === 'manager')) {
         salesSelectorHTML = `
-            <div class="multiple-sales-indicator" title="${salesNames.length} sales bekerja pada project ini">
+            <div class="multiple-sales-indicator relative inline-block ml-2 cursor-pointer bg-purple-500 text-white rounded-full w-6 h-6 text-center text-xs leading-6" title="${salesNames.length} sales bekerja pada project ini">
                 ${salesNames.length}
             </div>
-            <div class="sales-dropdown" id="sales-dropdown-${activeDeal.id}">
-                ${salesNames.map(salesName => `
-                    <div class="sales-dropdown-item ${salesName === activeSales ? 'active' : ''}" 
-                         data-sales="${salesName}"
-                         data-deal-name="${dealNameLower}"
-                         data-priority="${priority}">
-                        ${salesName}
-                    </div>
-                `).join('')}
+            <div class="sales-dropdown absolute bg-white rounded-lg shadow-lg z-20 hidden mt-1 min-w-32" id="sales-dropdown-${activeDeal.id}">
+                <div class="py-1">
+                    ${salesNames.map(salesName => `
+                        <div class="sales-dropdown-item px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 ${salesName === activeSales ? 'bg-purple-50 text-purple-600 font-semibold' : ''}" 
+                             data-sales="${salesName}"
+                             data-deal-name="${dealNameLower}"
+                             data-priority="${priority}">
+                            ${salesName}
+                        </div>
+                    `).join('')}
+                </div>
             </div>
         `;
     }
@@ -2251,10 +2237,13 @@ function renderMergedDealCard(dealGroup) {
                 ${priority}
             </span>
         </div>
-        ${salesSelectorHTML}
         <div class="mt-1 text-sm text-gray-600 deal-details">
-            <p><i class="fas fa-user-tie mr-1"></i> ${escapeHtml(activeSales)}</p>
-            <p class="font-semibold text-blue-600" title="${valueTooltip}">
+            <div class="flex items-center">
+                <i class="fas fa-user-tie mr-1"></i>
+                <span>${escapeHtml(activeSales)}</span>
+                ${salesSelectorHTML}
+            </div>
+            <p class="font-semibold text-blue-600 mt-1" title="${valueTooltip}">
                 ${valueDisplay}
             </p>
             <p class="mt-1">
@@ -2348,14 +2337,13 @@ function setupMergeDealCardEvents(dealCard, dealGroup) {
                                 displayValue = Math.max(...activeProjects.map(d => d.value || 0));
                             }
                             
-                            const salesNameElement = card.querySelector('.deal-details p:first-child');
+                            const salesNameElement = card.querySelector('.deal-details .flex span');
                             const valueElement = card.querySelector('.deal-details p.font-semibold');
-                            const stageElement = card.querySelector('.priority-badge:last-child');
-                            const priorityElement = card.querySelector('.priority-badge:first-child');
-                            const dateElement = card.querySelector('.text-xs');
-                            
-                            if (salesNameElement) {
-                                salesNameElement.innerHTML = `<i class="fas fa-user-tie mr-1"></i> ${escapeHtml(selectedSales)}`;
+                            const stageElement = card.querySelector('.deal-details .priority-badge:last-child');
+                            const priorityElement = card.querySelector('.deal-header .priority-badge');
+                            const dateElement = card.querySelector('.deal-footer .text-xs');
+                                            if (salesNameElement) {
+                                salesNameElement.textContent = escapeHtml(selectedSales);
                             }
                             
                             if (valueElement) {
@@ -2377,30 +2365,15 @@ function setupMergeDealCardEvents(dealCard, dealGroup) {
                             if (stageElement) {
                                 let stageColorClass = '';
                                 switch (selectedDeal.stage) {
-                                    case 'identified':
-                                        stageColorClass = 'bg-gray-100 text-gray-800';
-                                        break;
-                                    case 'prospect':
-                                        stageColorClass = 'bg-blue-100 text-blue-800';
-                                        break;
-                                    case 'tender-me':
-                                        stageColorClass = 'bg-orange-100 text-orange-800';
-                                        break;
-                                    case 'tender-main-con':
-                                        stageColorClass = 'bg-purple-100 text-purple-800';
-                                        break;
-                                    case 'contract-award':
-                                        stageColorClass = 'bg-indigo-100 text-indigo-800';
-                                        break;
-                                    case 'win':
-                                        stageColorClass = 'bg-green-100 text-green-800';
-                                        break;
-                                    case 'lost':
-                                        stageColorClass = 'bg-red-100 text-red-800';
-                                        break;
-                                    case 'on-hold':
-                                        stageColorClass = 'bg-yellow-100 text-yellow-800';
-                                        break;
+                                    case 'identified': stageColorClass = 'bg-gray-100 text-gray-800'; break;
+                                    case 'prospect': stageColorClass = 'bg-blue-100 text-blue-800'; break;
+                                    case 'tender-me': stageColorClass = 'bg-orange-100 text-orange-800'; break;
+                                    case 'tender-main-con': stageColorClass = 'bg-purple-100 text-purple-800'; break;
+                                    case 'contract-award': stageColorClass = 'bg-indigo-100 text-indigo-800'; break;
+                                    case 'win': stageColorClass = 'bg-green-100 text-green-800'; break;
+                                    case 'lost': stageColorClass = 'bg-red-100 text-red-800'; break;
+                                    case 'on-hold': stageColorClass = 'bg-yellow-100 text-yellow-800'; break;
+                                    default: stageColorClass = 'bg-gray-100 text-gray-800';
                                 }
                                 
                                 stageElement.className = `priority-badge px-2 py-1 rounded-full ${stageColorClass}`;
@@ -2487,32 +2460,15 @@ function renderIndividualDealCard(deal) {
     
     let stageColorClass = '';
     switch (deal.stage) {
-        case 'identified':
-            stageColorClass = 'bg-gray-100 text-gray-800';
-            break;
-        case 'prospect':
-            stageColorClass = 'bg-blue-100 text-blue-800';
-            break;
-        case 'tender-me':
-            stageColorClass = 'bg-orange-100 text-orange-800';
-            break;
-        case 'tender-main-con':
-            stageColorClass = 'bg-purple-100 text-purple-800';
-            break;
-        case 'contract-award':
-            stageColorClass = 'bg-indigo-100 text-indigo-800';
-            break;
-        case 'win':
-            stageColorClass = 'bg-green-100 text-green-800';
-            break;
-        case 'lost':
-            stageColorClass = 'bg-red-100 text-red-800';
-            break;
-        case 'on-hold':
-            stageColorClass = 'bg-yellow-100 text-yellow-800';
-            break;
-        default:
-            stageColorClass = 'bg-gray-100 text-gray-800';
+        case 'identified': stageColorClass = 'bg-gray-100 text-gray-800'; break;
+        case 'prospect': stageColorClass = 'bg-blue-100 text-blue-800'; break;
+        case 'tender-me': stageColorClass = 'bg-orange-100 text-orange-800'; break;
+        case 'tender-main-con': stageColorClass = 'bg-purple-100 text-purple-800'; break;
+        case 'contract-award': stageColorClass = 'bg-indigo-100 text-indigo-800'; break;
+        case 'win': stageColorClass = 'bg-green-100 text-green-800'; break;
+        case 'lost': stageColorClass = 'bg-red-100 text-red-800'; break;
+        case 'on-hold': stageColorClass = 'bg-yellow-100 text-yellow-800'; break;
+        default: stageColorClass = 'bg-gray-100 text-gray-800';
     }
 
     const priorityBadgeClass = getPriorityBadgeClass(deal.priority);
@@ -2656,7 +2612,7 @@ function renderDealList(deal, index) {
                     <i class="fas fa-star mr-1"></i>Last
                 </span>
             ` : ''}
-            </td>
+        </td>
         <td class="px-4 py-3 align-top text-sm">
             ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}
             ${winDate ? `
@@ -2664,17 +2620,17 @@ function renderDealList(deal, index) {
                 <i class="fas fa-calendar-check mr-1"></i>${formatDate(winDate)}
             </div>
             ` : ''}
-            </td>
+        </td>
         <td class="px-4 py-3 align-top text-sm">${escapeHtml(consultantDisplay)}</td>
         <td class="px-4 py-3 align-top text-sm">${escapeHtml(contractorDisplay)}</td>
         <td class="px-4 py-3 align-top text-sm font-semibold" title="${valueTooltip}">
             ${valueDisplay}
-            </td>
+        </td>
         <td class="px-4 py-3 align-top">
             <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
                 ${deal.priority || 'Priority'}
             </span>
-            </td>
+        </td>
         <td class="px-4 py-3 align-top text-sm deal-actions">
             <div class="flex space-x-2">
                 <button class="view-detail-btn text-blue-600 hover:text-blue-800">
@@ -2694,7 +2650,7 @@ function renderDealList(deal, index) {
                 </button>
                 ` : ''}
             </div>
-            </td>
+        </td>
     `;
     
     return row;
@@ -5583,7 +5539,7 @@ function initViewToggle() {
     const cardViewBtn = document.getElementById('cardViewBtn');
     const listViewBtn = document.getElementById('listViewBtn');
     
-    if (cardViewBtn && listViewBtn) {
+        if (cardViewBtn && listViewBtn) {
         cardViewBtn.addEventListener('click', () => switchView('card'));
         listViewBtn.addEventListener('click', () => switchView('list'));
     }
@@ -7220,3 +7176,5 @@ window.closeClickableChartModal = closeClickableChartModal;
 window.refreshCommentsForCurrentDeal = refreshCommentsForCurrentDeal;
 window.uploadAttachmentForDeal = uploadAttachmentForDeal;
 window.uploadAttachmentForComment = uploadAttachmentForComment;
+
+// ==================== AKHIR SCRIPT ====================
