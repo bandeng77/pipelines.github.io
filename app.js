@@ -2342,7 +2342,8 @@ function setupMergeDealCardEvents(dealCard, dealGroup) {
                             const stageElement = card.querySelector('.deal-details .priority-badge:last-child');
                             const priorityElement = card.querySelector('.deal-header .priority-badge');
                             const dateElement = card.querySelector('.deal-footer .text-xs');
-                                            if (salesNameElement) {
+                            
+                            if (salesNameElement) {
                                 salesNameElement.textContent = escapeHtml(selectedSales);
                             }
                             
