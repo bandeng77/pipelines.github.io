@@ -101,7 +101,6 @@ const emailToSalesNameMap = {
     'rory@genetek.co.id': 'Rory',
     'pamungkas@genetek.co.id': 'Pamungkas',
     'dhea@genetek.co.id': 'Dhea',
-    'bintang@genetek.co.id': 'Bintang',
     'andy@genetek.co.id': 'Andy',
     'rangga@genetek.co.id': 'Rangga',
     'm_husni@genetek.co.id': 'Husni',
@@ -122,6 +121,7 @@ const managerEmails = [
     'crenata@genetek.co.id',
     'agoesdh@genetek.co.id',
     'yib_wahyu@genetek.co.id',
+    'bintang@genetek.co.id',
     'satriopk@genetek.co.id',
     'admin@genetek.co.id'
 ];
@@ -3086,7 +3086,7 @@ function canUserEditDeal(deal) {
     const currentUser = auth.currentUser;
     
     const allowedEmails = [
-        'bintang@genetek.co.id',
+        'galih@genetek.co.id',
         'andy@genetek.co.id'
     ];
     
