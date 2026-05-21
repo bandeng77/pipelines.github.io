@@ -1,7 +1,7 @@
-// ==================== FULL SCRIPT PERBAIKAN KOMENTAR ====================
+// ==================== FULL SCRIPT DENGAN NOTIFIKASI & AKTIVITAS KOMENTAR ====================
 // File: app.js
 // Sistem Komentar: 1 Project Name = 1 Thread Komentar Bersama untuk Semua Sales
-// DENGAN MIGRASI DATA KOMENTAR LAMA
+// DENGAN NOTIFIKASI BROWSER DAN AKTIVITAS KOMENTAR
 
 // Konfigurasi Firebase
 const firebaseConfig = {
@@ -34,6 +34,12 @@ let currentUserEmail = null;
 let currentSalesName = null;
 let sortableInstances = {};
 let authInitialized = false;
+
+// Variabel untuk notifikasi
+let notificationPermissionGranted = false;
+let lastNotificationTime = {};
+let commentsListener = null;
+let dealsListener = null;
 
 // Variabel untuk menyimpan daftar unik
 let uniqueConsultants = new Set();
@@ -158,6 +164,343 @@ let dealToDeleteName = '';
 
 // Flag untuk mencegah multiple click
 let isActivityModalOpening = false;
+
+// ==================== FUNGSI NOTIFIKASI BROWSER ====================
+
+/**
+ * Meminta izin notifikasi dari pengguna
+ */
+async function requestNotificationPermission() {
+    if (!("Notification" in window)) {
+        console.log("Browser tidak mendukung notifikasi");
+        return false;
+    }
+    
+    if (Notification.permission === "granted") {
+        notificationPermissionGranted = true;
+        console.log("Izin notifikasi sudah diberikan");
+        return true;
+    }
+    
+    if (Notification.permission !== "denied") {
+        const permission = await Notification.requestPermission();
+        notificationPermissionGranted = permission === "granted";
+        if (notificationPermissionGranted) {
+            console.log("Izin notifikasi diberikan");
+            // Tampilkan notifikasi selamat datang
+            showBrowserNotification(
+                "Notifikasi Aktif",
+                "Anda akan menerima notifikasi untuk update pipeline dan komentar baru",
+                "info"
+            );
+        } else {
+            console.log("Izin notifikasi ditolak");
+        }
+        return notificationPermissionGranted;
+    }
+    
+    return false;
+}
+
+/**
+ * Menampilkan notifikasi browser
+ */
+function showBrowserNotification(title, body, type = 'info', dealId = null, projectName = null) {
+    if (!notificationPermissionGranted) {
+        return;
+    }
+    
+    // Cegah notifikasi terlalu sering (minimal 5 detik antara notifikasi sejenis)
+    const now = Date.now();
+    const throttleKey = `${title}-${projectName || 'general'}`;
+    if (lastNotificationTime[throttleKey] && (now - lastNotificationTime[throttleKey]) < 5000) {
+        return;
+    }
+    lastNotificationTime[throttleKey] = now;
+    
+    try {
+        const notification = new Notification(title, {
+            body: body,
+            icon: '/favicon.ico',
+            badge: '/favicon.ico',
+            tag: throttleKey,
+            renotify: false,
+            silent: false,
+            requireInteraction: type === 'comment' || type === 'deal_update'
+        });
+        
+        // Klik notifikasi untuk membuka detail deal
+        if (dealId) {
+            notification.onclick = function() {
+                window.focus();
+                if (dealId) {
+                    openDealDetailModal(dealId);
+                }
+                notification.close();
+            };
+        }
+        
+        // Tutup notifikasi setelah 10 detik
+        setTimeout(() => notification.close(), 10000);
+        
+    } catch (error) {
+        console.error("Error showing notification:", error);
+    }
+}
+
+/**
+ * Memulai listener real-time untuk komentar dan deals
+ */
+function startRealtimeListeners() {
+    if (!auth.currentUser) return;
+    
+    console.log("Memulai real-time listeners untuk notifikasi...");
+    
+    // Listener untuk komentar baru
+    if (commentsListener) {
+        commentsListener();
+    }
+    
+    commentsListener = commentsCollection
+        .orderBy('timestamp', 'desc')
+        .limit(20)
+        .onSnapshot((snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+                if (change.type === 'added') {
+                    const commentData = change.doc.data();
+                    // Jangan notifikasi komentar sendiri
+                    if (commentData.userEmail !== auth.currentUser?.email) {
+                        handleNewCommentNotification(commentData);
+                    }
+                }
+            });
+        }, (error) => {
+            console.error("Error in comments listener:", error);
+        });
+    
+    // Listener untuk deals yang diupdate
+    if (dealsListener) {
+        dealsListener();
+    }
+    
+    dealsListener = dealsCollection
+        .orderBy('updatedAt', 'desc')
+        .limit(30)
+        .onSnapshot((snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+                if (change.type === 'modified') {
+                    const newData = change.doc.data();
+                    const oldData = deals.find(d => d.id === change.doc.id);
+                    if (oldData) {
+                        handleDealUpdateNotification(oldData, newData);
+                    }
+                } else if (change.type === 'added') {
+                    const newData = change.doc.data();
+                    // Jangan notifikasi deal sendiri
+                    if (newData.createdBy !== auth.currentUser?.email) {
+                        handleNewDealNotification(newData);
+                    }
+                }
+            });
+        }, (error) => {
+            console.error("Error in deals listener:", error);
+        });
+}
+
+/**
+ * Handle notifikasi komentar baru
+ */
+async function handleNewCommentNotification(commentData) {
+    try {
+        // Dapatkan nama project
+        let projectName = commentData.projectName;
+        let dealId = commentData.dealId;
+        
+        if (!projectName && commentData.projectKey) {
+            // Cari project berdasarkan projectKey
+            const dealWithProject = deals.find(d => 
+                getProjectKey(d.dealName) === commentData.projectKey
+            );
+            if (dealWithProject) {
+                projectName = dealWithProject.dealName;
+                dealId = dealWithProject.id;
+            }
+        }
+        
+        if (!projectName) {
+            projectName = "Project";
+        }
+        
+        // Tentukan siapa yang berkomentar
+        const commenterName = commentData.salesName || commentData.userEmail.split('@')[0];
+        
+        // Cek apakah komentar ini relevan untuk user yang login
+        const isRelevant = await isCommentRelevantForUser(commentData, projectName);
+        
+        if (isRelevant) {
+            showBrowserNotification(
+                `💬 Komentar Baru dari ${commenterName}`,
+                `"${projectName}": ${commentData.content.substring(0, 80)}${commentData.content.length > 80 ? '...' : ''}`,
+                'comment',
+                dealId,
+                projectName
+            );
+            
+            // Tambahkan juga ke aktivitas
+            await addCommentToActivity(commentData, projectName);
+        }
+        
+        // Refresh tampilan komentar jika modal sedang terbuka
+        if (currentDealIdForComments && dealId === currentDealIdForComments) {
+            const comments = await loadCommentsByProjectName(currentDealIdForComments);
+            renderComments(comments, 'detailCommentsList');
+            if (document.getElementById('commentsList')) {
+                renderComments(comments, 'commentsList');
+            }
+        }
+        
+    } catch (error) {
+        console.error("Error handling comment notification:", error);
+    }
+}
+
+/**
+ * Cek apakah komentar relevan untuk user yang login
+ */
+async function isCommentRelevantForUser(commentData, projectName) {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return false;
+    
+    // Admin dan manager melihat semua komentar
+    if (currentUserRole === 'admin' || currentUserRole === 'manager') {
+        return true;
+    }
+    
+    // Cek apakah user adalah sales yang mengerjakan project ini
+    const currentSales = getCurrentSalesName();
+    if (!currentSales) return false;
+    
+    // Cari deal dengan project name yang sama
+    const relevantDeals = deals.filter(d => 
+        d.dealName?.trim().toLowerCase() === projectName?.trim().toLowerCase() &&
+        d.salesName === currentSales &&
+        d.stage !== 'lost'
+    );
+    
+    return relevantDeals.length > 0;
+}
+
+/**
+ * Tambahkan komentar ke aktivitas
+ */
+async function addCommentToActivity(commentData, projectName) {
+    try {
+        const commenterName = commentData.salesName || commentData.userEmail.split('@')[0];
+        const roleText = managerEmails.includes(commentData.userEmail) ? 'Manager' : 'Sales';
+        
+        await activitiesCollection.add({
+            message: `💬 ${commenterName} (${roleText}) memberikan komentar pada project "${projectName}": "${commentData.content.substring(0, 100)}${commentData.content.length > 100 ? '...' : ''}"`,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            userEmail: commentData.userEmail,
+            salesName: commenterName,
+            read: false,
+            type: 'comment',
+            projectName: projectName,
+            commentId: commentData.id,
+            content: commentData.content
+        });
+        
+        // Refresh cache aktivitas
+        activitiesCache.lastFetch = null;
+        
+    } catch (error) {
+        console.error("Error adding comment to activity:", error);
+    }
+}
+
+/**
+ * Handle notifikasi deal baru
+ */
+async function handleNewDealNotification(dealData) {
+    try {
+        const salesName = dealData.salesName || 'Sales';
+        const dealValue = formatNumber(dealData.value || 0);
+        
+        // Cek apakah deal ini relevan untuk user yang login
+        const currentUser = auth.currentUser;
+        if (!currentUser) return;
+        
+        // Admin dan manager melihat semua deal baru
+        if (currentUserRole === 'admin' || currentUserRole === 'manager') {
+            showBrowserNotification(
+                `📋 Deal Baru`,
+                `${salesName} menambahkan project "${dealData.dealName}" (Rp ${dealValue}) - ${dealData.stage || 'Identified'}`,
+                'deal_update',
+                dealData.id,
+                dealData.dealName
+            );
+        } 
+        // Sales hanya melihat deal miliknya sendiri (tidak perlu notifikasi untuk deal sendiri)
+        else if (dealData.salesName === currentSalesName) {
+            // Tidak perlu notifikasi untuk deal sendiri
+            return;
+        }
+        
+    } catch (error) {
+        console.error("Error handling new deal notification:", error);
+    }
+}
+
+/**
+ * Handle notifikasi update deal
+ */
+async function handleDealUpdateNotification(oldData, newData) {
+    try {
+        // Deteksi perubahan yang signifikan
+        const changes = [];
+        
+        if (oldData.stage !== newData.stage) {
+            changes.push(`Tahap: ${oldData.stage || '-'} → ${newData.stage || '-'}`);
+        }
+        if (oldData.priority !== newData.priority) {
+            changes.push(`Priority: ${oldData.priority || '-'} → ${newData.priority || '-'}`);
+        }
+        if (oldData.value !== newData.value) {
+            changes.push(`Nilai: Rp ${formatNumber(oldData.value || 0)} → Rp ${formatNumber(newData.value || 0)}`);
+        }
+        
+        if (changes.length === 0) return;
+        
+        const updaterName = newData.updatedBy ? newData.updatedBy.split('@')[0] : 'Seseorang';
+        const currentUser = auth.currentUser;
+        
+        // Jangan notifikasi update yang dilakukan sendiri
+        if (newData.updatedBy === currentUser?.email) return;
+        
+        // Cek relevansi
+        let isRelevant = false;
+        
+        if (currentUserRole === 'admin' || currentUserRole === 'manager') {
+            isRelevant = true;
+        } else {
+            const currentSales = getCurrentSalesName();
+            isRelevant = newData.salesName === currentSales;
+        }
+        
+        if (isRelevant) {
+            showBrowserNotification(
+                `🔄 Update Deal: ${newData.dealName}`,
+                `${updaterName} mengupdate: ${changes.join(', ')}`,
+                'deal_update',
+                newData.id,
+                newData.dealName
+            );
+        }
+        
+    } catch (error) {
+        console.error("Error handling deal update notification:", error);
+    }
+}
 
 // ==================== FUNGSI UTILITAS DASAR (DIDEKLARASIKAN AWAL) ====================
 
@@ -815,7 +1158,23 @@ async function deleteComment(commentId) {
     }
     
     try {
+        // Ambil data komentar sebelum dihapus untuk aktivitas
+        const commentDoc = await commentsCollection.doc(commentId).get();
+        const commentData = commentDoc.data();
+        
         await commentsCollection.doc(commentId).delete();
+        
+        // Tambahkan ke aktivitas
+        if (commentData) {
+            await activitiesCollection.add({
+                message: `🗑️ Komentar dari ${commentData.salesName || commentData.userEmail?.split('@')[0]} pada project "${commentData.projectName || 'Project'}" telah dihapus oleh ${auth.currentUser?.email}`,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                userEmail: auth.currentUser?.email,
+                read: false,
+                type: 'comment_delete'
+            });
+            activitiesCache.lastFetch = null;
+        }
         
         showToast("Komentar berhasil dihapus", 2000);
         
@@ -886,7 +1245,24 @@ async function addComment(dealId, content) {
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         };
         
-        await commentsCollection.add(commentData);
+        const docRef = await commentsCollection.add(commentData);
+        
+        // Tambahkan ke aktivitas
+        const roleText = managerEmails.includes(currentUser.email) ? 'Manager' : 'Sales';
+        await activitiesCollection.add({
+            message: `💬 ${currentSalesNameValue || currentUser.email.split('@')[0]} (${roleText}) memberikan komentar pada project "${projectName}": "${content.trim().substring(0, 100)}${content.trim().length > 100 ? '...' : ''}"`,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            userEmail: currentUser.email,
+            salesName: currentSalesNameValue,
+            read: false,
+            type: 'comment',
+            projectName: projectName,
+            commentId: docRef.id,
+            content: content.trim()
+        });
+        
+        // Refresh cache aktivitas
+        activitiesCache.lastFetch = null;
         
         // Refresh komentar
         const comments = await loadCommentsByProjectName(dealId);
@@ -905,9 +1281,63 @@ async function addComment(dealId, content) {
         
         showToast("Komentar berhasil ditambahkan", 2000);
         
+        // Kirim notifikasi ke pengguna lain
+        await sendCommentNotificationToOthers(commentData, projectName, currentUser.email);
+        
     } catch (error) {
         console.error("Error adding comment:", error);
         showToast("Gagal menambahkan komentar: " + error.message, 3000);
+    }
+}
+
+/**
+ * Kirim notifikasi ke pengguna lain yang relevan
+ */
+async function sendCommentNotificationToOthers(commentData, projectName, commenterEmail) {
+    try {
+        // Cari semua deal dengan project name yang sama
+        const relatedDeals = deals.filter(d => 
+            d.dealName?.trim().toLowerCase() === projectName?.trim().toLowerCase() &&
+            d.stage !== 'lost'
+        );
+        
+        // Kumpulkan email sales yang mengerjakan project ini (selain komentator)
+        const salesEmails = new Set();
+        for (const deal of relatedDeals) {
+            const salesEmail = salesNameToEmailMap[deal.salesName];
+            if (salesEmail && salesEmail !== commenterEmail) {
+                salesEmails.add(salesEmail);
+            }
+        }
+        
+        // Tambahkan manager dan admin
+        for (const managerEmail of managerEmails) {
+            if (managerEmail !== commenterEmail) {
+                salesEmails.add(managerEmail);
+            }
+        }
+        
+        // Untuk setiap pengguna yang relevan, buat entri notifikasi di Firestore
+        // (Ini untuk notifikasi in-app yang bisa dibaca saat login ulang)
+        for (const email of salesEmails) {
+            const userDoc = await usersCollection.where('email', '==', email).get();
+            if (!userDoc.empty) {
+                const userId = userDoc.docs[0].id;
+                await usersCollection.doc(userId).collection('notifications').add({
+                    type: 'comment',
+                    title: `Komentar Baru dari ${commentData.salesName || commenterEmail.split('@')[0]}`,
+                    message: `"${projectName}": ${commentData.content.substring(0, 80)}${commentData.content.length > 80 ? '...' : ''}`,
+                    projectName: projectName,
+                    dealId: commentData.dealId,
+                    commentId: commentData.id,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    read: false
+                });
+            }
+        }
+        
+    } catch (error) {
+        console.error("Error sending comment notifications:", error);
     }
 }
 
@@ -2720,10 +3150,20 @@ async function openActivityModal() {
                 const timeStr = activity.timestamp ? formatDateTime(activity.timestamp) : 'Waktu tidak diketahui';
                 const isUnread = !activity.read;
                 
+                // Tampilkan icon berdasarkan tipe aktivitas
+                let iconHtml = '';
+                if (activity.type === 'comment') {
+                    iconHtml = '<i class="fas fa-comment text-blue-500 mr-2"></i>';
+                } else if (activity.type === 'comment_delete') {
+                    iconHtml = '<i class="fas fa-trash text-red-500 mr-2"></i>';
+                } else {
+                    iconHtml = '<i class="fas fa-info-circle text-gray-500 mr-2"></i>';
+                }
+                
                 activityItem.innerHTML = `
                     <div class="flex items-start">
                         <div class="flex-1">
-                            <p class="text-sm ${isUnread ? 'font-semibold' : ''}">${escapeHtml(activity.message || 'Aktivitas tidak tersedia')}</p>
+                            <p class="text-sm ${isUnread ? 'font-semibold' : ''}">${iconHtml}${escapeHtml(activity.message || 'Aktivitas tidak tersedia')}</p>
                             <div class="flex items-center mt-1 text-xs text-gray-500">
                                 <i class="fas fa-clock mr-1"></i>
                                 <span>${timeStr}</span>
@@ -5050,6 +5490,16 @@ function renderFilteredDeals(filteredDeals) {
 }
 
 function logout() {
+    // Hentikan listener real-time
+    if (commentsListener) {
+        commentsListener();
+        commentsListener = null;
+    }
+    if (dealsListener) {
+        dealsListener();
+        dealsListener = null;
+    }
+    
     auth.signOut()
         .then(() => {
             console.log("User logged out successfully");
@@ -6454,6 +6904,9 @@ auth.onAuthStateChanged(async (user) => {
         try {
             currentUserEmail = user.email;
             
+            // Minta izin notifikasi
+            await requestNotificationPermission();
+            
             // Cek apakah migrasi sudah pernah dilakukan
             const migrationFlag = localStorage.getItem('comments_migration_completed');
             if (migrationFlag === 'true') {
@@ -6506,9 +6959,24 @@ auth.onAuthStateChanged(async (user) => {
             initExportElements();
             initYearFilter();
             
+            // Mulai real-time listeners untuk notifikasi
+            startRealtimeListeners();
+            
             if (currentUserRole === 'admin') {
                 loadRecycleBin();
             }
+            
+            // Tampilkan notifikasi selamat datang jika izin diberikan
+            if (notificationPermissionGranted) {
+                setTimeout(() => {
+                    showBrowserNotification(
+                        "Selamat Datang di Pipeline EFK",
+                        `Halo ${currentSalesName || user.email}, Anda akan menerima notifikasi real-time untuk update pipeline dan komentar.`,
+                        "info"
+                    );
+                }, 1000);
+            }
+            
         } catch (error) {
             console.error("Error checking user role:", error);
             showToast("Gagal memuat data pengguna. Silakan refresh halaman.", 5000);
@@ -6520,6 +6988,51 @@ auth.onAuthStateChanged(async (user) => {
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM loaded, initializing application...");
+    
+    // Tambahkan CSS untuk notifikasi badge
+    const style = document.createElement('style');
+    style.textContent = `
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #ef4444;
+            color: white;
+            border-radius: 50%;
+            font-size: 10px;
+            padding: 2px 4px;
+            min-width: 16px;
+            text-align: center;
+        }
+        
+        .activity-item .fa-comment {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+        
+        .comment-item {
+            transition: background-color 0.2s ease;
+        }
+        
+        .comment-item:hover {
+            background-color: #f9fafb;
+        }
+        
+        .comment-delete-btn {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        
+        .comment-item:hover .comment-delete-btn {
+            opacity: 1;
+        }
+    `;
+    document.head.appendChild(style);
 });
 
 // ==================== EKSPOR FUNGSI GLOBAL ====================
