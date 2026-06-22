@@ -187,7 +187,6 @@ async function requestNotificationPermission() {
         notificationPermissionGranted = permission === "granted";
         if (notificationPermissionGranted) {
             console.log("Izin notifikasi diberikan");
-            // Tampilkan notifikasi selamat datang
             showBrowserNotification(
                 "Notifikasi Aktif",
                 "Anda akan menerima notifikasi untuk update pipeline dan komentar baru",
@@ -210,7 +209,6 @@ function showBrowserNotification(title, body, type = 'info', dealId = null, proj
         return;
     }
     
-    // Cegah notifikasi terlalu sering (minimal 5 detik antara notifikasi sejenis)
     const now = Date.now();
     const throttleKey = `${title}-${projectName || 'general'}`;
     if (lastNotificationTime[throttleKey] && (now - lastNotificationTime[throttleKey]) < 5000) {
@@ -229,7 +227,6 @@ function showBrowserNotification(title, body, type = 'info', dealId = null, proj
             requireInteraction: type === 'comment' || type === 'deal_update'
         });
         
-        // Klik notifikasi untuk membuka detail deal
         if (dealId) {
             notification.onclick = function() {
                 window.focus();
@@ -240,7 +237,6 @@ function showBrowserNotification(title, body, type = 'info', dealId = null, proj
             };
         }
         
-        // Tutup notifikasi setelah 10 detik
         setTimeout(() => notification.close(), 10000);
         
     } catch (error) {
@@ -256,7 +252,6 @@ function startRealtimeListeners() {
     
     console.log("Memulai real-time listeners untuk notifikasi...");
     
-    // Listener untuk komentar baru
     if (commentsListener) {
         commentsListener();
     }
@@ -268,7 +263,6 @@ function startRealtimeListeners() {
             snapshot.docChanges().forEach((change) => {
                 if (change.type === 'added') {
                     const commentData = change.doc.data();
-                    // Jangan notifikasi komentar sendiri
                     if (commentData.userEmail !== auth.currentUser?.email) {
                         handleNewCommentNotification(commentData);
                     }
@@ -278,7 +272,6 @@ function startRealtimeListeners() {
             console.error("Error in comments listener:", error);
         });
     
-    // Listener untuk deals yang diupdate
     if (dealsListener) {
         dealsListener();
     }
@@ -296,7 +289,6 @@ function startRealtimeListeners() {
                     }
                 } else if (change.type === 'added') {
                     const newData = change.doc.data();
-                    // Jangan notifikasi deal sendiri
                     if (newData.createdBy !== auth.currentUser?.email) {
                         handleNewDealNotification(newData);
                     }
@@ -312,12 +304,10 @@ function startRealtimeListeners() {
  */
 async function handleNewCommentNotification(commentData) {
     try {
-        // Dapatkan nama project
         let projectName = commentData.projectName;
         let dealId = commentData.dealId;
         
         if (!projectName && commentData.projectKey) {
-            // Cari project berdasarkan projectKey
             const dealWithProject = deals.find(d => 
                 getProjectKey(d.dealName) === commentData.projectKey
             );
@@ -331,10 +321,8 @@ async function handleNewCommentNotification(commentData) {
             projectName = "Project";
         }
         
-        // Tentukan siapa yang berkomentar
         const commenterName = commentData.salesName || commentData.userEmail.split('@')[0];
         
-        // Cek apakah komentar ini relevan untuk user yang login
         const isRelevant = await isCommentRelevantForUser(commentData, projectName);
         
         if (isRelevant) {
@@ -346,11 +334,9 @@ async function handleNewCommentNotification(commentData) {
                 projectName
             );
             
-            // Tambahkan juga ke aktivitas
             await addCommentToActivity(commentData, projectName);
         }
         
-        // Refresh tampilan komentar jika modal sedang terbuka
         if (currentDealIdForComments && dealId === currentDealIdForComments) {
             const comments = await loadCommentsByProjectName(currentDealIdForComments);
             renderComments(comments, 'detailCommentsList');
@@ -371,16 +357,13 @@ async function isCommentRelevantForUser(commentData, projectName) {
     const currentUser = auth.currentUser;
     if (!currentUser) return false;
     
-    // Admin dan manager melihat semua komentar
     if (currentUserRole === 'admin' || currentUserRole === 'manager') {
         return true;
     }
     
-    // Cek apakah user adalah sales yang mengerjakan project ini
     const currentSales = getCurrentSalesName();
     if (!currentSales) return false;
     
-    // Cari deal dengan project name yang sama
     const relevantDeals = deals.filter(d => 
         d.dealName?.trim().toLowerCase() === projectName?.trim().toLowerCase() &&
         d.salesName === currentSales &&
@@ -410,7 +393,6 @@ async function addCommentToActivity(commentData, projectName) {
             content: commentData.content
         });
         
-        // Refresh cache aktivitas
         activitiesCache.lastFetch = null;
         
     } catch (error) {
@@ -426,11 +408,9 @@ async function handleNewDealNotification(dealData) {
         const salesName = dealData.salesName || 'Sales';
         const dealValue = formatNumber(dealData.value || 0);
         
-        // Cek apakah deal ini relevan untuk user yang login
         const currentUser = auth.currentUser;
         if (!currentUser) return;
         
-        // Admin dan manager melihat semua deal baru
         if (currentUserRole === 'admin' || currentUserRole === 'manager') {
             showBrowserNotification(
                 `📋 Deal Baru`,
@@ -440,9 +420,7 @@ async function handleNewDealNotification(dealData) {
                 dealData.dealName
             );
         } 
-        // Sales hanya melihat deal miliknya sendiri (tidak perlu notifikasi untuk deal sendiri)
         else if (dealData.salesName === currentSalesName) {
-            // Tidak perlu notifikasi untuk deal sendiri
             return;
         }
         
@@ -456,7 +434,6 @@ async function handleNewDealNotification(dealData) {
  */
 async function handleDealUpdateNotification(oldData, newData) {
     try {
-        // Deteksi perubahan yang signifikan
         const changes = [];
         
         if (oldData.stage !== newData.stage) {
@@ -474,10 +451,8 @@ async function handleDealUpdateNotification(oldData, newData) {
         const updaterName = newData.updatedBy ? newData.updatedBy.split('@')[0] : 'Seseorang';
         const currentUser = auth.currentUser;
         
-        // Jangan notifikasi update yang dilakukan sendiri
         if (newData.updatedBy === currentUser?.email) return;
         
-        // Cek relevansi
         let isRelevant = false;
         
         if (currentUserRole === 'admin' || currentUserRole === 'manager') {
@@ -502,7 +477,7 @@ async function handleDealUpdateNotification(oldData, newData) {
     }
 }
 
-// ==================== FUNGSI UTILITAS DASAR (DIDEKLARASIKAN AWAL) ====================
+// ==================== FUNGSI UTILITAS DASAR ====================
 
 /**
  * Mendapatkan nama sales dari email yang login
@@ -526,11 +501,9 @@ function escapeHtml(text) {
 
 /**
  * Mendapatkan project key yang unik untuk komentar (berdasarkan nama project)
- * Semua sales yang mengerjakan project yang sama akan menggunakan key yang sama
  */
 function getProjectKey(dealName) {
     if (!dealName) return null;
-    // Normalisasi: lowercase, trim, dan hapus spasi berlebih
     return dealName.trim().toLowerCase();
 }
 
@@ -570,22 +543,15 @@ function getFilteredDeals() {
     baseDeals = getDealsByYear(activeYear, baseDeals);
     
     const filteredDeals = baseDeals.filter(deal => {
-        // Fungsi untuk mengecek apakah search term cocok dengan berbagai field
         const matchesSearchTerm = (searchTerm, deal) => {
             if (searchTerm === '') return true;
             
             const term = searchTerm.toLowerCase();
             
-            // Cek nama project
             if (deal.dealName && deal.dealName.toLowerCase().includes(term)) return true;
-            
-            // Cek nama sales
             if (deal.salesName && deal.salesName.toLowerCase().includes(term)) return true;
-            
-            // Cek konsultan
             if (deal.consultant && deal.consultant.toLowerCase().includes(term)) return true;
             
-            // Cek kontraktor (bisa string atau array)
             if (deal.contractor) {
                 if (Array.isArray(deal.contractor)) {
                     for (const contractor of deal.contractor) {
@@ -822,11 +788,6 @@ function getDealsByYear(year, baseDeals = null) {
 
 // ==================== FUNGSI MIGRASI KOMENTAR LAMA ====================
 
-/**
- * MIGRASI DATA KOMENTAR LAMA
- * Fungsi ini akan membaca semua komentar lama (tanpa projectKey) dan menambahkan projectKey
- * berdasarkan dealId yang tersimpan
- */
 async function migrateOldComments() {
     if (commentsMigrationCompleted) {
         console.log("Migrasi komentar sudah pernah dilakukan, skip...");
@@ -836,22 +797,17 @@ async function migrateOldComments() {
     console.log("Memulai migrasi data komentar lama...");
     
     try {
-        // Ambil semua komentar
         const allCommentsSnapshot = await commentsCollection.get();
         const commentsToMigrate = [];
-        
-        // Buat peta dealName ke projectKey
         const dealNameToProjectKey = new Map();
         
         for (const doc of allCommentsSnapshot.docs) {
             const commentData = doc.data();
             
-            // Jika komentar sudah memiliki projectKey, skip
             if (commentData.projectKey) {
                 continue;
             }
             
-            // Jika komentar memiliki projectName, gunakan langsung
             if (commentData.projectName) {
                 const projectKey = getProjectKey(commentData.projectName);
                 commentsToMigrate.push({
@@ -862,16 +818,12 @@ async function migrateOldComments() {
                 continue;
             }
             
-            // Jika komentar memiliki dealId, cari dealName dari dealId
             if (commentData.dealId) {
-                // Cek cache terlebih dahulu
                 let dealName = dealNameToProjectKey.get(commentData.dealId);
                 
                 if (!dealName) {
-                    // Cari di deals array
                     let deal = deals.find(d => d.id === commentData.dealId);
                     
-                    // Jika tidak ditemukan, coba ambil dari Firestore
                     if (!deal) {
                         try {
                             const dealDoc = await dealsCollection.doc(commentData.dealId).get();
@@ -906,7 +858,6 @@ async function migrateOldComments() {
             }
         }
         
-        // Lakukan migrasi batch
         if (commentsToMigrate.length > 0) {
             console.log(`Menemukan ${commentsToMigrate.length} komentar yang perlu dimigrasi`);
             
@@ -921,7 +872,6 @@ async function migrateOldComments() {
                 });
                 batchCount++;
                 
-                // Batch maksimal 500 operasi
                 if (batchCount >= 450) {
                     await batch.commit();
                     console.log(`Batch migrasi ${batchCount} komentar berhasil`);
@@ -929,7 +879,6 @@ async function migrateOldComments() {
                 }
             }
             
-            // Commit sisa batch
             if (batchCount > 0) {
                 await batch.commit();
                 console.log(`Batch migrasi terakhir ${batchCount} komentar berhasil`);
@@ -941,8 +890,6 @@ async function migrateOldComments() {
         }
         
         commentsMigrationCompleted = true;
-        
-        // Simpan flag migrasi ke localStorage agar tidak migrasi ulang
         localStorage.setItem('comments_migration_completed', 'true');
         
     } catch (error) {
@@ -951,22 +898,18 @@ async function migrateOldComments() {
 }
 
 /**
- * Load komentar berdasarkan PROJECT NAME (semua sales dalam 1 project bisa lihat komentar yang sama)
- * Versi yang kompatibel dengan komentar lama dan baru
+ * Load komentar berdasarkan PROJECT NAME
  */
 async function loadCommentsByProjectName(dealId) {
     try {
         console.log(`Loading comments for deal ID: ${dealId}`);
         
-        // Dapatkan deal dari ID
         let deal = getDealById(dealId);
         
-        // Jika tidak ditemukan di cache, coba cari di deals array
         if (!deal) {
             deal = deals.find(d => d.id === dealId);
         }
         
-        // Jika masih tidak ditemukan, coba ambil dari Firestore
         if (!deal) {
             const dealDoc = await dealsCollection.doc(dealId).get();
             if (dealDoc.exists) {
@@ -984,7 +927,6 @@ async function loadCommentsByProjectName(dealId) {
         const projectKey = getProjectKey(deal.dealName);
         console.log(`Loading comments for project key: "${projectKey}"`);
         
-        // Load komentar berdasarkan projectKey (semua komentar untuk project ini)
         const querySnapshot = await commentsCollection
             .where('projectKey', '==', projectKey)
             .orderBy('timestamp', 'asc')
@@ -1002,7 +944,6 @@ async function loadCommentsByProjectName(dealId) {
         
         console.log(`Found ${comments.length} comments for project "${projectKey}"`);
         
-        // Jika tidak ada komentar dengan projectKey, coba cari komentar lama berdasarkan dealId
         if (comments.length === 0) {
             console.log(`Tidak ada komentar dengan projectKey, mencoba mencari komentar lama berdasarkan dealId: ${dealId}`);
             
@@ -1024,7 +965,6 @@ async function loadCommentsByProjectName(dealId) {
             if (oldComments.length > 0) {
                 console.log(`Found ${oldComments.length} old comments for dealId: ${dealId}`);
                 
-                // Migrasi komentar lama ini secara realtime
                 const batch = db.batch();
                 for (const comment of oldComments) {
                     const commentRef = commentsCollection.doc(comment.id);
@@ -1048,7 +988,7 @@ async function loadCommentsByProjectName(dealId) {
 }
 
 /**
- * Render komentar ke container (1 thread komentar untuk semua sales)
+ * Render komentar ke container
  */
 function renderComments(comments, containerId) {
     const container = document.getElementById(containerId);
@@ -1075,7 +1015,6 @@ function renderComments(comments, containerId) {
         return;
     }
     
-    // Urutkan komentar berdasarkan timestamp (terlama ke terbaru)
     const sortedComments = [...comments].sort((a, b) => {
         const timeA = a.timestamp ? (a.timestamp.toDate ? a.timestamp.toDate().getTime() : new Date(a.timestamp).getTime()) : 0;
         const timeB = b.timestamp ? (b.timestamp.toDate ? b.timestamp.toDate().getTime() : new Date(b.timestamp).getTime()) : 0;
@@ -1091,10 +1030,8 @@ function renderComments(comments, containerId) {
         
         const canDelete = currentUserRole === 'admin' || currentUserRole === 'manager' || isCurrentUser;
         
-        // Tampilkan sales name jika ada
         const salesInfo = comment.salesName ? `<span class="comment-sales ml-2">(Sales: ${escapeHtml(comment.salesName)})</span>` : '';
         
-        // Format timestamp dengan aman
         let timeStr = '-';
         if (comment.timestamp) {
             try {
@@ -1132,7 +1069,6 @@ function renderComments(comments, containerId) {
         container.appendChild(commentItem);
     });
     
-    // Event listener untuk delete button
     container.querySelectorAll('.comment-delete-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             e.stopPropagation();
@@ -1141,7 +1077,6 @@ function renderComments(comments, containerId) {
         });
     });
     
-    // Update counter komentar
     const commentsCountElement = document.getElementById(containerId === 'commentsList' ? 'commentsCount' : 'detailCommentsCount');
     if (commentsCountElement) {
         commentsCountElement.textContent = `${comments.length} komentar`;
@@ -1158,13 +1093,11 @@ async function deleteComment(commentId) {
     }
     
     try {
-        // Ambil data komentar sebelum dihapus untuk aktivitas
         const commentDoc = await commentsCollection.doc(commentId).get();
         const commentData = commentDoc.data();
         
         await commentsCollection.doc(commentId).delete();
         
-        // Tambahkan ke aktivitas
         if (commentData) {
             await activitiesCollection.add({
                 message: `🗑️ Komentar dari ${commentData.salesName || commentData.userEmail?.split('@')[0]} pada project "${commentData.projectName || 'Project'}" telah dihapus oleh ${auth.currentUser?.email}`,
@@ -1178,7 +1111,6 @@ async function deleteComment(commentId) {
         
         showToast("Komentar berhasil dihapus", 2000);
         
-        // Refresh komentar untuk project yang sedang aktif
         if (currentDealIdForComments) {
             const comments = await loadCommentsByProjectName(currentDealIdForComments);
             renderComments(comments, 'detailCommentsList');
@@ -1194,8 +1126,7 @@ async function deleteComment(commentId) {
 }
 
 /**
- * Tambah komentar untuk project (berdasarkan PROJECT NAME, bukan per sales)
- * Semua sales dalam 1 project akan melihat komentar yang sama
+ * Tambah komentar untuk project
  */
 async function addComment(dealId, content) {
     if (!content || !content.trim()) {
@@ -1204,7 +1135,6 @@ async function addComment(dealId, content) {
     }
     
     try {
-        // Dapatkan deal untuk mengetahui nama project
         let deal = getDealById(dealId);
         
         if (!deal) {
@@ -1247,7 +1177,6 @@ async function addComment(dealId, content) {
         
         const docRef = await commentsCollection.add(commentData);
         
-        // Tambahkan ke aktivitas
         const roleText = managerEmails.includes(currentUser.email) ? 'Manager' : 'Sales';
         await activitiesCollection.add({
             message: `💬 ${currentSalesNameValue || currentUser.email.split('@')[0]} (${roleText}) memberikan komentar pada project "${projectName}": "${content.trim().substring(0, 100)}${content.trim().length > 100 ? '...' : ''}"`,
@@ -1261,10 +1190,8 @@ async function addComment(dealId, content) {
             content: content.trim()
         });
         
-        // Refresh cache aktivitas
         activitiesCache.lastFetch = null;
         
-        // Refresh komentar
         const comments = await loadCommentsByProjectName(dealId);
         renderComments(comments, 'detailCommentsList');
         
@@ -1272,7 +1199,6 @@ async function addComment(dealId, content) {
             renderComments(comments, 'commentsList');
         }
         
-        // Clear input
         const detailCommentInput = document.getElementById('detailCommentInput');
         if (detailCommentInput) detailCommentInput.value = '';
         
@@ -1281,7 +1207,6 @@ async function addComment(dealId, content) {
         
         showToast("Komentar berhasil ditambahkan", 2000);
         
-        // Kirim notifikasi ke pengguna lain
         await sendCommentNotificationToOthers(commentData, projectName, currentUser.email);
         
     } catch (error) {
@@ -1295,13 +1220,11 @@ async function addComment(dealId, content) {
  */
 async function sendCommentNotificationToOthers(commentData, projectName, commenterEmail) {
     try {
-        // Cari semua deal dengan project name yang sama
         const relatedDeals = deals.filter(d => 
             d.dealName?.trim().toLowerCase() === projectName?.trim().toLowerCase() &&
             d.stage !== 'lost'
         );
         
-        // Kumpulkan email sales yang mengerjakan project ini (selain komentator)
         const salesEmails = new Set();
         for (const deal of relatedDeals) {
             const salesEmail = salesNameToEmailMap[deal.salesName];
@@ -1310,15 +1233,12 @@ async function sendCommentNotificationToOthers(commentData, projectName, comment
             }
         }
         
-        // Tambahkan manager dan admin
         for (const managerEmail of managerEmails) {
             if (managerEmail !== commenterEmail) {
                 salesEmails.add(managerEmail);
             }
         }
         
-        // Untuk setiap pengguna yang relevan, buat entri notifikasi di Firestore
-        // (Ini untuk notifikasi in-app yang bisa dibaca saat login ulang)
         for (const email of salesEmails) {
             const userDoc = await usersCollection.where('email', '==', email).get();
             if (!userDoc.empty) {
@@ -3150,7 +3070,6 @@ async function openActivityModal() {
                 const timeStr = activity.timestamp ? formatDateTime(activity.timestamp) : 'Waktu tidak diketahui';
                 const isUnread = !activity.read;
                 
-                // Tampilkan icon berdasarkan tipe aktivitas
                 let iconHtml = '';
                 if (activity.type === 'comment') {
                     iconHtml = '<i class="fas fa-comment text-blue-500 mr-2"></i>';
@@ -3493,7 +3412,6 @@ async function loadDealsFromFirebase(forceRefresh = false) {
         createPriorityDashboard();
         applyActiveFilters();
         
-        // Jalankan migrasi komentar setelah deals dimuat
         await migrateOldComments();
         
     } catch (error) {
@@ -5490,7 +5408,6 @@ function renderFilteredDeals(filteredDeals) {
 }
 
 function logout() {
-    // Hentikan listener real-time
     if (commentsListener) {
         commentsListener();
         commentsListener = null;
@@ -6109,6 +6026,8 @@ function removeProductField(buttonElement) {
     }
 }
 
+// ==================== FUNGSI OPEN DEAL MODAL (DIPERBAIKI UNTUK OWNER) ====================
+
 async function openDealModal(dealId = null) {
     const dealModal = document.getElementById('dealModal');
     const modalTitle = document.getElementById('modalTitle');
@@ -6260,13 +6179,27 @@ async function openDealModal(dealId = null) {
                     }
                 }
                 
+                // ========= PERBAIKAN UNTUK OWNER =========
                 const ownerSelect = document.getElementById('owner');
-                if (deal.owner && uniqueOwners.has(deal.owner)) {
-                    if (ownerSelect) ownerSelect.value = deal.owner;
+                if (deal.owner) {
+                    // Cek apakah nilai owner ada di dropdown
+                    const options = Array.from(ownerSelect ? ownerSelect.options : []);
+                    const hasOption = options.some(option => option.value === deal.owner);
+                    
+                    if (hasOption) {
+                        // Jika ada di dropdown, pilih nilainya
+                        if (ownerSelect) ownerSelect.value = deal.owner;
+                        if (newOwnerInput) newOwnerInput.value = '';
+                    } else {
+                        // Jika tidak ada di dropdown, masukkan ke newOwner
+                        if (ownerSelect) ownerSelect.value = '';
+                        if (newOwnerInput) newOwnerInput.value = deal.owner || '';
+                    }
                 } else {
                     if (ownerSelect) ownerSelect.value = '';
-                    if (newOwnerInput) newOwnerInput.value = deal.owner || '';
+                    if (newOwnerInput) newOwnerInput.value = '';
                 }
+                // ========= AKHIR PERBAIKAN UNTUK OWNER =========
     
                 if (consultantSearchInput) {
                     consultantSearchInput.value = deal.consultant || '';
@@ -6383,6 +6316,8 @@ function closeDealModal() {
     }, { once: true });
 }
 
+// ==================== FUNGSI SAVE DEAL (DIPERBAIKI UNTUK OWNER) ====================
+
 async function saveDeal() {
     try {
         const dealId = document.getElementById('dealId').value;
@@ -6485,19 +6420,26 @@ async function saveDeal() {
             }
         }
         
+        // ========= PERBAIKAN UNTUK OWNER =========
         let ownerValue = '';
         const ownerSelect = document.getElementById('owner');
         const newOwnerInput = document.getElementById('newOwner');
-        if (ownerSelect && ownerSelect.value !== '') {
-            ownerValue = ownerSelect.value;
-            if (newOwnerInput) newOwnerInput.value = '';
-        } else if (newOwnerInput && newOwnerInput.value.trim() !== '') {
+        
+        // Prioritas: ambil dari newOwner jika ada, baru dari ownerSelect
+        if (newOwnerInput && newOwnerInput.value.trim() !== '') {
             ownerValue = newOwnerInput.value.trim();
+            if (ownerSelect) ownerSelect.value = '';
+            
+            // Tambahkan ke uniqueOwners jika belum ada
             if (!uniqueOwners.has(ownerValue)) {
                 uniqueOwners.add(ownerValue);
-                saveDropdownOptions();
+                await saveDropdownOptions();
             }
+        } else if (ownerSelect && ownerSelect.value !== '') {
+            ownerValue = ownerSelect.value;
+            if (newOwnerInput) newOwnerInput.value = '';
         }
+        // ========= AKHIR PERBAIKAN UNTUK OWNER =========
         
         let picValue = '';
         const picSelect = document.getElementById('pic');
@@ -6574,6 +6516,7 @@ async function saveDeal() {
             showToast(`Deal "${dealName}" berhasil ditambahkan!`, 2000);
         }
         
+        // Update cache dan reload data
         priorityStatsCache = {
             'all': null,
             '2025': null,
@@ -6587,6 +6530,10 @@ async function saveDeal() {
         };
         
         activitiesCache.lastFetch = null;
+        
+        // Update dropdown options setelah menyimpan
+        await saveDropdownOptions();
+        updateDropdownOptions();
         
         closeDealModal();
         await loadDealsFromFirebase(true);
@@ -6904,10 +6851,8 @@ auth.onAuthStateChanged(async (user) => {
         try {
             currentUserEmail = user.email;
             
-            // Minta izin notifikasi
             await requestNotificationPermission();
             
-            // Cek apakah migrasi sudah pernah dilakukan
             const migrationFlag = localStorage.getItem('comments_migration_completed');
             if (migrationFlag === 'true') {
                 commentsMigrationCompleted = true;
@@ -6959,14 +6904,12 @@ auth.onAuthStateChanged(async (user) => {
             initExportElements();
             initYearFilter();
             
-            // Mulai real-time listeners untuk notifikasi
             startRealtimeListeners();
             
             if (currentUserRole === 'admin') {
                 loadRecycleBin();
             }
             
-            // Tampilkan notifikasi selamat datang jika izin diberikan
             if (notificationPermissionGranted) {
                 setTimeout(() => {
                     showBrowserNotification(
@@ -6989,7 +6932,6 @@ auth.onAuthStateChanged(async (user) => {
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM loaded, initializing application...");
     
-    // Tambahkan CSS untuk notifikasi badge
     const style = document.createElement('style');
     style.textContent = `
         .notification-badge {
