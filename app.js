@@ -535,13 +535,17 @@ function filterDealsByUser(dealsList) {
 }
 
 /**
- * MENDAPATKAN DEALS YANG SUDAH DIFILTER BERDASARKAN USER
+ * MENDAPATKAN DEALS YANG SUDAH DIFILTER BERDASARKAN USER DAN TAHUN
+ * PERBAIKAN: Semua filter tahun diterapkan di sini
  */
 function getFilteredDeals() {
-    let baseDeals = deals;
-    baseDeals = filterDealsByUser(baseDeals);
+    // 1. Filter berdasarkan user
+    let baseDeals = filterDealsByUser(deals);
+    
+    // 2. Filter berdasarkan tahun (menggunakan activeYear)
     baseDeals = getDealsByYear(activeYear, baseDeals);
     
+    // 3. Filter berdasarkan kriteria lainnya
     const filteredDeals = baseDeals.filter(deal => {
         const matchesSearchTerm = (searchTerm, deal) => {
             if (searchTerm === '') return true;
@@ -721,14 +725,24 @@ function initYearFilter() {
         yearBadge.classList.add('active');
         
         activeYear = year;
-        
-        if (!priorityStatsCache[year]) {
-            priorityStatsCache[year] = null;
-        }
-        
         activeFilters.year = year;
-        applyActiveFilters();
+        
+        // Reset cache agar di-refresh dengan tahun baru
+        priorityStatsCache = {
+            'all': null,
+            '2025': null,
+            '2026': null
+        };
+        
+        dealsByYearCache = {
+            'all': null,
+            '2025': null,
+            '2026': null
+        };
+        
+        // Apply filter ke semua komponen
         createPriorityDashboard();
+        applyActiveFilters();
         
         showToast(`Menampilkan data tahun ${year === 'all' ? 'semua tahun' : year}`, 2000);
     });
@@ -737,8 +751,10 @@ function initYearFilter() {
 function getDealsByYear(year, baseDeals = null) {
     const sourceDeals = baseDeals !== null ? baseDeals : filterDealsByUser(deals);
     
-    if (dealsByYearCache[year] && baseDeals === null) {
-        return dealsByYearCache[year];
+    // Cek cache
+    const cacheKey = year;
+    if (dealsByYearCache[cacheKey] && baseDeals === null) {
+        return dealsByYearCache[cacheKey];
     }
     
     if (year === 'all') {
@@ -1385,10 +1401,12 @@ function updateDropdownOptions() {
 // ==================== FUNGSI PRIORITY DASHBOARD ====================
 
 function calculatePriorityStats(year) {
+    // Cek cache
     if (priorityStatsCache[year]) {
         return priorityStatsCache[year];
     }
     
+    // Dapatkan deals berdasarkan tahun
     const yearDeals = getDealsByYear(year);
     const userYearDeals = filterDealsByUser(yearDeals);
     const uniqueProjects = getUniqueProjectsForDashboard(userYearDeals);
