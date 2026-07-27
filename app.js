@@ -623,27 +623,50 @@ function getFilteredUniqueProjectsForDashboard() {
 
 /**
  * Menggabungkan project dengan nama yang sama untuk dashboard
- * PERBAIKAN: Menampilkan 1 project per nama dengan indikator sales tambahan
+ * PERBAIKAN: Setiap project muncul di setiap priority yang dimilikinya
+ * Di setiap priority, hanya menampilkan 1 project dengan indikator sales tambahan
  */
 function getUniqueProjectsForDashboard(dealsList) {
     const projectMap = new Map();
     
-    // Kelompokkan deals berdasarkan project name
+    // Kelompokkan deals berdasarkan project name DAN priority
     dealsList.forEach(deal => {
         const projectName = deal.dealName?.trim();
+        const priority = deal.priority || 'Priority';
         if (!projectName) return;
         
-        if (!projectMap.has(projectName)) {
-            projectMap.set(projectName, []);
+        // Key kombinasi projectName + priority
+        const key = `${projectName}|${priority}`;
+        
+        if (!projectMap.has(key)) {
+            projectMap.set(key, {
+                projectName: projectName,
+                priority: priority,
+                deals: [],
+                allSales: new Set(),
+                allSalesData: []
+            });
         }
-        projectMap.get(projectName).push(deal);
+        
+        const entry = projectMap.get(key);
+        entry.deals.push(deal);
+        if (deal.salesName) {
+            entry.allSales.add(deal.salesName);
+            entry.allSalesData.push({
+                salesName: deal.salesName,
+                value: deal.value || 0,
+                stage: deal.stage,
+                id: deal.id,
+                priority: deal.priority || 'Priority'
+            });
+        }
     });
     
     const uniqueProjects = [];
     
-    projectMap.forEach((deals, projectName) => {
+    projectMap.forEach((entry) => {
         // Filter deals yang tidak lost
-        const activeDeals = deals.filter(d => d.stage !== 'lost');
+        const activeDeals = entry.deals.filter(d => d.stage !== 'lost');
         
         if (activeDeals.length === 0) return;
         
@@ -652,44 +675,24 @@ function getUniqueProjectsForDashboard(dealsList) {
             (a.value || 0) > (b.value || 0) ? a : b
         );
         
-        // Kumpulkan semua sales yang terlibat
-        const allSales = new Set();
-        const allSalesData = [];
-        activeDeals.forEach(d => {
-            if (d.salesName) {
-                allSales.add(d.salesName);
-                allSalesData.push({
-                    salesName: d.salesName,
-                    value: d.value || 0,
-                    stage: d.stage,
-                    id: d.id
-                });
-            }
-        });
-        
-        // Hitung total nilai dari semua deal aktif
-        const totalValue = activeDeals.reduce((sum, d) => sum + (d.value || 0), 0);
-        
-        // Buat representasi project unik
+        // Buat representasi project unik per priority
         const uniqueProject = {
             ...highestValueDeal,
             // Gunakan nilai tertinggi sebagai display value
             displayValue: highestValueDeal.value || 0,
-            // Total nilai dari semua deal aktif
-            totalValue: totalValue,
-            // Semua sales yang terlibat
-            allSales: Array.from(allSales),
-            allSalesData: allSalesData,
+            // Semua sales yang terlibat (hanya untuk informasi)
+            allSales: Array.from(entry.allSales),
+            allSalesData: entry.allSalesData,
             // Jumlah sales yang terlibat
-            salesCount: allSales.size,
+            salesCount: entry.allSales.size,
             // Apakah ada lebih dari 1 sales
-            hasMultipleSales: allSales.size > 1,
+            hasMultipleSales: entry.allSales.size > 1,
             // Semua deal yang terkait
             allDeals: activeDeals,
             // Jumlah total deal aktif
             totalDeals: activeDeals.length,
-            // Priority dari deal dengan nilai tertinggi
-            priority: highestValueDeal.priority || 'Priority',
+            // Priority dari grup ini
+            priority: entry.priority,
             // Stage dari deal dengan nilai tertinggi
             stage: highestValueDeal.stage || 'identified'
         };
@@ -1402,8 +1405,7 @@ function calculatePriorityStats(year) {
         const priority = deal.priority || 'Priority';
         if (priorityStats[priority]) {
             priorityStats[priority].count++;
-            // Gunakan totalValue jika ada, jika tidak gunakan displayValue
-            const valueToUse = deal.totalValue || deal.displayValue || deal.value || 0;
+            const valueToUse = deal.displayValue || deal.value || 0;
             priorityStats[priority].value += valueToUse;
             priorityStats[priority].deals.push(deal);
         }
@@ -1501,16 +1503,23 @@ function openPriorityModal(priority, deals) {
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 ${sortedDeals.map((deal, index) => {
-                    const displayValue = deal.totalValue || deal.displayValue || deal.value || 0;
+                    const displayValue = deal.displayValue || deal.value || 0;
                     
                     const lastUpdateDate = deal.updatedAt ? formatDateTime(deal.updatedAt) : (deal.createdAt ? formatDateTime(deal.createdAt) : '-');
                     
-                    // Tampilkan sales dengan indikator jika lebih dari 1
                     let salesDisplay = deal.salesName || '-';
+                    let salesInfoHtml = '';
                     if (deal.hasMultipleSales && deal.allSales) {
                         const otherSales = deal.allSales.filter(s => s !== deal.salesName);
                         if (otherSales.length > 0) {
-                            salesDisplay = `${deal.salesName} <span class="ml-1 text-xs text-purple-600 font-medium">+${otherSales.length} sales lain</span>`;
+                            salesDisplay = `${deal.salesName}`;
+                            salesInfoHtml = `
+                                <div class="text-xs text-purple-600 mt-1">
+                                    <i class="fas fa-users mr-1"></i>
+                                    <span class="font-medium">+${otherSales.length} sales lain:</span>
+                                    <span class="text-gray-600">${otherSales.join(', ')}</span>
+                                </div>
+                            `;
                         }
                     }
                     
@@ -1532,17 +1541,14 @@ function openPriorityModal(priority, deals) {
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             ${salesDisplay}
-                            ${deal.hasMultipleSales ? `
-                                <div class="text-xs text-gray-400 mt-1">
-                                    <i class="fas fa-info-circle mr-1"></i>
-                                    <span>${deal.allSales ? deal.allSales.join(', ') : ''}</span>
-                                </div>
-                            ` : ''}
+                            ${salesInfoHtml}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
                             Rp ${formatNumber(displayValue)}
                             ${deal.totalDeals > 1 ? `
-                                <span class="text-xs text-gray-500 ml-1">(total ${deal.totalDeals} deal)</span>
+                                <span class="text-xs text-gray-400 ml-1" title="Nilai tertinggi dari ${deal.totalDeals} deal">
+                                    <i class="fas fa-info-circle"></i>
+                                </span>
                             ` : ''}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -1636,6 +1642,8 @@ function showAllSalesForProject(dealName) {
         }
     });
     
+    const highestValue = Math.max(...allDeals.map(d => d.value || 0));
+    
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
     modal.id = 'allSalesModal';
@@ -1644,10 +1652,15 @@ function showAllSalesForProject(dealName) {
     salesMap.forEach((deals, salesName) => {
         const totalValue = deals.reduce((sum, d) => sum + (d.value || 0), 0);
         const stages = [...new Set(deals.map(d => d.stage))];
+        const isHighest = deals.some(d => (d.value || 0) === highestValue);
+        
         salesHtml += `
-            <div class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200 ${isHighest ? 'border-green-300 bg-green-50' : ''}">
                 <div class="flex justify-between items-center">
-                    <span class="font-semibold text-gray-800">${escapeHtml(salesName)}</span>
+                    <span class="font-semibold text-gray-800">
+                        ${escapeHtml(salesName)}
+                        ${isHighest ? '<span class="ml-2 text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full">Nilai Tertinggi</span>' : ''}
+                    </span>
                     <span class="text-sm text-gray-600">${deals.length} deal | Rp ${formatNumber(totalValue)}</span>
                 </div>
                 <div class="text-xs text-gray-500 mt-1">
@@ -1655,8 +1668,9 @@ function showAllSalesForProject(dealName) {
                 </div>
                 <div class="mt-1 flex flex-wrap gap-1">
                     ${deals.map(d => `
-                        <button class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 view-detail-btn-mini" data-id="${d.id}">
+                        <button class="text-xs ${(d.value || 0) === highestValue ? 'bg-green-200 text-green-800' : 'bg-blue-100 text-blue-700'} px-2 py-1 rounded hover:opacity-80 view-detail-btn-mini" data-id="${d.id}">
                             ${escapeHtml(d.dealName)} - Rp ${formatNumber(d.value)}
+                            ${(d.value || 0) === highestValue ? ' 👑' : ''}
                         </button>
                     `).join('')}
                 </div>
@@ -1667,12 +1681,21 @@ function showAllSalesForProject(dealName) {
     modal.innerHTML = `
         <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden">
             <div class="flex justify-between items-center p-4 border-b">
-                <h2 class="text-xl font-semibold text-gray-800">Sales untuk Project: ${escapeHtml(dealName)}</h2>
+                <h2 class="text-xl font-semibold text-gray-800">
+                    Sales untuk Project: ${escapeHtml(dealName)}
+                    <span class="text-sm font-normal text-gray-500 ml-2">
+                        (Nilai Tertinggi: Rp ${formatNumber(highestValue)})
+                    </span>
+                </h2>
                 <button class="close-all-sales text-gray-500 hover:text-gray-700">
                     <i class="fas fa-times text-2xl"></i>
                 </button>
             </div>
             <div class="p-4 overflow-y-auto max-h-[calc(90vh-80px)]">
+                <div class="mb-3 text-sm text-gray-600">
+                    <i class="fas fa-info-circle text-blue-500 mr-1"></i>
+                    Menampilkan ${salesMap.size} sales yang mengerjakan project ini
+                </div>
                 ${salesHtml}
             </div>
         </div>
@@ -3721,7 +3744,7 @@ function processSalesData(salesName = 'all') {
     }
     
     uniqueProjects.forEach(deal => {
-        const dealValue = deal.totalValue || deal.displayValue || deal.value || 0;
+        const dealValue = deal.displayValue || deal.value || 0;
         
         stats.totalValue += dealValue;
         
@@ -4041,7 +4064,7 @@ function processPriorityData(priority = 'all') {
     }
     
     uniqueProjects.forEach(deal => {
-        const dealValue = deal.totalValue || deal.displayValue || deal.value || 0;
+        const dealValue = deal.displayValue || deal.value || 0;
         
         stats.totalValue += dealValue;
         
@@ -4403,7 +4426,7 @@ function processDealDataForCharts(dealsData) {
     const pipelineValueByMonth = {};
     
     uniqueProjects.forEach(deal => {
-        const dealValue = deal.totalValue || deal.displayValue || deal.value || 0;
+        const dealValue = deal.displayValue || deal.value || 0;
         
         if (dealValue < 500000000) {
             dealSizes['Small (< Rp 500 Juta)']++;
@@ -4782,14 +4805,22 @@ function showDealsByPriority(salesFilter, priority) {
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
             ${sortedDeals.map((deal, index) => {
-                const displayValue = deal.totalValue || deal.displayValue || deal.value || 0;
+                const displayValue = deal.displayValue || deal.value || 0;
                 const lastUpdateDate = deal.updatedAt ? formatDateTime(deal.updatedAt) : (deal.createdAt ? formatDateTime(deal.createdAt) : '-');
                 
                 let salesDisplay = deal.salesName || '-';
+                let salesInfoHtml = '';
                 if (deal.hasMultipleSales && deal.allSales) {
                     const otherSales = deal.allSales.filter(s => s !== deal.salesName);
                     if (otherSales.length > 0) {
-                        salesDisplay = `${deal.salesName} <span class="ml-1 text-xs text-purple-600 font-medium">+${otherSales.length} sales lain</span>`;
+                        salesDisplay = `${deal.salesName}`;
+                        salesInfoHtml = `
+                            <div class="text-xs text-purple-600 mt-1">
+                                <i class="fas fa-users mr-1"></i>
+                                <span class="font-medium">+${otherSales.length} sales lain:</span>
+                                <span class="text-gray-600">${otherSales.join(', ')}</span>
+                            </div>
+                        `;
                     }
                 }
                 
@@ -4804,7 +4835,10 @@ function showDealsByPriority(salesFilter, priority) {
                             </span>
                         ` : ''}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${salesDisplay}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${salesDisplay}
+                        ${salesInfoHtml}
+                    </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">Rp ${formatNumber(displayValue)}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${deal.stage === 'win' ? 'bg-green-100 text-green-800' : 
@@ -4876,15 +4910,23 @@ function showDealsByStage(priorityFilter, stage) {
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
             ${sortedDeals.map((deal, index) => {
-                const displayValue = deal.totalValue || deal.displayValue || deal.value || 0;
+                const displayValue = deal.displayValue || deal.value || 0;
                 const lastUpdateDate = deal.updatedAt ? formatDateTime(deal.updatedAt) : (deal.createdAt ? formatDateTime(deal.createdAt) : '-');
                 const priorityBadgeClass = getPriorityBadgeClass(deal.priority);
                 
                 let salesDisplay = deal.salesName || '-';
+                let salesInfoHtml = '';
                 if (deal.hasMultipleSales && deal.allSales) {
                     const otherSales = deal.allSales.filter(s => s !== deal.salesName);
                     if (otherSales.length > 0) {
-                        salesDisplay = `${deal.salesName} <span class="ml-1 text-xs text-purple-600 font-medium">+${otherSales.length} sales lain</span>`;
+                        salesDisplay = `${deal.salesName}`;
+                        salesInfoHtml = `
+                            <div class="text-xs text-purple-600 mt-1">
+                                <i class="fas fa-users mr-1"></i>
+                                <span class="font-medium">+${otherSales.length} sales lain:</span>
+                                <span class="text-gray-600">${otherSales.join(', ')}</span>
+                            </div>
+                        `;
                     }
                 }
                 
@@ -4899,7 +4941,10 @@ function showDealsByStage(priorityFilter, stage) {
                             </span>
                         ` : ''}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${salesDisplay}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${salesDisplay}
+                        ${salesInfoHtml}
+                    </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">Rp ${formatNumber(displayValue)}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
@@ -5972,7 +6017,7 @@ function prepareSummaryExportData(dealsData) {
         }
         
         summary[stage].dealCount++;
-        summary[stage].totalValue += (deal.totalValue || deal.displayValue || deal.value || 0);
+        summary[stage].totalValue += (deal.displayValue || deal.value || 0);
         
         if (!summary[stage].salesCount[sales]) {
             summary[stage].salesCount[sales] = 0;
