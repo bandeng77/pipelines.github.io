@@ -622,12 +622,15 @@ function getFilteredUniqueProjectsForDashboard() {
 }
 
 /**
- * Menggabungkan project dengan nama yang sama untuk dashboard
+ * ============================================================
+ * PERBAIKAN UTAMA: Menggabungkan multiple sales menjadi 1 baris
+ * ============================================================
  */
 function getUniqueProjectsForDashboard(dealsList) {
     const projectMap = new Map();
     const allProjectsByName = new Map();
     
+    // STEP 1: Kelompokkan semua deal berdasarkan nama project
     dealsList.forEach(deal => {
         const projectName = deal.dealName?.trim();
         if (!projectName) return;
@@ -638,6 +641,7 @@ function getUniqueProjectsForDashboard(dealsList) {
         allProjectsByName.get(projectName).push(deal);
     });
     
+    // STEP 2: Hitung nilai tertinggi per project name
     const maxValueByProjectName = new Map();
     for (const [projectName, projectDeals] of allProjectsByName) {
         const activeProjects = projectDeals.filter(d => d.stage !== 'lost');
@@ -647,6 +651,7 @@ function getUniqueProjectsForDashboard(dealsList) {
         }
     }
     
+    // STEP 3: Grouping berdasarkan "projectName|priority"
     dealsList.forEach(deal => {
         const projectName = deal.dealName?.trim();
         const priority = deal.priority || 'Priority';
@@ -660,57 +665,72 @@ function getUniqueProjectsForDashboard(dealsList) {
         projectMap.get(key).push(deal);
     });
     
+    // STEP 4: Proses setiap group - PERBAIKAN: HANYA 1 BARIS per group
     const uniqueProjects = [];
     
     projectMap.forEach((duplicateDeals, key) => {
         const [projectName, priority] = key.split('|');
         
+        // Hanya ambil active deals (stage !== 'lost')
         const activeDeals = duplicateDeals.filter(deal => deal.stage !== 'lost');
-        
-        if (activeDeals.length === 0) {
-            return;
-        }
+        if (activeDeals.length === 0) return;
         
         const allDealsWithSameName = allProjectsByName.get(projectName) || [];
         const activeProjectsCount = allDealsWithSameName.filter(d => d.stage !== 'lost').length;
         const isLastProject = (activeProjectsCount === 1);
         
-        activeDeals.forEach(deal => {
-            let displayValue;
-            let hasHigherValueFromOtherPriority = false;
-            
-            if (isLastProject) {
-                displayValue = deal.value || 0;
-                hasHigherValueFromOtherPriority = false;
-            } else {
-                const highestValue = maxValueByProjectName.get(projectName) || 0;
-                displayValue = highestValue;
-                hasHigherValueFromOtherPriority = (deal.value || 0) < highestValue;
-            }
-            
-            const newDeal = { ...deal };
-            newDeal.hasMultipleEntries = duplicateDeals.length > 1;
-            newDeal.totalEntries = duplicateDeals.length;
-            newDeal.allEntries = duplicateDeals;
-            newDeal.displayValue = displayValue;
-            newDeal.hasHigherValueFromOtherPriority = hasHigherValueFromOtherPriority;
-            newDeal.isLastActiveProject = isLastProject;
-            newDeal.activeProjectsCount = activeProjectsCount;
-            
-            uniqueProjects.push(newDeal);
-        });
+        // PERBAIKAN: Ambil deal pertama sebagai representasi
+        const firstDeal = activeDeals[0];
+        const highestValue = maxValueByProjectName.get(projectName) || 0;
+        
+        // Kumpulkan semua sales yang mengerjakan project ini dengan priority yang sama
+        const salesList = activeDeals.map(d => d.salesName).filter(Boolean);
+        const uniqueSalesList = [...new Set(salesList)];
+        const salesCount = uniqueSalesList.length;
+        
+        // Cek apakah ada perbedaan nilai antar sales
+        const values = activeDeals.map(d => d.value || 0);
+        const minValue = Math.min(...values);
+        const maxValue = Math.max(...values);
+        const hasDifferentValues = minValue !== maxValue;
+        
+        // Tentukan nilai yang ditampilkan
+        let displayValue;
+        let hasHigherValueFromOtherPriority = false;
+        
+        if (isLastProject) {
+            // Jika hanya 1 project aktif, tampilkan nilai asli dari firstDeal
+            displayValue = firstDeal.value || 0;
+        } else {
+            // Jika multiple project aktif, tampilkan nilai TERTINGGI
+            displayValue = highestValue;
+            hasHigherValueFromOtherPriority = (firstDeal.value || 0) < highestValue;
+        }
+        
+        // Buat 1 baris gabungan
+        const mergedDeal = {
+            ...firstDeal,
+            id: firstDeal.id,
+            displayValue: displayValue,
+            hasHigherValueFromOtherPriority: hasHigherValueFromOtherPriority,
+            isLastActiveProject: isLastProject,
+            activeProjectsCount: activeProjectsCount,
+            // Data gabungan untuk sales
+            salesList: uniqueSalesList,
+            salesCount: salesCount,
+            hasMultipleSales: salesCount > 1,
+            hasDifferentValues: hasDifferentValues,
+            minValue: minValue,
+            maxValue: maxValue,
+            allActiveDeals: activeDeals,
+            totalEntries: duplicateDeals.length,
+            hasMultipleEntries: duplicateDeals.length > 1
+        };
+        
+        uniqueProjects.push(mergedDeal);
     });
     
-    const seenIds = new Set();
-    const finalUniqueProjects = [];
-    for (const project of uniqueProjects) {
-        if (!seenIds.has(project.id)) {
-            seenIds.add(project.id);
-            finalUniqueProjects.push(project);
-        }
-    }
-    
-    return finalUniqueProjects;
+    return uniqueProjects;
 }
 
 // ==================== FILTER TAHUN ====================
@@ -1470,6 +1490,9 @@ function createPriorityDashboard() {
     });
 }
 
+// ============================================================
+// PERBAIKAN: openPriorityModal - MENGGABUNGKAN MULTIPLE SALES
+// ============================================================
 function openPriorityModal(priority, deals) {
     const modal = document.getElementById('priorityModal');
     const modalTitle = document.getElementById('priorityModalTitleText');
@@ -1490,7 +1513,53 @@ function openPriorityModal(priority, deals) {
             </div>
         `;
     } else {
-        const sortedDeals = [...deals].sort((a, b) => {
+        // GROUPING berdasarkan project name (tanpa priority) untuk menggabungkan sales
+        const projectGroups = new Map();
+        
+        deals.forEach(deal => {
+            const projectName = deal.dealName?.trim();
+            if (!projectName) return;
+            
+            if (!projectGroups.has(projectName)) {
+                projectGroups.set(projectName, []);
+            }
+            projectGroups.get(projectName).push(deal);
+        });
+        
+        // Buat array hasil grouping
+        const groupedDeals = [];
+        
+        projectGroups.forEach((projectDeals, projectName) => {
+            // Ambil data dari deal pertama sebagai representasi
+            const firstDeal = projectDeals[0];
+            
+            // Kumpulkan semua sales yang mengerjakan project ini
+            const salesList = projectDeals.map(d => d.salesName).filter(Boolean);
+            const uniqueSalesList = [...new Set(salesList)];
+            
+            // Cari nilai tertinggi dari semua deal di project ini
+            const maxValue = Math.max(...projectDeals.map(d => d.value || 0));
+            
+            // Cek apakah ada multiple sales
+            const hasMultipleSales = uniqueSalesList.length > 1;
+            
+            // Buat object gabungan
+            const mergedDeal = {
+                ...firstDeal,
+                // Data gabungan
+                salesList: uniqueSalesList,
+                salesDisplay: hasMultipleSales ? uniqueSalesList.join(', ') : firstDeal.salesName,
+                hasMultipleSales: hasMultipleSales,
+                displayValue: maxValue,
+                totalDealsInGroup: projectDeals.length,
+                projectDeals: projectDeals
+            };
+            
+            groupedDeals.push(mergedDeal);
+        });
+        
+        // Urutkan berdasarkan updatedAt terbaru
+        const sortedDeals = groupedDeals.sort((a, b) => {
             const dateA = a.updatedAt ? (a.updatedAt.toDate ? a.updatedAt.toDate() : new Date(a.updatedAt)) : new Date(0);
             const dateB = b.updatedAt ? (b.updatedAt.toDate ? b.updatedAt.toDate() : new Date(b.updatedAt)) : new Date(0);
             return dateB - dateA;
@@ -1513,20 +1582,22 @@ function openPriorityModal(priority, deals) {
             <tbody class="bg-white divide-y divide-gray-200">
                 ${sortedDeals.map((deal, index) => {
                     const displayValue = deal.displayValue || deal.value || 0;
-                    const originalValue = deal.value || 0;
-                    const hasHigherValue = deal.hasHigherValueFromOtherPriority;
-                    const isLastProject = deal.isLastActiveProject;
-                    
                     const lastUpdateDate = deal.updatedAt ? formatDateTime(deal.updatedAt) : (deal.createdAt ? formatDateTime(deal.createdAt) : '-');
                     
-                    let valueDisplay = `Rp ${formatNumber(displayValue)}`;
-                    let valueTooltip = '';
+                    // Tentukan badge untuk multiple sales
+                    let salesBadge = '';
+                    if (deal.hasMultipleSales) {
+                        salesBadge = `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800" title="${deal.salesList.join(', ')}">
+                            <i class="fas fa-users mr-1"></i>${deal.salesList.length} sales
+                        </span>`;
+                    }
                     
-                    if (isLastProject) {
-                        valueTooltip = `Nilai asli: Rp ${formatNumber(originalValue)} (hanya 1 project aktif)`;
-                    } else if (hasHigherValue) {
-                        valueTooltip = `Nilai asli: Rp ${formatNumber(originalValue)} - Menampilkan nilai tertinggi dari project ini`;
-                        valueDisplay += ` <span class="text-xs text-gray-500 ml-1">(max)</span>`;
+                    // Tentukan badge untuk multiple entries
+                    let entriesBadge = '';
+                    if (deal.totalDealsInGroup > 1) {
+                        entriesBadge = `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800" title="${deal.totalDealsInGroup} entries untuk project ini">
+                            <i class="fas fa-copy mr-1"></i>${deal.totalDealsInGroup}x
+                        </span>`;
                     }
                     
                     return `
@@ -1534,45 +1605,35 @@ function openPriorityModal(priority, deals) {
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             ${escapeHtml(deal.dealName || 'No Name')}
-                            ${hasHigherValue && !isLastProject ? `
-                                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="Project ini memiliki nilai lebih tinggi di priority lain">
-                                    <i class="fas fa-arrow-up mr-1"></i>Nilai Tertinggi
-                                </span>
-                            ` : ''}
-                            ${isLastProject ? `
-                                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800" title="Hanya 1 project aktif yang tersisa">
-                                    <i class="fas fa-star mr-1"></i>Project Terakhir
-                                </span>
-                            ` : ''}
-                            ${deal.hasMultipleEntries ? `
-                                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800" title="${deal.totalEntries} entries untuk kombinasi ini">
-                                    <i class="fas fa-copy mr-1"></i>${deal.totalEntries}x
-                                </span>
-                            ` : ''}
-                            </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${escapeHtml(deal.salesName || '-')}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold" title="${valueTooltip}">
-                            ${valueDisplay}
-                            </td>
+                            ${entriesBadge}
+                            ${salesBadge}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${deal.hasMultipleSales ? deal.salesDisplay : escapeHtml(deal.salesName || '-')}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
+                            Rp ${formatNumber(displayValue)}
+                            ${deal.totalDealsInGroup > 1 ? `<span class="text-xs text-gray-400 ml-1">(max)</span>` : ''}
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${deal.stage === 'win' ? 'bg-green-100 text-green-800' : 
                                 deal.stage === 'lost' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">
                                 ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}
                             </span>
-                           </td>
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             <i class="fas fa-clock text-gray-400 mr-1"></i>${lastUpdateDate}
-                           </td>
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <button class="text-blue-600 hover:text-blue-900 mr-3 view-detail-btn" data-id="${deal.id}">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            ${deal.hasMultipleEntries ? `
-                                <button class="text-purple-600 hover:text-purple-900 view-all-entries-btn" data-deal-name="${escapeHtml(deal.dealName)}" data-priority="${deal.priority}" title="Lihat semua entries untuk priority ini">
+                            ${deal.totalDealsInGroup > 1 ? `
+                                <button class="text-purple-600 hover:text-purple-900 view-all-entries-btn" data-deal-name="${escapeHtml(deal.dealName)}" data-priority="${deal.priority}" title="Lihat semua entries untuk project ini">
                                     <i class="fas fa-list"></i>
                                 </button>
                             ` : ''}
-                           </td>
+                        </td>
                     </tr>
                 `}).join('')}
             </tbody>
@@ -2981,7 +3042,7 @@ async function findDealByName(dealName) {
         }
         
     } catch (error) {
-        console.error("Error mencari deal di Firestore:", error);
+        console.error("Error searching deal in Firestore:", error);
     }
     
     return null;
@@ -6026,7 +6087,7 @@ function removeProductField(buttonElement) {
     }
 }
 
-// ==================== FUNGSI OPEN DEAL MODAL (DIPERBAIKI UNTUK OWNER) ====================
+// ==================== FUNGSI OPEN DEAL MODAL ====================
 
 async function openDealModal(dealId = null) {
     const dealModal = document.getElementById('dealModal');
@@ -6179,19 +6240,15 @@ async function openDealModal(dealId = null) {
                     }
                 }
                 
-                // ========= PERBAIKAN UNTUK OWNER =========
                 const ownerSelect = document.getElementById('owner');
                 if (deal.owner) {
-                    // Cek apakah nilai owner ada di dropdown
                     const options = Array.from(ownerSelect ? ownerSelect.options : []);
                     const hasOption = options.some(option => option.value === deal.owner);
                     
                     if (hasOption) {
-                        // Jika ada di dropdown, pilih nilainya
                         if (ownerSelect) ownerSelect.value = deal.owner;
                         if (newOwnerInput) newOwnerInput.value = '';
                     } else {
-                        // Jika tidak ada di dropdown, masukkan ke newOwner
                         if (ownerSelect) ownerSelect.value = '';
                         if (newOwnerInput) newOwnerInput.value = deal.owner || '';
                     }
@@ -6199,7 +6256,6 @@ async function openDealModal(dealId = null) {
                     if (ownerSelect) ownerSelect.value = '';
                     if (newOwnerInput) newOwnerInput.value = '';
                 }
-                // ========= AKHIR PERBAIKAN UNTUK OWNER =========
     
                 if (consultantSearchInput) {
                     consultantSearchInput.value = deal.consultant || '';
@@ -6316,7 +6372,7 @@ function closeDealModal() {
     }, { once: true });
 }
 
-// ==================== FUNGSI SAVE DEAL (DIPERBAIKI UNTUK OWNER) ====================
+// ==================== FUNGSI SAVE DEAL ====================
 
 async function saveDeal() {
     try {
@@ -6420,17 +6476,14 @@ async function saveDeal() {
             }
         }
         
-        // ========= PERBAIKAN UNTUK OWNER =========
         let ownerValue = '';
         const ownerSelect = document.getElementById('owner');
         const newOwnerInput = document.getElementById('newOwner');
         
-        // Prioritas: ambil dari newOwner jika ada, baru dari ownerSelect
         if (newOwnerInput && newOwnerInput.value.trim() !== '') {
             ownerValue = newOwnerInput.value.trim();
             if (ownerSelect) ownerSelect.value = '';
             
-            // Tambahkan ke uniqueOwners jika belum ada
             if (!uniqueOwners.has(ownerValue)) {
                 uniqueOwners.add(ownerValue);
                 await saveDropdownOptions();
@@ -6439,7 +6492,6 @@ async function saveDeal() {
             ownerValue = ownerSelect.value;
             if (newOwnerInput) newOwnerInput.value = '';
         }
-        // ========= AKHIR PERBAIKAN UNTUK OWNER =========
         
         let picValue = '';
         const picSelect = document.getElementById('pic');
@@ -6516,7 +6568,6 @@ async function saveDeal() {
             showToast(`Deal "${dealName}" berhasil ditambahkan!`, 2000);
         }
         
-        // Update cache dan reload data
         priorityStatsCache = {
             'all': null,
             '2025': null,
@@ -6531,7 +6582,6 @@ async function saveDeal() {
         
         activitiesCache.lastFetch = null;
         
-        // Update dropdown options setelah menyimpan
         await saveDropdownOptions();
         updateDropdownOptions();
         
