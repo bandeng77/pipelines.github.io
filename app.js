@@ -629,12 +629,16 @@ function getFilteredUniqueProjectsForDashboard() {
 }
 
 /**
- * Menggabungkan project dengan nama yang sama untuk dashboard
+ * ============================================================
+ * PERBAIKAN UTAMA: getUniqueProjectsForDashboard
+ * Hanya 1 baris per project, dengan indikator yang benar
+ * ============================================================
  */
 function getUniqueProjectsForDashboard(dealsList) {
     const projectMap = new Map();
     const allProjectsByName = new Map();
     
+    // STEP 1: Kelompokkan semua deal berdasarkan nama project
     dealsList.forEach(deal => {
         const projectName = deal.dealName?.trim();
         if (!projectName) return;
@@ -645,6 +649,7 @@ function getUniqueProjectsForDashboard(dealsList) {
         allProjectsByName.get(projectName).push(deal);
     });
     
+    // STEP 2: Hitung nilai tertinggi per project name
     const maxValueByProjectName = new Map();
     for (const [projectName, projectDeals] of allProjectsByName) {
         const activeProjects = projectDeals.filter(d => d.stage !== 'lost');
@@ -654,6 +659,7 @@ function getUniqueProjectsForDashboard(dealsList) {
         }
     }
     
+    // STEP 3: Grouping berdasarkan "projectName|priority"
     dealsList.forEach(deal => {
         const projectName = deal.dealName?.trim();
         const priority = deal.priority || 'Priority';
@@ -667,20 +673,23 @@ function getUniqueProjectsForDashboard(dealsList) {
         projectMap.get(key).push(deal);
     });
     
+    // STEP 4: Proses setiap group - HANYA 1 BARIS per group
     const uniqueProjects = [];
     
     projectMap.forEach((duplicateDeals, key) => {
         const [projectName, priority] = key.split('|');
         
         const activeDeals = duplicateDeals.filter(deal => deal.stage !== 'lost');
+        if (activeDeals.length === 0) return;
         
-        if (activeDeals.length === 0) {
-            return;
-        }
-        
-        const allDealsWithSameName = allProjectsByName.get(projectName) || [];
-        const activeProjectsCount = allDealsWithSameName.filter(d => d.stage !== 'lost').length;
-        const isLastProject = (activeProjectsCount === 1);
+        // ============================================================
+        // PERBAIKAN: Hitung activeProjectsCount dari dealsList yang sudah difilter
+        // ============================================================
+        const allDealsWithSameNameInFiltered = dealsList.filter(d => 
+            d.dealName?.trim().toLowerCase() === projectName?.trim().toLowerCase()
+        );
+        const activeProjectsCountInFiltered = allDealsWithSameNameInFiltered.filter(d => d.stage !== 'lost').length;
+        const isLastProjectInFiltered = (activeProjectsCountInFiltered === 1);
         
         // HANYA 1 BARIS per group
         const firstDeal = activeDeals[0];
@@ -695,7 +704,7 @@ function getUniqueProjectsForDashboard(dealsList) {
         let displayValue;
         let hasHigherValueFromOtherPriority = false;
         
-        if (isLastProject) {
+        if (isLastProjectInFiltered) {
             displayValue = firstDeal.value || 0;
         } else {
             displayValue = highestValue;
@@ -710,9 +719,9 @@ function getUniqueProjectsForDashboard(dealsList) {
             id: representativeDeal.id,
             displayValue: displayValue,
             hasHigherValueFromOtherPriority: hasHigherValueFromOtherPriority,
-            isLastActiveProject: isLastProject,
-            activeProjectsCount: activeProjectsCount,
-            // Data untuk multiple sales
+            // ✅ Gunakan isLastProjectInFiltered
+            isLastActiveProject: isLastProjectInFiltered,
+            activeProjectsCount: activeProjectsCountInFiltered,
             salesCount: salesCount,
             hasMultipleSales: hasMultipleSales,
             allSalesList: uniqueSalesList,
@@ -724,7 +733,17 @@ function getUniqueProjectsForDashboard(dealsList) {
         uniqueProjects.push(newDeal);
     });
     
-    return uniqueProjects;
+    // Hapus duplikat ID
+    const seenIds = new Set();
+    const finalUniqueProjects = [];
+    for (const project of uniqueProjects) {
+        if (!seenIds.has(project.id)) {
+            seenIds.add(project.id);
+            finalUniqueProjects.push(project);
+        }
+    }
+    
+    return finalUniqueProjects;
 }
 
 // ==================== FILTER TAHUN ====================
@@ -1495,7 +1514,7 @@ function createPriorityDashboard() {
 
 // ============================================================
 // PERBAIKAN FINAL: openPriorityModal - 1 BARIS PER PROJECT
-// DENGAN SEMUA INDIKATOR
+// DENGAN SEMUA INDIKATOR YANG BENAR
 // ============================================================
 function openPriorityModal(priority, deals) {
     const modal = document.getElementById('priorityModal');
@@ -1576,16 +1595,14 @@ function openPriorityModal(priority, deals) {
         const otherSalesCount = salesCount - 1;
         
         // ============================================================
-        // TENTUKAN INDIKATOR
+        // PERBAIKAN: Hitung isLastProject dari deals (bukan dari projectDeals saja)
         // ============================================================
-        // Cek apakah ini project terakhir (hanya 1 aktif)
         const allDealsWithSameName = deals.filter(d => 
             d.dealName?.trim().toLowerCase() === projectName?.trim().toLowerCase()
         );
         const activeProjectsCount = allDealsWithSameName.filter(d => d.stage !== 'lost').length;
         const isLastProject = activeProjectsCount === 1;
         
-        // Cek apakah nilai asli lebih rendah dari nilai tertinggi
         const hasHigherValueFromOtherPriority = (representativeDeal.value || 0) < maxValue;
         
         // ============================================================
@@ -1612,7 +1629,7 @@ function openPriorityModal(priority, deals) {
             // INDIKATOR NILAI TERTINGGI
             hasHigherValueFromOtherPriority: hasHigherValueFromOtherPriority,
             
-            // INDIKATOR PROJECT TERAKHIR
+            // ✅ INDIKATOR PROJECT TERAKHIR - DIHITUNG DENGAN BENAR
             isLastActiveProject: isLastProject,
             activeProjectsCount: activeProjectsCount,
             
@@ -1679,7 +1696,7 @@ function openPriorityModal(priority, deals) {
                 const lastUpdateDate = deal.updatedAt ? formatDateTime(deal.updatedAt) : (deal.createdAt ? formatDateTime(deal.createdAt) : '-');
                 
                 // ============================================================
-                // INDIKATOR 1: PROJECT TERAKHIR (★)
+                // INDIKATOR 1: PROJECT TERAKHIR (★) - HANYA JIKA 1 AKTIF
                 // ============================================================
                 let lastProjectBadge = '';
                 if (deal.isLastActiveProject) {
