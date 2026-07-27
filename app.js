@@ -536,13 +536,14 @@ function filterDealsByUser(dealsList) {
 
 /**
  * MENDAPATKAN DEALS YANG SUDAH DIFILTER BERDASARKAN USER DAN TAHUN
- * PERBAIKAN: Semua filter tahun diterapkan di sini
+ * PERBAIKAN UTAMA: Filter tahun diterapkan dengan benar di sini
  */
 function getFilteredDeals() {
     // 1. Filter berdasarkan user
     let baseDeals = filterDealsByUser(deals);
     
     // 2. Filter berdasarkan tahun (menggunakan activeYear)
+    // PERBAIKAN: Gunakan getDealsByYear yang sudah memperbaiki cache
     baseDeals = getDealsByYear(activeYear, baseDeals);
     
     // 3. Filter berdasarkan kriteria lainnya
@@ -627,8 +628,6 @@ function getFilteredUniqueProjectsForDashboard() {
 
 /**
  * Menggabungkan project dengan nama yang sama untuk dashboard
- * PERBAIKAN: Setiap project muncul di setiap priority yang dimilikinya
- * Di setiap priority, hanya menampilkan 1 project dengan indikator sales tambahan
  */
 function getUniqueProjectsForDashboard(dealsList) {
     const projectMap = new Map();
@@ -682,22 +681,14 @@ function getUniqueProjectsForDashboard(dealsList) {
         // Buat representasi project unik per priority
         const uniqueProject = {
             ...highestValueDeal,
-            // Gunakan nilai tertinggi sebagai display value
             displayValue: highestValueDeal.value || 0,
-            // Semua sales yang terlibat (hanya untuk informasi)
             allSales: Array.from(entry.allSales),
             allSalesData: entry.allSalesData,
-            // Jumlah sales yang terlibat
             salesCount: entry.allSales.size,
-            // Apakah ada lebih dari 1 sales
             hasMultipleSales: entry.allSales.size > 1,
-            // Semua deal yang terkait
             allDeals: activeDeals,
-            // Jumlah total deal aktif
             totalDeals: activeDeals.length,
-            // Priority dari grup ini
             priority: entry.priority,
-            // Stage dari deal dengan nilai tertinggi
             stage: highestValueDeal.stage || 'identified'
         };
         
@@ -727,7 +718,7 @@ function initYearFilter() {
         activeYear = year;
         activeFilters.year = year;
         
-        // Reset cache agar di-refresh dengan tahun baru
+        // PERBAIKAN: Reset cache agar di-refresh dengan tahun baru
         priorityStatsCache = {
             'all': null,
             '2025': null,
@@ -740,7 +731,7 @@ function initYearFilter() {
             '2026': null
         };
         
-        // Apply filter ke semua komponen
+        // PERBAIKAN: Refresh semua komponen dengan tahun baru
         createPriorityDashboard();
         applyActiveFilters();
         
@@ -748,15 +739,14 @@ function initYearFilter() {
     });
 }
 
+/**
+ * PERBAIKAN UTAMA: Fungsi getDealsByYear yang benar
+ * Menghasilkan data yang konsisten untuk setiap tahun
+ */
 function getDealsByYear(year, baseDeals = null) {
     const sourceDeals = baseDeals !== null ? baseDeals : filterDealsByUser(deals);
     
-    // Cek cache
-    const cacheKey = year;
-    if (dealsByYearCache[cacheKey] && baseDeals === null) {
-        return dealsByYearCache[cacheKey];
-    }
-    
+    // Jika tahun 'all', kembalikan semua data
     if (year === 'all') {
         if (baseDeals === null) {
             dealsByYearCache[year] = sourceDeals;
@@ -764,6 +754,12 @@ function getDealsByYear(year, baseDeals = null) {
         return sourceDeals;
     }
     
+    // PERBAIKAN: Cek cache hanya jika baseDeals adalah null (data dari semua deals)
+    if (baseDeals === null && dealsByYearCache[year]) {
+        return dealsByYearCache[year];
+    }
+    
+    // Filter berdasarkan tahun dari createdAt
     const filtered = sourceDeals.filter(deal => {
         if (!deal.createdAt) return false;
         
@@ -785,6 +781,7 @@ function getDealsByYear(year, baseDeals = null) {
         }
     });
     
+    // Simpan di cache hanya jika baseDeals adalah null
     if (baseDeals === null) {
         dealsByYearCache[year] = filtered;
     }
@@ -1401,12 +1398,12 @@ function updateDropdownOptions() {
 // ==================== FUNGSI PRIORITY DASHBOARD ====================
 
 function calculatePriorityStats(year) {
-    // Cek cache
+    // PERBAIKAN: Jika cache kosong atau null, hitung ulang
     if (priorityStatsCache[year]) {
         return priorityStatsCache[year];
     }
     
-    // Dapatkan deals berdasarkan tahun
+    // PERBAIKAN: Dapatkan deals berdasarkan tahun menggunakan getDealsByYear
     const yearDeals = getDealsByYear(year);
     const userYearDeals = filterDealsByUser(yearDeals);
     const uniqueProjects = getUniqueProjectsForDashboard(userYearDeals);
@@ -1438,6 +1435,7 @@ function createPriorityDashboard() {
     const priorityDashboard = document.querySelector('.priority-dashboard');
     if (!priorityDashboard) return;
     
+    // PERBAIKAN: Gunakan activeYear yang sudah benar
     const priorityStats = calculatePriorityStats(activeYear);
     
     priorityDashboard.innerHTML = '';
@@ -3526,6 +3524,7 @@ async function loadDealsFromFirebase(forceRefresh = false) {
             }
         }
         
+        // Reset cache
         priorityStatsCache = {
             'all': null,
             '2025': null,
