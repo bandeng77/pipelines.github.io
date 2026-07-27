@@ -1545,7 +1545,7 @@ function createPriorityDashboard() {
 
 // ============================================================
 // PERBAIKAN FINAL: openPriorityModal - 1 SALES PER PROJECT
-// TAPI dengan indikator multiple sales
+// DENGAN SEMUA INDIKATOR (★, ↑, +sales lain, 2x, max)
 // ============================================================
 function openPriorityModal(priority, deals) {
     const modal = document.getElementById('priorityModal');
@@ -1625,16 +1625,31 @@ function openPriorityModal(priority, deals) {
         const hasMultipleSales = salesCount > 1;
         const otherSalesCount = salesCount - 1;
         
-        // BUAT OBJECT GABUNGAN
+        // ============================================================
+        // TENTUKAN INDIKATOR
+        // ============================================================
+        // Cek apakah ini project terakhir (hanya 1 aktif)
+        const allDealsWithSameName = deals.filter(d => 
+            d.dealName?.trim().toLowerCase() === projectName?.trim().toLowerCase()
+        );
+        const activeProjectsCount = allDealsWithSameName.filter(d => d.stage !== 'lost').length;
+        const isLastProject = activeProjectsCount === 1;
+        
+        // Cek apakah nilai asli lebih rendah dari nilai tertinggi
+        const hasHigherValueFromOtherPriority = (representativeDeal.value || 0) < maxValue;
+        
+        // ============================================================
+        // BUAT OBJECT GABUNGAN DENGAN SEMUA INDIKATOR
+        // ============================================================
         const mergedDeal = {
             id: representativeDeal.id,
             dealName: projectName,
             priority: priority,
             
-            // HANYA 1 SALES yang ditampilkan
+            // SALES: HANYA 1 yang ditampilkan
             salesName: representativeDeal.salesName || '-',
             
-            // TAPI simpan info multiple sales
+            // TAPI simpan info multiple sales untuk indikator
             salesCount: salesCount,
             hasMultipleSales: hasMultipleSales,
             allSalesList: uniqueSalesList,
@@ -1643,6 +1658,13 @@ function openPriorityModal(priority, deals) {
             // NILAI: nilai tertinggi
             value: maxValue,
             displayValue: maxValue,
+            
+            // INDIKATOR NILAI TERTINGGI
+            hasHigherValueFromOtherPriority: hasHigherValueFromOtherPriority,
+            
+            // INDIKATOR PROJECT TERAKHIR
+            isLastActiveProject: isLastProject,
+            activeProjectsCount: activeProjectsCount,
             
             // STAGE: dari representative deal
             stage: representativeDeal.stage || projectDeals[0].stage,
@@ -1666,7 +1688,10 @@ function openPriorityModal(priority, deals) {
             
             // INDIKATOR
             totalDealsInGroup: projectDeals.length,
-            projectDeals: projectDeals
+            projectDeals: projectDeals,
+            
+            // MULTIPLE ENTRIES
+            hasMultipleEntries: projectDeals.length > 1
         };
         
         groupedDeals.push(mergedDeal);
@@ -1682,7 +1707,7 @@ function openPriorityModal(priority, deals) {
     });
     
     // ============================================================
-    // STEP 4: Render tabel
+    // STEP 4: Render tabel dengan SEMUA INDIKATOR
     // ============================================================
     const table = document.createElement('table');
     table.className = 'min-w-full divide-y divide-gray-200';
@@ -1704,7 +1729,27 @@ function openPriorityModal(priority, deals) {
                 const lastUpdateDate = deal.updatedAt ? formatDateTime(deal.updatedAt) : (deal.createdAt ? formatDateTime(deal.createdAt) : '-');
                 
                 // ============================================================
-                // BADGE INDIKATOR MULTIPLE SALES
+                // INDIKATOR 1: PROJECT TERAKHIR (★)
+                // ============================================================
+                let lastProjectBadge = '';
+                if (deal.isLastActiveProject) {
+                    lastProjectBadge = `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800" title="Hanya 1 project aktif yang tersisa">
+                        <i class="fas fa-star mr-1"></i>Project Terakhir
+                    </span>`;
+                }
+                
+                // ============================================================
+                // INDIKATOR 2: NILAI TERTINGGI (↑)
+                // ============================================================
+                let higherValueBadge = '';
+                if (deal.hasHigherValueFromOtherPriority && deal.totalDealsInGroup > 1) {
+                    higherValueBadge = `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="Nilai asli: Rp ${formatNumber(deal.value || 0)} - Menampilkan nilai tertinggi dari project ini">
+                        <i class="fas fa-arrow-up mr-1"></i>Nilai Tertinggi
+                    </span>`;
+                }
+                
+                // ============================================================
+                // INDIKATOR 3: MULTIPLE SALES (+X sales lain)
                 // ============================================================
                 let salesBadge = '';
                 if (deal.hasMultipleSales && deal.otherSalesCount > 0) {
@@ -1714,7 +1759,9 @@ function openPriorityModal(priority, deals) {
                     </span>`;
                 }
                 
-                // Badge untuk multiple entries
+                // ============================================================
+                // INDIKATOR 4: MULTIPLE ENTRIES (2x)
+                // ============================================================
                 let entriesBadge = '';
                 if (deal.totalDealsInGroup > 1) {
                     entriesBadge = `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800" title="${deal.totalDealsInGroup} entries untuk project ini">
@@ -1722,19 +1769,23 @@ function openPriorityModal(priority, deals) {
                     </span>`;
                 }
                 
-                // Badge untuk nilai tertinggi
+                // ============================================================
+                // INDIKATOR 5: MAX VALUE (max)
+                // ============================================================
                 let maxBadge = '';
                 if (deal.totalDealsInGroup > 1) {
                     maxBadge = `<span class="ml-2 text-xs text-gray-400">(max)</span>`;
                 }
+                
+                // Gabungkan semua badge di kolom Nama Project
+                const allBadges = [lastProjectBadge, higherValueBadge, salesBadge, entriesBadge].filter(b => b).join(' ');
                 
                 return `
                 <tr class="hover:bg-gray-50 cursor-pointer view-detail-row" data-id="${deal.id}">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         ${escapeHtml(deal.dealName || 'No Name')}
-                        ${entriesBadge}
-                        ${salesBadge}
+                        ${allBadges}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         ${escapeHtml(deal.salesName || '-')}
