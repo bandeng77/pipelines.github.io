@@ -266,7 +266,7 @@ function startRealtimeListeners() {
             snapshot.docChanges().forEach((change) => {
                 if (change.type === 'added') {
                     const commentData = change.doc.data();
-                    // ✅ TAMBAHKAN ID dari dokumen
+                    // TAMBAHKAN ID dari dokumen
                     commentData.id = change.doc.id;
                     commentData.dealId = commentData.dealId || null;
                     
@@ -390,7 +390,7 @@ async function addCommentToActivity(commentData, projectName) {
         const commenterName = commentData.salesName || commentData.userEmail.split('@')[0];
         const roleText = managerEmails.includes(commentData.userEmail) ? 'Manager' : 'Sales';
         
-        // ✅ Fallback jika commentData.id undefined
+        // Fallback jika commentData.id undefined
         const commentId = commentData.id || `temp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
         
         await activitiesCollection.add({
@@ -635,7 +635,8 @@ function getFilteredUniqueProjectsForDashboard() {
 
 /**
  * ============================================================
- * PERBAIKAN UTAMA: Menggabungkan multiple sales menjadi 1 baris
+ * PERBAIKAN UTAMA: Hanya tampilkan 1 sales per project + priority
+ * Tapi berikan indikator jika ada multiple sales
  * ============================================================
  */
 function getUniqueProjectsForDashboard(dealsList) {
@@ -691,50 +692,74 @@ function getUniqueProjectsForDashboard(dealsList) {
         const activeProjectsCount = allDealsWithSameName.filter(d => d.stage !== 'lost').length;
         const isLastProject = (activeProjectsCount === 1);
         
-        // Ambil deal pertama sebagai representasi
-        const firstDeal = activeDeals[0];
+        // ============================================================
+        // PERUBAHAN: Pilih 1 sales sebagai representasi
+        // Prioritaskan yang punya data lengkap atau nilai tertinggi
+        // ============================================================
+        
+        // Cari nilai tertinggi
         const highestValue = maxValueByProjectName.get(projectName) || 0;
         
-        // Kumpulkan semua sales yang mengerjakan project ini dengan priority yang sama
+        // Fungsi untuk menghitung kelengkapan data
+        const getCompletenessScore = (deal) => {
+            let score = 0;
+            if (deal.package) score++;
+            if (deal.product) score++;
+            if (deal.facility) score++;
+            if (deal.owner && deal.owner !== 'all') score++;
+            if (deal.consultant) score++;
+            if (deal.contractor) score++;
+            if (deal.pic && deal.pic !== 'all') score++;
+            if (deal.remarks) score++;
+            return score;
+        };
+        
+        // Pilih deal terbaik: prioritaskan yang punya nilai tertinggi, lalu data terlengkap
+        const sortedDeals = [...activeDeals].sort((a, b) => {
+            // Pertama: nilai tertinggi
+            if ((a.value || 0) !== (b.value || 0)) {
+                return (b.value || 0) - (a.value || 0);
+            }
+            // Kedua: data terlengkap
+            return getCompletenessScore(b) - getCompletenessScore(a);
+        });
+        
+        // Ambil deal terbaik sebagai representasi
+        const representativeDeal = sortedDeals[0] || activeDeals[0];
+        
+        // Kumpulkan semua sales (untuk indikator)
         const salesList = activeDeals.map(d => d.salesName).filter(Boolean);
         const uniqueSalesList = [...new Set(salesList)];
         const salesCount = uniqueSalesList.length;
-        
-        // Cek apakah ada perbedaan nilai antar sales
-        const values = activeDeals.map(d => d.value || 0);
-        const minValue = Math.min(...values);
-        const maxValue = Math.max(...values);
-        const hasDifferentValues = minValue !== maxValue;
+        const hasMultipleSales = salesCount > 1;
         
         // Tentukan nilai yang ditampilkan
         let displayValue;
         let hasHigherValueFromOtherPriority = false;
         
         if (isLastProject) {
-            // Jika hanya 1 project aktif, tampilkan nilai asli dari firstDeal
-            displayValue = firstDeal.value || 0;
+            displayValue = representativeDeal.value || 0;
         } else {
-            // Jika multiple project aktif, tampilkan nilai TERTINGGI
             displayValue = highestValue;
-            hasHigherValueFromOtherPriority = (firstDeal.value || 0) < highestValue;
+            hasHigherValueFromOtherPriority = (representativeDeal.value || 0) < highestValue;
         }
         
-        // Buat 1 baris gabungan
+        // ============================================================
+        // BUAT 1 BARIS GABUNGAN
+        // ============================================================
         const mergedDeal = {
-            ...firstDeal,
-            id: firstDeal.id,
+            ...representativeDeal,
+            id: representativeDeal.id,
             displayValue: displayValue,
             hasHigherValueFromOtherPriority: hasHigherValueFromOtherPriority,
             isLastActiveProject: isLastProject,
             activeProjectsCount: activeProjectsCount,
-            // Data gabungan untuk sales
-            salesList: uniqueSalesList,
+            // HANYA 1 SALES yang ditampilkan (representativeDeal.salesName)
+            // TAPI simpan informasi multiple sales untuk indikator
             salesCount: salesCount,
-            hasMultipleSales: salesCount > 1,
-            hasDifferentValues: hasDifferentValues,
-            minValue: minValue,
-            maxValue: maxValue,
-            allActiveDeals: activeDeals,
+            hasMultipleSales: hasMultipleSales,
+            allSalesList: uniqueSalesList,
+            otherSalesCount: salesCount - 1,
             totalEntries: duplicateDeals.length,
             hasMultipleEntries: duplicateDeals.length > 1
         };
@@ -1427,6 +1452,7 @@ function updateDropdownOptions() {
 // ==================== FUNGSI PRIORITY DASHBOARD ====================
 
 function calculatePriorityStats(year) {
+    // Force refresh jika tidak ada cache
     if (priorityStatsCache[year]) {
         return priorityStatsCache[year];
     }
@@ -1457,9 +1483,19 @@ function calculatePriorityStats(year) {
     return priorityStats;
 }
 
+// ============================================================
+// PERBAIKAN: createPriorityDashboard - Reset cache
+// ============================================================
 function createPriorityDashboard() {
     const priorityDashboard = document.querySelector('.priority-dashboard');
     if (!priorityDashboard) return;
+    
+    // PASTIKAN CACHE DIREFRESH
+    priorityStatsCache = {
+        'all': null,
+        '2025': null,
+        '2026': null
+    };
     
     const priorityStats = calculatePriorityStats(activeYear);
     
@@ -1493,17 +1529,23 @@ function createPriorityDashboard() {
         priorityDashboard.appendChild(card);
     });
     
+    // ============================================================
+    // PERBAIKAN: Event listener dengan data FRESH
+    // ============================================================
     document.querySelectorAll('.priority-card').forEach(card => {
         card.addEventListener('click', function() {
             const priority = this.dataset.priority;
-            const stats = priorityStats[priority];
+            // Ambil data FRESH langsung dari calculatePriorityStats
+            const freshStats = calculatePriorityStats(activeYear);
+            const stats = freshStats[priority];
             openPriorityModal(priority, stats.deals);
         });
     });
 }
 
 // ============================================================
-// PERBAIKAN FINAL: openPriorityModal - 1 BARIS PER PROJECT
+// PERBAIKAN FINAL: openPriorityModal - 1 SALES PER PROJECT
+// TAPI dengan indikator multiple sales
 // ============================================================
 function openPriorityModal(priority, deals) {
     const modal = document.getElementById('priorityModal');
@@ -1517,7 +1559,7 @@ function openPriorityModal(priority, deals) {
     modalTitle.textContent = `${priority} Projects (${yearText})${userText}`;
     modalContent.innerHTML = '';
     
-    if (deals.length === 0) {
+    if (!deals || deals.length === 0) {
         modalContent.innerHTML = `
             <div class="text-center text-gray-500 py-8">
                 <i class="fas fa-inbox text-3xl mb-2"></i>
@@ -1528,7 +1570,7 @@ function openPriorityModal(priority, deals) {
     }
     
     // ============================================================
-    // STEP 1: GROUPING berdasarkan project name (tanpa priority)
+    // STEP 1: GROUPING berdasarkan project name
     // ============================================================
     const projectGroups = new Map();
     
@@ -1543,32 +1585,15 @@ function openPriorityModal(priority, deals) {
     });
     
     // ============================================================
-    // STEP 2: Buat 1 baris per project name dengan DATA TERLENGKAP
+    // STEP 2: Buat 1 baris per project name dengan 1 sales representasi
     // ============================================================
     const groupedDeals = [];
     
     projectGroups.forEach((projectDeals, projectName) => {
-        // KUMPULKAN SEMUA SALES (UNIQUE)
-        const salesList = projectDeals.map(d => d.salesName).filter(Boolean);
-        const uniqueSalesList = [...new Set(salesList)];
-        const salesDisplay = uniqueSalesList.join(', ');
-        const hasMultipleSales = uniqueSalesList.length > 1;
-        
         // CARI NILAI TERTINGGI
         const maxValue = Math.max(...projectDeals.map(d => d.value || 0));
         
-        // CARI DEAL DENGAN NILAI TERTINGGI
-        const dealWithMaxValue = projectDeals.find(d => d.value === maxValue) || projectDeals[0];
-        
-        // CARI DEAL TERBARU (berdasarkan updatedAt)
-        const sortedByDate = [...projectDeals].sort((a, b) => {
-            const dateA = a.updatedAt ? (a.updatedAt.toDate ? a.updatedAt.toDate() : new Date(a.updatedAt)) : new Date(0);
-            const dateB = b.updatedAt ? (b.updatedAt.toDate ? b.updatedAt.toDate() : new Date(b.updatedAt)) : new Date(0);
-            return dateB - dateA;
-        });
-        const latestDeal = sortedByDate[0] || projectDeals[0];
-        
-        // CARI DEAL DENGAN DATA TERLENGKAP
+        // CARI DEAL DENGAN DATA TERLENGKAP (prioritaskan nilai tertinggi)
         const getCompletenessScore = (deal) => {
             let score = 0;
             if (deal.package) score++;
@@ -1582,55 +1607,62 @@ function openPriorityModal(priority, deals) {
             return score;
         };
         
-        const sortedByCompleteness = [...projectDeals].sort((a, b) => {
+        // Urutkan: nilai tertinggi dulu, lalu data terlengkap
+        const sortedDeals = [...projectDeals].sort((a, b) => {
+            if ((a.value || 0) !== (b.value || 0)) {
+                return (b.value || 0) - (a.value || 0);
+            }
             return getCompletenessScore(b) - getCompletenessScore(a);
         });
-        const mostCompleteDeal = sortedByCompleteness[0] || projectDeals[0];
         
-        // CARI TANGGAL DIBUAT TERLAMA
-        const sortedByCreated = [...projectDeals].sort((a, b) => {
-            const dateA = a.createdAt ? (a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt)) : new Date(0);
-            const dateB = b.createdAt ? (b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt)) : new Date(0);
-            return dateA - dateB;
-        });
-        const oldestDeal = sortedByCreated[0] || projectDeals[0];
+        // AMBIL 1 DEAL TERBAIK SEBAGAI REPRESENTASI
+        const representativeDeal = sortedDeals[0] || projectDeals[0];
         
-        // BUAT OBJECT GABUNGAN DENGAN DATA TERLENGKAP
+        // KUMPULKAN SEMUA SALES (untuk indikator)
+        const salesList = projectDeals.map(d => d.salesName).filter(Boolean);
+        const uniqueSalesList = [...new Set(salesList)];
+        const salesCount = uniqueSalesList.length;
+        const hasMultipleSales = salesCount > 1;
+        const otherSalesCount = salesCount - 1;
+        
+        // BUAT OBJECT GABUNGAN
         const mergedDeal = {
-            id: mostCompleteDeal.id || projectDeals[0].id,
+            id: representativeDeal.id,
             dealName: projectName,
             priority: priority,
             
-            // SALES: gabungan semua sales
-            salesName: salesDisplay,
-            salesList: uniqueSalesList,
+            // HANYA 1 SALES yang ditampilkan
+            salesName: representativeDeal.salesName || '-',
+            
+            // TAPI simpan info multiple sales
+            salesCount: salesCount,
             hasMultipleSales: hasMultipleSales,
+            allSalesList: uniqueSalesList,
+            otherSalesCount: otherSalesCount,
             
             // NILAI: nilai tertinggi
             value: maxValue,
             displayValue: maxValue,
             
-            // STAGE: dari deal terbaru
-            stage: latestDeal.stage || projectDeals[0].stage,
+            // STAGE: dari representative deal
+            stage: representativeDeal.stage || projectDeals[0].stage,
             
-            // DATA LAIN: dari deal paling lengkap
-            package: mostCompleteDeal.package || '',
-            product: mostCompleteDeal.product || '',
-            facility: mostCompleteDeal.facility || '',
-            owner: mostCompleteDeal.owner || '',
-            consultant: mostCompleteDeal.consultant || '',
-            contractor: mostCompleteDeal.contractor || '',
-            pic: mostCompleteDeal.pic || '',
-            planPO: mostCompleteDeal.planPO || '',
-            remarks: mostCompleteDeal.remarks || '',
-            beforeDiscount: mostCompleteDeal.beforeDiscount || 0,
-            discount: mostCompleteDeal.discount || 0,
+            // DATA LAIN: dari representative deal
+            package: representativeDeal.package || '',
+            product: representativeDeal.product || '',
+            facility: representativeDeal.facility || '',
+            owner: representativeDeal.owner || '',
+            consultant: representativeDeal.consultant || '',
+            contractor: representativeDeal.contractor || '',
+            pic: representativeDeal.pic || '',
+            planPO: representativeDeal.planPO || '',
+            remarks: representativeDeal.remarks || '',
+            beforeDiscount: representativeDeal.beforeDiscount || 0,
+            discount: representativeDeal.discount || 0,
             
-            // TANGGAL: dibuat dari yang terlama, update dari yang terbaru
-            createdAt: oldestDeal.createdAt || projectDeals[0].createdAt,
-            updatedAt: latestDeal.updatedAt || projectDeals[0].updatedAt,
-            createdBy: oldestDeal.createdBy || projectDeals[0].createdBy,
-            updatedBy: latestDeal.updatedBy || projectDeals[0].updatedBy,
+            // TANGGAL
+            createdAt: representativeDeal.createdAt || projectDeals[0].createdAt,
+            updatedAt: representativeDeal.updatedAt || projectDeals[0].updatedAt,
             
             // INDIKATOR
             totalDealsInGroup: projectDeals.length,
@@ -1671,11 +1703,14 @@ function openPriorityModal(priority, deals) {
                 const displayValue = deal.displayValue || deal.value || 0;
                 const lastUpdateDate = deal.updatedAt ? formatDateTime(deal.updatedAt) : (deal.createdAt ? formatDateTime(deal.createdAt) : '-');
                 
-                // Badge untuk multiple sales
+                // ============================================================
+                // BADGE INDIKATOR MULTIPLE SALES
+                // ============================================================
                 let salesBadge = '';
-                if (deal.hasMultipleSales) {
-                    salesBadge = `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800" title="${deal.salesList.join(', ')}">
-                        <i class="fas fa-users mr-1"></i>${deal.salesList.length} sales
+                if (deal.hasMultipleSales && deal.otherSalesCount > 0) {
+                    const otherSalesNames = deal.allSalesList.filter(name => name !== deal.salesName).join(', ');
+                    salesBadge = `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800" title="Sales lain: ${otherSalesNames}">
+                        <i class="fas fa-users mr-1"></i>+${deal.otherSalesCount} sales lain
                     </span>`;
                 }
                 
