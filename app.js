@@ -263,10 +263,6 @@ function startRealtimeListeners() {
             snapshot.docChanges().forEach((change) => {
                 if (change.type === 'added') {
                     const commentData = change.doc.data();
-                    // TAMBAHKAN ID dari dokumen
-                    commentData.id = change.doc.id;
-                    commentData.dealId = commentData.dealId || null;
-                    
                     if (commentData.userEmail !== auth.currentUser?.email) {
                         handleNewCommentNotification(commentData);
                     }
@@ -378,15 +374,12 @@ async function isCommentRelevantForUser(commentData, projectName) {
 }
 
 /**
- * Tambahkan komentar ke aktivitas dengan fallback ID
+ * Tambahkan komentar ke aktivitas
  */
 async function addCommentToActivity(commentData, projectName) {
     try {
         const commenterName = commentData.salesName || commentData.userEmail.split('@')[0];
         const roleText = managerEmails.includes(commentData.userEmail) ? 'Manager' : 'Sales';
-        
-        // Fallback jika commentData.id undefined
-        const commentId = commentData.id || `temp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
         
         await activitiesCollection.add({
             message: `💬 ${commenterName} (${roleText}) memberikan komentar pada project "${projectName}": "${commentData.content.substring(0, 100)}${commentData.content.length > 100 ? '...' : ''}"`,
@@ -396,7 +389,7 @@ async function addCommentToActivity(commentData, projectName) {
             read: false,
             type: 'comment',
             projectName: projectName,
-            commentId: commentId,
+            commentId: commentData.id,
             content: commentData.content
         });
         
@@ -629,121 +622,82 @@ function getFilteredUniqueProjectsForDashboard() {
 }
 
 /**
- * ============================================================
- * PERBAIKAN UTAMA: getUniqueProjectsForDashboard
- * Hanya 1 baris per project, dengan indikator yang benar
- * ============================================================
+ * Menggabungkan project dengan nama yang sama untuk dashboard
+ * PERBAIKAN: Menampilkan 1 project per nama dengan indikator sales tambahan
  */
 function getUniqueProjectsForDashboard(dealsList) {
     const projectMap = new Map();
-    const allProjectsByName = new Map();
     
-    // STEP 1: Kelompokkan semua deal berdasarkan nama project
+    // Kelompokkan deals berdasarkan project name
     dealsList.forEach(deal => {
         const projectName = deal.dealName?.trim();
         if (!projectName) return;
         
-        if (!allProjectsByName.has(projectName)) {
-            allProjectsByName.set(projectName, []);
+        if (!projectMap.has(projectName)) {
+            projectMap.set(projectName, []);
         }
-        allProjectsByName.get(projectName).push(deal);
+        projectMap.get(projectName).push(deal);
     });
     
-    // STEP 2: Hitung nilai tertinggi per project name
-    const maxValueByProjectName = new Map();
-    for (const [projectName, projectDeals] of allProjectsByName) {
-        const activeProjects = projectDeals.filter(d => d.stage !== 'lost');
-        if (activeProjects.length > 0) {
-            const maxValue = Math.max(...activeProjects.map(d => d.value || 0));
-            maxValueByProjectName.set(projectName, maxValue);
-        }
-    }
-    
-    // STEP 3: Grouping berdasarkan "projectName|priority"
-    dealsList.forEach(deal => {
-        const projectName = deal.dealName?.trim();
-        const priority = deal.priority || 'Priority';
-        if (!projectName) return;
-        
-        const key = `${projectName}|${priority}`;
-        
-        if (!projectMap.has(key)) {
-            projectMap.set(key, []);
-        }
-        projectMap.get(key).push(deal);
-    });
-    
-    // STEP 4: Proses setiap group - HANYA 1 BARIS per group
     const uniqueProjects = [];
     
-    projectMap.forEach((duplicateDeals, key) => {
-        const [projectName, priority] = key.split('|');
+    projectMap.forEach((deals, projectName) => {
+        // Filter deals yang tidak lost
+        const activeDeals = deals.filter(d => d.stage !== 'lost');
         
-        const activeDeals = duplicateDeals.filter(deal => deal.stage !== 'lost');
         if (activeDeals.length === 0) return;
         
-        // ============================================================
-        // PERBAIKAN: Hitung activeProjectsCount dari dealsList yang sudah difilter
-        // ============================================================
-        const allDealsWithSameNameInFiltered = dealsList.filter(d => 
-            d.dealName?.trim().toLowerCase() === projectName?.trim().toLowerCase()
+        // Ambil deal dengan nilai tertinggi sebagai representasi
+        let highestValueDeal = activeDeals.reduce((a, b) => 
+            (a.value || 0) > (b.value || 0) ? a : b
         );
-        const activeProjectsCountInFiltered = allDealsWithSameNameInFiltered.filter(d => d.stage !== 'lost').length;
-        const isLastProjectInFiltered = (activeProjectsCountInFiltered === 1);
         
-        // HANYA 1 BARIS per group
-        const firstDeal = activeDeals[0];
-        const highestValue = maxValueByProjectName.get(projectName) || 0;
+        // Kumpulkan semua sales yang terlibat
+        const allSales = new Set();
+        const allSalesData = [];
+        activeDeals.forEach(d => {
+            if (d.salesName) {
+                allSales.add(d.salesName);
+                allSalesData.push({
+                    salesName: d.salesName,
+                    value: d.value || 0,
+                    stage: d.stage,
+                    id: d.id
+                });
+            }
+        });
         
-        // Kumpulkan semua sales
-        const salesList = activeDeals.map(d => d.salesName).filter(Boolean);
-        const uniqueSalesList = [...new Set(salesList)];
-        const salesCount = uniqueSalesList.length;
-        const hasMultipleSales = salesCount > 1;
+        // Hitung total nilai dari semua deal aktif
+        const totalValue = activeDeals.reduce((sum, d) => sum + (d.value || 0), 0);
         
-        let displayValue;
-        let hasHigherValueFromOtherPriority = false;
-        
-        if (isLastProjectInFiltered) {
-            displayValue = firstDeal.value || 0;
-        } else {
-            displayValue = highestValue;
-            hasHigherValueFromOtherPriority = (firstDeal.value || 0) < highestValue;
-        }
-        
-        // Pilih sales representasi
-        const representativeDeal = activeDeals.find(d => d.value === highestValue) || firstDeal;
-        
-        const newDeal = { 
-            ...representativeDeal,
-            id: representativeDeal.id,
-            displayValue: displayValue,
-            hasHigherValueFromOtherPriority: hasHigherValueFromOtherPriority,
-            // ✅ Gunakan isLastProjectInFiltered
-            isLastActiveProject: isLastProjectInFiltered,
-            activeProjectsCount: activeProjectsCountInFiltered,
-            salesCount: salesCount,
-            hasMultipleSales: hasMultipleSales,
-            allSalesList: uniqueSalesList,
-            otherSalesCount: salesCount - 1,
-            totalEntries: duplicateDeals.length,
-            hasMultipleEntries: duplicateDeals.length > 1
+        // Buat representasi project unik
+        const uniqueProject = {
+            ...highestValueDeal,
+            // Gunakan nilai tertinggi sebagai display value
+            displayValue: highestValueDeal.value || 0,
+            // Total nilai dari semua deal aktif
+            totalValue: totalValue,
+            // Semua sales yang terlibat
+            allSales: Array.from(allSales),
+            allSalesData: allSalesData,
+            // Jumlah sales yang terlibat
+            salesCount: allSales.size,
+            // Apakah ada lebih dari 1 sales
+            hasMultipleSales: allSales.size > 1,
+            // Semua deal yang terkait
+            allDeals: activeDeals,
+            // Jumlah total deal aktif
+            totalDeals: activeDeals.length,
+            // Priority dari deal dengan nilai tertinggi
+            priority: highestValueDeal.priority || 'Priority',
+            // Stage dari deal dengan nilai tertinggi
+            stage: highestValueDeal.stage || 'identified'
         };
         
-        uniqueProjects.push(newDeal);
+        uniqueProjects.push(uniqueProject);
     });
     
-    // Hapus duplikat ID
-    const seenIds = new Set();
-    const finalUniqueProjects = [];
-    for (const project of uniqueProjects) {
-        if (!seenIds.has(project.id)) {
-            seenIds.add(project.id);
-            finalUniqueProjects.push(project);
-        }
-    }
-    
-    return finalUniqueProjects;
+    return uniqueProjects;
 }
 
 // ==================== FILTER TAHUN ====================
@@ -1448,7 +1402,9 @@ function calculatePriorityStats(year) {
         const priority = deal.priority || 'Priority';
         if (priorityStats[priority]) {
             priorityStats[priority].count++;
-            priorityStats[priority].value += (deal.displayValue || deal.value || 0);
+            // Gunakan totalValue jika ada, jika tidak gunakan displayValue
+            const valueToUse = deal.totalValue || deal.displayValue || deal.value || 0;
+            priorityStats[priority].value += valueToUse;
             priorityStats[priority].deals.push(deal);
         }
     });
@@ -1461,13 +1417,6 @@ function calculatePriorityStats(year) {
 function createPriorityDashboard() {
     const priorityDashboard = document.querySelector('.priority-dashboard');
     if (!priorityDashboard) return;
-    
-    // Reset cache
-    priorityStatsCache = {
-        'all': null,
-        '2025': null,
-        '2026': null
-    };
     
     const priorityStats = calculatePriorityStats(activeYear);
     
@@ -1501,21 +1450,15 @@ function createPriorityDashboard() {
         priorityDashboard.appendChild(card);
     });
     
-    // Event listener dengan data FRESH
     document.querySelectorAll('.priority-card').forEach(card => {
         card.addEventListener('click', function() {
             const priority = this.dataset.priority;
-            const freshStats = calculatePriorityStats(activeYear);
-            const stats = freshStats[priority];
+            const stats = priorityStats[priority];
             openPriorityModal(priority, stats.deals);
         });
     });
 }
 
-// ============================================================
-// PERBAIKAN FINAL: openPriorityModal - 1 BARIS PER PROJECT
-// DENGAN SEMUA INDIKATOR YANG BENAR
-// ============================================================
 function openPriorityModal(priority, deals) {
     const modal = document.getElementById('priorityModal');
     const modalTitle = document.getElementById('priorityModalTitleText');
@@ -1528,286 +1471,139 @@ function openPriorityModal(priority, deals) {
     modalTitle.textContent = `${priority} Projects (${yearText})${userText}`;
     modalContent.innerHTML = '';
     
-    if (!deals || deals.length === 0) {
+    if (deals.length === 0) {
         modalContent.innerHTML = `
             <div class="text-center text-gray-500 py-8">
                 <i class="fas fa-inbox text-3xl mb-2"></i>
                 <p>Tidak ada project dengan priority "${priority}" untuk ${yearText}</p>
             </div>
         `;
-        return;
-    }
-    
-    // ============================================================
-    // STEP 1: GROUPING berdasarkan project name
-    // ============================================================
-    const projectGroups = new Map();
-    
-    deals.forEach(deal => {
-        const projectName = deal.dealName?.trim();
-        if (!projectName) return;
-        
-        if (!projectGroups.has(projectName)) {
-            projectGroups.set(projectName, []);
-        }
-        projectGroups.get(projectName).push(deal);
-    });
-    
-    // ============================================================
-    // STEP 2: Buat 1 baris per project name
-    // ============================================================
-    const groupedDeals = [];
-    
-    projectGroups.forEach((projectDeals, projectName) => {
-        // CARI NILAI TERTINGGI
-        const maxValue = Math.max(...projectDeals.map(d => d.value || 0));
-        
-        // CARI DEAL DENGAN DATA TERLENGKAP
-        const getCompletenessScore = (deal) => {
-            let score = 0;
-            if (deal.package) score++;
-            if (deal.product) score++;
-            if (deal.facility) score++;
-            if (deal.owner && deal.owner !== 'all') score++;
-            if (deal.consultant) score++;
-            if (deal.contractor) score++;
-            if (deal.pic && deal.pic !== 'all') score++;
-            if (deal.remarks) score++;
-            return score;
-        };
-        
-        // Urutkan: nilai tertinggi dulu, lalu data terlengkap
-        const sortedDeals = [...projectDeals].sort((a, b) => {
-            if ((a.value || 0) !== (b.value || 0)) {
-                return (b.value || 0) - (a.value || 0);
-            }
-            return getCompletenessScore(b) - getCompletenessScore(a);
+    } else {
+        const sortedDeals = [...deals].sort((a, b) => {
+            const dateA = a.updatedAt ? (a.updatedAt.toDate ? a.updatedAt.toDate() : new Date(a.updatedAt)) : new Date(0);
+            const dateB = b.updatedAt ? (b.updatedAt.toDate ? b.updatedAt.toDate() : new Date(b.updatedAt)) : new Date(0);
+            return dateB - dateA;
         });
         
-        // AMBIL 1 DEAL TERBAIK SEBAGAI REPRESENTASI
-        const representativeDeal = sortedDeals[0] || projectDeals[0];
-        
-        // KUMPULKAN SEMUA SALES (untuk indikator)
-        const salesList = projectDeals.map(d => d.salesName).filter(Boolean);
-        const uniqueSalesList = [...new Set(salesList)];
-        const salesCount = uniqueSalesList.length;
-        const hasMultipleSales = salesCount > 1;
-        const otherSalesCount = salesCount - 1;
-        
-        // ============================================================
-        // PERBAIKAN: Hitung isLastProject dari deals (bukan dari projectDeals saja)
-        // ============================================================
-        const allDealsWithSameName = deals.filter(d => 
-            d.dealName?.trim().toLowerCase() === projectName?.trim().toLowerCase()
-        );
-        const activeProjectsCount = allDealsWithSameName.filter(d => d.stage !== 'lost').length;
-        const isLastProject = activeProjectsCount === 1;
-        
-        const hasHigherValueFromOtherPriority = (representativeDeal.value || 0) < maxValue;
-        
-        // ============================================================
-        // BUAT OBJECT GABUNGAN DENGAN SEMUA INDIKATOR
-        // ============================================================
-        const mergedDeal = {
-            id: representativeDeal.id,
-            dealName: projectName,
-            priority: priority,
-            
-            // SALES: HANYA 1 yang ditampilkan
-            salesName: representativeDeal.salesName || '-',
-            
-            // TAPI simpan info multiple sales untuk indikator
-            salesCount: salesCount,
-            hasMultipleSales: hasMultipleSales,
-            allSalesList: uniqueSalesList,
-            otherSalesCount: otherSalesCount,
-            
-            // NILAI: nilai tertinggi
-            value: maxValue,
-            displayValue: maxValue,
-            
-            // INDIKATOR NILAI TERTINGGI
-            hasHigherValueFromOtherPriority: hasHigherValueFromOtherPriority,
-            
-            // ✅ INDIKATOR PROJECT TERAKHIR - DIHITUNG DENGAN BENAR
-            isLastActiveProject: isLastProject,
-            activeProjectsCount: activeProjectsCount,
-            
-            // STAGE: dari representative deal
-            stage: representativeDeal.stage || projectDeals[0].stage,
-            
-            // DATA LAIN: dari representative deal
-            package: representativeDeal.package || '',
-            product: representativeDeal.product || '',
-            facility: representativeDeal.facility || '',
-            owner: representativeDeal.owner || '',
-            consultant: representativeDeal.consultant || '',
-            contractor: representativeDeal.contractor || '',
-            pic: representativeDeal.pic || '',
-            planPO: representativeDeal.planPO || '',
-            remarks: representativeDeal.remarks || '',
-            beforeDiscount: representativeDeal.beforeDiscount || 0,
-            discount: representativeDeal.discount || 0,
-            
-            // TANGGAL
-            createdAt: representativeDeal.createdAt || projectDeals[0].createdAt,
-            updatedAt: representativeDeal.updatedAt || projectDeals[0].updatedAt,
-            
-            // INDIKATOR
-            totalDealsInGroup: projectDeals.length,
-            projectDeals: projectDeals,
-            
-            // MULTIPLE ENTRIES
-            hasMultipleEntries: projectDeals.length > 1
-        };
-        
-        groupedDeals.push(mergedDeal);
-    });
-    
-    // ============================================================
-    // STEP 3: Urutkan berdasarkan updatedAt terbaru
-    // ============================================================
-    const sortedDeals = groupedDeals.sort((a, b) => {
-        const dateA = a.updatedAt ? (a.updatedAt.toDate ? a.updatedAt.toDate() : new Date(a.updatedAt)) : new Date(0);
-        const dateB = b.updatedAt ? (b.updatedAt.toDate ? b.updatedAt.toDate() : new Date(b.updatedAt)) : new Date(0);
-        return dateB - dateA;
-    });
-    
-    // ============================================================
-    // STEP 4: Render tabel dengan SEMUA INDIKATOR
-    // ============================================================
-    const table = document.createElement('table');
-    table.className = 'min-w-full divide-y divide-gray-200';
-    table.innerHTML = `
-        <thead class="bg-gray-50">
-            <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Project</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai (IDR)</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tahap</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Terakhir Update</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-            </tr>
-        </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
-            ${sortedDeals.map((deal, index) => {
-                const displayValue = deal.displayValue || deal.value || 0;
-                const lastUpdateDate = deal.updatedAt ? formatDateTime(deal.updatedAt) : (deal.createdAt ? formatDateTime(deal.createdAt) : '-');
-                
-                // ============================================================
-                // INDIKATOR 1: PROJECT TERAKHIR (★) - HANYA JIKA 1 AKTIF
-                // ============================================================
-                let lastProjectBadge = '';
-                if (deal.isLastActiveProject) {
-                    lastProjectBadge = `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800" title="Hanya 1 project aktif yang tersisa">
-                        <i class="fas fa-star mr-1"></i>Project Terakhir
-                    </span>`;
-                }
-                
-                // ============================================================
-                // INDIKATOR 2: NILAI TERTINGGI (↑)
-                // ============================================================
-                let higherValueBadge = '';
-                if (deal.hasHigherValueFromOtherPriority && deal.totalDealsInGroup > 1) {
-                    higherValueBadge = `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="Nilai asli: Rp ${formatNumber(deal.value || 0)} - Menampilkan nilai tertinggi dari project ini">
-                        <i class="fas fa-arrow-up mr-1"></i>Nilai Tertinggi
-                    </span>`;
-                }
-                
-                // ============================================================
-                // INDIKATOR 3: MULTIPLE SALES (+X sales lain)
-                // ============================================================
-                let salesBadge = '';
-                if (deal.hasMultipleSales && deal.otherSalesCount > 0) {
-                    const otherSalesNames = deal.allSalesList.filter(name => name !== deal.salesName).join(', ');
-                    salesBadge = `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800" title="Sales lain: ${otherSalesNames}">
-                        <i class="fas fa-users mr-1"></i>+${deal.otherSalesCount} sales lain
-                    </span>`;
-                }
-                
-                // ============================================================
-                // INDIKATOR 4: MULTIPLE ENTRIES (2x)
-                // ============================================================
-                let entriesBadge = '';
-                if (deal.totalDealsInGroup > 1) {
-                    entriesBadge = `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800" title="${deal.totalDealsInGroup} entries untuk project ini">
-                        <i class="fas fa-copy mr-1"></i>${deal.totalDealsInGroup}x
-                    </span>`;
-                }
-                
-                // ============================================================
-                // INDIKATOR 5: MAX VALUE (max)
-                // ============================================================
-                let maxBadge = '';
-                if (deal.totalDealsInGroup > 1) {
-                    maxBadge = `<span class="ml-2 text-xs text-gray-400">(max)</span>`;
-                }
-                
-                // Gabungkan semua badge di kolom Nama Project
-                const allBadges = [lastProjectBadge, higherValueBadge, salesBadge, entriesBadge].filter(b => b).join(' ');
-                
-                return `
-                <tr class="hover:bg-gray-50 cursor-pointer view-detail-row" data-id="${deal.id}">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        ${escapeHtml(deal.dealName || 'No Name')}
-                        ${allBadges}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        ${escapeHtml(deal.salesName || '-')}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
-                        Rp ${formatNumber(displayValue)}
-                        ${maxBadge}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${deal.stage === 'win' ? 'bg-green-100 text-green-800' : 
-                            deal.stage === 'lost' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">
-                            ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <i class="fas fa-clock text-gray-400 mr-1"></i>${lastUpdateDate}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button class="text-blue-600 hover:text-blue-900 mr-3 view-detail-btn" data-id="${deal.id}">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        ${deal.totalDealsInGroup > 1 ? `
-                            <button class="text-purple-600 hover:text-purple-900 view-all-entries-btn" data-deal-name="${escapeHtml(deal.dealName)}" data-priority="${deal.priority}" title="Lihat semua entries untuk project ini">
-                                <i class="fas fa-list"></i>
-                            </button>
-                        ` : ''}
-                    </td>
+        const table = document.createElement('table');
+        table.className = 'min-w-full divide-y divide-gray-200';
+        table.innerHTML = `
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Project</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai (IDR)</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tahap</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Terakhir Update</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                 </tr>
-            `}).join('')}
-        </tbody>
-    `;
-    
-    modalContent.appendChild(table);
-    
-    // ============================================================
-    // STEP 5: Event listeners
-    // ============================================================
-    modalContent.querySelectorAll('.view-detail-btn, .view-detail-row').forEach(element => {
-        element.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const dealId = element.tagName === 'TR' ? element.dataset.id : element.dataset.id;
-            closePriorityModal();
-            openDealDetailModal(dealId);
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                ${sortedDeals.map((deal, index) => {
+                    const displayValue = deal.totalValue || deal.displayValue || deal.value || 0;
+                    
+                    const lastUpdateDate = deal.updatedAt ? formatDateTime(deal.updatedAt) : (deal.createdAt ? formatDateTime(deal.createdAt) : '-');
+                    
+                    // Tampilkan sales dengan indikator jika lebih dari 1
+                    let salesDisplay = deal.salesName || '-';
+                    if (deal.hasMultipleSales && deal.allSales) {
+                        const otherSales = deal.allSales.filter(s => s !== deal.salesName);
+                        if (otherSales.length > 0) {
+                            salesDisplay = `${deal.salesName} <span class="ml-1 text-xs text-purple-600 font-medium">+${otherSales.length} sales lain</span>`;
+                        }
+                    }
+                    
+                    return `
+                    <tr class="hover:bg-gray-50 cursor-pointer view-detail-row" data-id="${deal.id}">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            ${escapeHtml(deal.dealName || 'No Name')}
+                            ${deal.hasMultipleSales ? `
+                                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800" title="${deal.salesCount} sales mengerjakan project ini">
+                                    <i class="fas fa-users mr-1"></i>${deal.salesCount}
+                                </span>
+                            ` : ''}
+                            ${deal.totalDeals > 1 ? `
+                                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="${deal.totalDeals} entries untuk project ini">
+                                    <i class="fas fa-copy mr-1"></i>${deal.totalDeals}x
+                                </span>
+                            ` : ''}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${salesDisplay}
+                            ${deal.hasMultipleSales ? `
+                                <div class="text-xs text-gray-400 mt-1">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    <span>${deal.allSales ? deal.allSales.join(', ') : ''}</span>
+                                </div>
+                            ` : ''}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
+                            Rp ${formatNumber(displayValue)}
+                            ${deal.totalDeals > 1 ? `
+                                <span class="text-xs text-gray-500 ml-1">(total ${deal.totalDeals} deal)</span>
+                            ` : ''}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${deal.stage === 'win' ? 'bg-green-100 text-green-800' : 
+                                deal.stage === 'lost' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">
+                                ${deal.stage ? deal.stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <i class="fas fa-clock text-gray-400 mr-1"></i>${lastUpdateDate}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button class="text-blue-600 hover:text-blue-900 mr-3 view-detail-btn" data-id="${deal.id}">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            ${deal.totalDeals > 1 ? `
+                                <button class="text-purple-600 hover:text-purple-900 view-all-entries-btn" data-deal-name="${escapeHtml(deal.dealName)}" data-priority="${deal.priority}" title="Lihat semua entries untuk project ini">
+                                    <i class="fas fa-list"></i>
+                                </button>
+                            ` : ''}
+                            ${deal.hasMultipleSales ? `
+                                <button class="text-green-600 hover:text-green-900 view-all-sales-btn" data-deal-name="${escapeHtml(deal.dealName)}" title="Lihat semua sales untuk project ini">
+                                    <i class="fas fa-users"></i>
+                                </button>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `}).join('')}
+            </tbody>
+        `;
+        
+        modalContent.appendChild(table);
+        
+        modalContent.querySelectorAll('.view-detail-btn, .view-detail-row').forEach(element => {
+            element.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const dealId = element.tagName === 'TR' ? element.dataset.id : element.dataset.id;
+                closePriorityModal();
+                openDealDetailModal(dealId);
+            });
         });
-    });
-    
-    modalContent.querySelectorAll('.view-all-entries-btn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const dealName = this.dataset.dealName;
-            const priority = this.dataset.priority;
-            closePriorityModal();
-            showAllEntriesForProject(dealName, priority);
+        
+        modalContent.querySelectorAll('.view-all-entries-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const dealName = this.dataset.dealName;
+                const priority = this.dataset.priority;
+                closePriorityModal();
+                showAllEntriesForProject(dealName, priority);
+            });
         });
-    });
+        
+        modalContent.querySelectorAll('.view-all-sales-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const dealName = this.dataset.dealName;
+                closePriorityModal();
+                showAllSalesForProject(dealName);
+            });
+        });
+    }
     
     modal.classList.remove('hidden');
 }
@@ -1817,6 +1613,91 @@ function closePriorityModal() {
     if (modal) {
         modal.classList.add('hidden');
     }
+}
+
+function showAllSalesForProject(dealName) {
+    const allDeals = deals.filter(deal => 
+        deal.dealName?.trim() === dealName && 
+        deal.stage !== 'lost'
+    );
+    
+    if (allDeals.length === 0) {
+        showToast("Tidak ada sales ditemukan untuk project ini", 3000);
+        return;
+    }
+    
+    const salesMap = new Map();
+    allDeals.forEach(deal => {
+        if (deal.salesName) {
+            if (!salesMap.has(deal.salesName)) {
+                salesMap.set(deal.salesName, []);
+            }
+            salesMap.get(deal.salesName).push(deal);
+        }
+    });
+    
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.id = 'allSalesModal';
+    
+    let salesHtml = '';
+    salesMap.forEach((deals, salesName) => {
+        const totalValue = deals.reduce((sum, d) => sum + (d.value || 0), 0);
+        const stages = [...new Set(deals.map(d => d.stage))];
+        salesHtml += `
+            <div class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div class="flex justify-between items-center">
+                    <span class="font-semibold text-gray-800">${escapeHtml(salesName)}</span>
+                    <span class="text-sm text-gray-600">${deals.length} deal | Rp ${formatNumber(totalValue)}</span>
+                </div>
+                <div class="text-xs text-gray-500 mt-1">
+                    Tahap: ${stages.map(s => s ? s.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '-').join(', ')}
+                </div>
+                <div class="mt-1 flex flex-wrap gap-1">
+                    ${deals.map(d => `
+                        <button class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 view-detail-btn-mini" data-id="${d.id}">
+                            ${escapeHtml(d.dealName)} - Rp ${formatNumber(d.value)}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    });
+    
+    modal.innerHTML = `
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h2 class="text-xl font-semibold text-gray-800">Sales untuk Project: ${escapeHtml(dealName)}</h2>
+                <button class="close-all-sales text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+            <div class="p-4 overflow-y-auto max-h-[calc(90vh-80px)]">
+                ${salesHtml}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    modal.querySelector('.close-all-sales').addEventListener('click', () => {
+        modal.remove();
+    });
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+    
+    modal.querySelectorAll('.view-detail-btn-mini').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const dealId = btn.dataset.id;
+            modal.remove();
+            openDealDetailModal(dealId);
+        });
+    });
 }
 
 function showAllEntriesForProject(dealName, priority) {
@@ -3840,7 +3721,7 @@ function processSalesData(salesName = 'all') {
     }
     
     uniqueProjects.forEach(deal => {
-        const dealValue = deal.displayValue || deal.value || 0;
+        const dealValue = deal.totalValue || deal.displayValue || deal.value || 0;
         
         stats.totalValue += dealValue;
         
@@ -4160,7 +4041,7 @@ function processPriorityData(priority = 'all') {
     }
     
     uniqueProjects.forEach(deal => {
-        const dealValue = deal.displayValue || deal.value || 0;
+        const dealValue = deal.totalValue || deal.displayValue || deal.value || 0;
         
         stats.totalValue += dealValue;
         
@@ -4522,7 +4403,7 @@ function processDealDataForCharts(dealsData) {
     const pipelineValueByMonth = {};
     
     uniqueProjects.forEach(deal => {
-        const dealValue = deal.displayValue || deal.value || 0;
+        const dealValue = deal.totalValue || deal.displayValue || deal.value || 0;
         
         if (dealValue < 500000000) {
             dealSizes['Small (< Rp 500 Juta)']++;
@@ -4901,21 +4782,30 @@ function showDealsByPriority(salesFilter, priority) {
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
             ${sortedDeals.map((deal, index) => {
-                const displayValue = deal.displayValue || deal.value || 0;
+                const displayValue = deal.totalValue || deal.displayValue || deal.value || 0;
                 const lastUpdateDate = deal.updatedAt ? formatDateTime(deal.updatedAt) : (deal.createdAt ? formatDateTime(deal.createdAt) : '-');
-                const isLastProject = deal.isLastActiveProject;
                 
-                let valueDisplay = `Rp ${formatNumber(displayValue)}`;
-                if (!isLastProject && deal.hasHigherValueFromOtherPriority) {
-                    valueDisplay += ` <span class="text-xs text-gray-500 ml-1">(max)</span>`;
+                let salesDisplay = deal.salesName || '-';
+                if (deal.hasMultipleSales && deal.allSales) {
+                    const otherSales = deal.allSales.filter(s => s !== deal.salesName);
+                    if (otherSales.length > 0) {
+                        salesDisplay = `${deal.salesName} <span class="ml-1 text-xs text-purple-600 font-medium">+${otherSales.length} sales lain</span>`;
+                    }
                 }
                 
                 return `
                 <tr class="hover:bg-gray-50 cursor-pointer view-detail-row" data-id="${deal.id}">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${escapeHtml(deal.dealName || 'No Name')}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${escapeHtml(deal.salesName || '-')}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">${valueDisplay}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        ${escapeHtml(deal.dealName || 'No Name')}
+                        ${deal.hasMultipleSales ? `
+                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800" title="${deal.salesCount} sales mengerjakan project ini">
+                                <i class="fas fa-users mr-1"></i>${deal.salesCount}
+                            </span>
+                        ` : ''}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${salesDisplay}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">Rp ${formatNumber(displayValue)}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${deal.stage === 'win' ? 'bg-green-100 text-green-800' : 
                             deal.stage === 'lost' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">
@@ -4986,22 +4876,31 @@ function showDealsByStage(priorityFilter, stage) {
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
             ${sortedDeals.map((deal, index) => {
-                const displayValue = deal.displayValue || deal.value || 0;
+                const displayValue = deal.totalValue || deal.displayValue || deal.value || 0;
                 const lastUpdateDate = deal.updatedAt ? formatDateTime(deal.updatedAt) : (deal.createdAt ? formatDateTime(deal.createdAt) : '-');
                 const priorityBadgeClass = getPriorityBadgeClass(deal.priority);
-                const isLastProject = deal.isLastActiveProject;
                 
-                let valueDisplay = `Rp ${formatNumber(displayValue)}`;
-                if (!isLastProject && deal.hasHigherValueFromOtherPriority) {
-                    valueDisplay += ` <span class="text-xs text-gray-500 ml-1">(max)</span>`;
+                let salesDisplay = deal.salesName || '-';
+                if (deal.hasMultipleSales && deal.allSales) {
+                    const otherSales = deal.allSales.filter(s => s !== deal.salesName);
+                    if (otherSales.length > 0) {
+                        salesDisplay = `${deal.salesName} <span class="ml-1 text-xs text-purple-600 font-medium">+${otherSales.length} sales lain</span>`;
+                    }
                 }
                 
                 return `
                 <tr class="hover:bg-gray-50 cursor-pointer view-detail-row" data-id="${deal.id}">
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${escapeHtml(deal.dealName || 'No Name')}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${escapeHtml(deal.salesName || '-')}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">${valueDisplay}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        ${escapeHtml(deal.dealName || 'No Name')}
+                        ${deal.hasMultipleSales ? `
+                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800" title="${deal.salesCount} sales mengerjakan project ini">
+                                <i class="fas fa-users mr-1"></i>${deal.salesCount}
+                            </span>
+                        ` : ''}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${salesDisplay}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">Rp ${formatNumber(displayValue)}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="priority-badge px-2 py-1 rounded-full ${priorityBadgeClass}">
                             ${deal.priority || 'Priority'}
@@ -5195,6 +5094,12 @@ function initEventListeners() {
                 showAllPrioritiesForProject(dealName);
             }
             
+            if (e.target.closest('.view-all-sales-btn')) {
+                const btn = e.target.closest('.view-all-sales-btn');
+                const dealName = btn.dataset.dealName;
+                showAllSalesForProject(dealName);
+            }
+            
             if (e.target.closest('.edit-deal-btn')) {
                 const dealCard = e.target.closest('.deal-card, tr');
                 if (dealCard) {
@@ -5296,6 +5201,11 @@ function initEventListeners() {
             
             if (e.target.closest('.close-all-priorities')) {
                 const modal = document.getElementById('allPrioritiesModal');
+                if (modal) modal.remove();
+            }
+            
+            if (e.target.closest('.close-all-sales')) {
+                const modal = document.getElementById('allSalesModal');
                 if (modal) modal.remove();
             }
         });
@@ -6062,7 +5972,7 @@ function prepareSummaryExportData(dealsData) {
         }
         
         summary[stage].dealCount++;
-        summary[stage].totalValue += (deal.displayValue || deal.value || 0);
+        summary[stage].totalValue += (deal.totalValue || deal.displayValue || deal.value || 0);
         
         if (!summary[stage].salesCount[sales]) {
             summary[stage].salesCount[sales] = 0;
